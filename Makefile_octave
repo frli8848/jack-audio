@@ -73,12 +73,13 @@ LIBDIRS		= $(OCT_LIBS) -lasound
 	$(CXX) $(CXXFLAGS) $(FPIC) $(DREAM_INCLUDE) $(OCTAVE_HEADERS) -c $<
 
 all: \
-	aplay.oct
-
-
-
+	aplay.oct \
+	arecord.oct
 
 aplay.oct : oct_aplay.o
+	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
+
+arecord.oct : oct_arecord.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
 
 
