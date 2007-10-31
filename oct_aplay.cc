@@ -103,12 +103,13 @@ Input parameters:\n\
   double *A; 
   int A_M,A_N;
   int err;
-  unsigned int i;
+  unsigned int i,m,n;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames;
   short *buffer;
-  //char *device = "plughw:0,0";
-  char *device = "default";
+  char *device = "plughw:1,0";
+  //char *device = "hw:1,0";
+  //char *device = "default";
   octave_value_list oct_retval; 
 
   int nrhs = args.length ();
@@ -136,16 +137,21 @@ Input parameters:\n\
   A_N = tmp.cols(); // Number of channels.
   A = (double*) tmp.fortran_vec();
 
-  printf("A_M=%d A_N=%d\n",A_M,A_N);
+  printf("A_M (frames) = %d A_N (channels) = %d\n",A_M,A_N);
 
   //
   // Call the play subroutine.
   //
 
   buffer = (short*) malloc(A_M*A_N*sizeof(short));
-  for (i = 0; i < A_M*A_N; i++)
-    buffer[i] =  (short) CLAMP(32768.0*A[i], -32768, 32767);
-  
+
+  // Convert to interleaved audio data.
+  for (n = 0; n < A_N; n++) {
+    for (i = n,m = n*A_M; m < (n+1)*A_M; i+=A_N,m++) {// n:th channel.
+      buffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+    }
+  }
+
   if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
@@ -155,17 +161,15 @@ Input parameters:\n\
 				SND_PCM_FORMAT_S16,
 				SND_PCM_ACCESS_RW_INTERLEAVED,
 				A_N,
-				48000,
+				44100,
 				1,
-				500000)) < 0) {	/* 0.5sec */
+				0)) < 0) {	/* 0.5sec */
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
   
-  //frames = snd_pcm_writei(handle, buffer, sizeof(buffer));
-  frames = snd_pcm_writei(handle, buffer, A_M*A_N);
+  frames = snd_pcm_writei(handle, buffer, A_M);
   printf("frames=%d\n",frames);
-  sleep(1);
 
   if (frames < 0)
     frames = snd_pcm_recover(handle, frames, 0);
