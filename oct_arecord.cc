@@ -140,12 +140,10 @@ Input parameters:\n\
   printf("A_M (frames) = %d A_N (channels) = %d\n",A_M,A_N);
 
   //
-  // Call the play subroutine.
+  // Call the record subroutine.
   //
 
   buffer = (short*) malloc(A_M*A_N*sizeof(short));
-
-
 
   //
   // Open audio device for capture.
