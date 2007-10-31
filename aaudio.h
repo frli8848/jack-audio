@@ -1,3 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sched.h>
+#include <errno.h>
+#include <getopt.h>
+#include <asoundlib.h>
+#include <sys/time.h>
+#include <math.h>
 
 static int set_hwparams(snd_pcm_t *handle,
 			snd_pcm_hw_params_t *params,

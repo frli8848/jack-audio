@@ -1,0 +1,91 @@
+#!/usr/local/bin/make
+
+###################################
+#
+# Makefile for building DLD Octave files from the extra C-sources. using
+#
+#
+# Fredrik Lingvall 20071031 : File created.
+#
+###################################
+
+##################################################################
+#
+# Note: 
+# 
+# Octave must be compiled with (at least):
+#
+#	export CXXFLAGS=-pthread (export CFLAGS==-pthread)
+#
+# and
+# 	./configure  --enable-shared --enable-dl
+#
+##################################################################
+
+include Make.inc
+
+
+DLDCC		= $(CXX)
+
+
+# Octave is compiled with -fPIC and when using -shared the DLD (.oct) functions
+# must thefore also be compiled with -fPIC (according to the gcc manual).
+FPIC 		= -fPIC
+
+DREAM_CFLAGS	= $(CFLAGS)
+DREAM_CXXFLAGS	= $(CFLAGS)
+
+# Octave options for g++/gcc linking.
+DLD_FLAGS	= -shared -Wl,-Bsymbolic
+
+
+#
+# LD flags
+#
+
+#        Note - if the linker is being invoked indirectly, via a compiler driver
+#        (eg gcc) then all the linker command line options should be prefixed by
+#        -Wl, (or whatever is appropriate for the  particular  compiler  driver)
+#        like this:
+#
+#                  gcc -Wl,--startgroup foo.o bar.o -Wl,--endgroup
+#
+#        This  is  important,  because otherwise the compiler driver program may
+#        silently drop the linker options, resulting in a bad link.
+#
+#       -Bsymbolic
+#            When  creating  a shared library, bind references to global symbols
+#            to the definition within the shared library, if any.  Normally,  it
+#            is  possible for a program linked against a shared library to over-
+#            ride the definition within the shared library.  This option is only
+#            meaningful on ELF platforms which support shared libraries.
+#
+
+LIBDIRS		= $(OCT_LIBS) -lasound
+
+#
+# Rules for the obj. files.
+#
+.c.o:
+	$(CC) $(CFLAGS)  $(FPIC) $(DREAM_INCLUDE) -c $<
+
+.cc.o:
+	$(CXX) $(CXXFLAGS) $(FPIC) $(DREAM_INCLUDE) $(OCTAVE_HEADERS) -c $<
+
+all: \
+	aplay.oct
+
+
+
+
+aplay.oct : oct_aplay.o
+	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
+
+
+.PHONY : clean
+
+clean:
+	rm -f  *.o *~ *.obj *.rsp
+
+distclean:
+	rm -f   *.o *~ *.obj *.rsp *.oct

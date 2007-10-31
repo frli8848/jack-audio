@@ -1,16 +1,12 @@
-/*
- *  This small demo sends a simple sinusoidal wave to your speakers.
- */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sched.h>
-#include <errno.h>
-#include <getopt.h>
-#include "../include/asoundlib.h"
-#include <sys/time.h>
-#include <math.h>
+/***
+ *
+ *  Low-level ALSA functions.
+ *
+ *
+ ***/
+
+#include "aaudio.h"
 
 static char *device = "plughw:0,0";			/* playback device */
 static snd_pcm_format_t format = SND_PCM_FORMAT_S16;	/* sample format */
@@ -18,13 +14,15 @@ static unsigned int rate = 44100;			/* stream rate */
 static unsigned int channels = 1;			/* count of channels */
 static unsigned int buffer_time = 500000;		/* ring buffer length in us */
 static unsigned int period_time = 100000;		/* period time in us */
-static double freq = 440;				/* sinusoidal wave frequency in Hz */
-static int verbose = 0;				/* verbose flag */
-static int resample = 1;				/* enable alsa-lib resampling */
+static double freq = 440;	// sinusoidal wave frequency in Hz.
+static int verbose = 0;		// verbose flag.
+static int resample = 1;	// enable alsa-lib resampling.
 
 static snd_pcm_sframes_t buffer_size;
 static snd_pcm_sframes_t period_size;
 static snd_output_t *output = NULL;
+
+
 
 
 static int set_hwparams(snd_pcm_t *handle,
