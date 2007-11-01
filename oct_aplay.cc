@@ -59,6 +59,10 @@ using namespace std;
 #endif
 #define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
+#define mxGetM(N)   args(N).matrix_value().rows()
+#define mxGetN(N)   args(N).matrix_value().cols()
+#define mxIsChar(N) args(N).is_string()
+
 
 /***
  * Name and date (of revisions):
@@ -104,10 +108,13 @@ Input parameters:\n\
   int A_M,A_N;
   int err;
   unsigned int i,m,n;
+  int channels,fs;
   snd_pcm_t *handle;
-  snd_pcm_sframes_t frames;
+  snd_pcm_sframes_t frames,oframes;
   short *buffer;
-  char *device = "plughw:1,0";
+  char device[50];
+  int  buflen;
+  //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
   //char *device = "default";
   octave_value_list oct_retval; 
@@ -116,38 +123,87 @@ Input parameters:\n\
 
   // Check for proper inputs arguments.
 
-  switch (nrhs) {
-    
-  case 0:
-    error("aplay requires 1 to 5 input arguments!");
+  if ((nrhs < 1) || (nrhs > 3)) {
+    error("arecord requires 1 to 3 input arguments!");
     return oct_retval;
-    break;
-    
-  case 1:
-    break;
-    
-  default:
-    error("aplay requires 1 to 5 input arguments!");
-    return oct_retval;
-    break;
   }
 
-  const Matrix tmp = args(0).matrix_value();
-  A_M = tmp.rows(); // Audio data length.
-  A_N = tmp.cols(); // Number of channels.
-  A = (double*) tmp.fortran_vec();
+  if (nlhs > 1) {
+    error("Too many output arguments for arecord !");
+    return oct_retval;
+  }
 
-  printf("A_M (frames) = %d A_N (channels) = %d\n",A_M,A_N);
+  //
+  // The audio data (a frames x channels matrix).
+  //
+
+  const Matrix tmp = args(0).matrix_value();
+  frames = tmp.rows(); // Audio data length for each channel..
+  channels = tmp.cols(); // Number of channels.
+  A = (double*) tmp.fortran_vec();
+    
+  if (frames < 0) {
+    error("The number of audio frames (rows in arg 1) must > 0!");
+    return oct_retval;
+  }
+  
+  if (channels < 0) {
+    error("Error in 1st arg. The number of channels (columns in arg 1) must > 0!");
+    return oct_retval;
+  }
+
+  //
+  // Sampling frequency.
+  //
+
+  if (nrhs > 2) {
+    
+    if (mxGetM(2)*mxGetN(2) != 1) {
+      error("3rd arg (the sampling frequency) must be a scalar !");
+      return oct_retval;
+    }
+    
+    const Matrix tmp2 = args(2).matrix_value();
+    fs = (int) tmp2.fortran_vec()[0];
+    
+    if (fs < 0) {
+      error("Error in 3rd arg. The samping frequency must be > 0!");
+      return oct_retval;
+    }
+  } else
+    fs = 8000; // Default to 8 kHz.
+
+  //
+  // Audio device
+  //
+
+  if (nrhs > 3) {
+    
+    if (!mxIsChar(3)) {
+      error("4th arg (the audio device) must be a string !");
+      return oct_retval;
+    }
+    
+    std::string strin = args(3).string_value(); 
+    buflen = strin.length();
+    for ( n=0; n<=buflen; n++ ) {
+      device[n] = strin[n];
+    }
+    device[buflen] = '\0';
+    
+  } else
+      strcpy(device,"default"); 
+
 
   //
   // Call the play subroutine.
   //
 
-  buffer = (short*) malloc(A_M*A_N*sizeof(short));
+  buffer = (short*) malloc(frames*channels*sizeof(short));
 
   // Convert to interleaved audio data.
-  for (n = 0; n < A_N; n++) {
-    for (i = n,m = n*A_M; m < (n+1)*A_M; i+=A_N,m++) {// n:th channel.
+  for (n = 0; n < channels; n++) {
+    for (i = n,m = n*frames; m < (n+1)*frames; i+=A_N,m++) {// n:th channel.
       buffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
     }
   }
@@ -164,22 +220,22 @@ Input parameters:\n\
 				44100,
 				1,
 				0)) < 0) {	/* 0.5sec */
-    error("Playback open error: %s\n", snd_strerror(err));
+    error("Playback set params error: %s\n", snd_strerror(err));
+    snd_pcm_close(handle);
     return oct_retval;
   }
   
-  frames = snd_pcm_writei(handle, buffer, A_M);
-  printf("frames=%d\n",frames);
+  oframes = snd_pcm_writei(handle, buffer, A_M);
 
-  if (frames < 0)
-    frames = snd_pcm_recover(handle, frames, 0);
+  if (oframes < 0)
+    oframes = snd_pcm_recover(handle, oframes, 0);
   
-  if (frames < 0)
+  if (oframes < 0)
     printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
   
   
-  //if (frames > 0 && frames < (long) sizeof(buffer))
-  //  printf("Short write (expected %li, wrote %li)\n", (long)sizeof(buffer), frames);
+  if (oframes > 0 && oframes < frames)
+    printf("Short write (expected %li, wrote %li)\n", (long)sizeof(buffer), frames);
   
   snd_pcm_close(handle);
   free(buffer);

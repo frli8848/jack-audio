@@ -125,7 +125,7 @@ Input parameters:\n\
   // Check for proper input and output  arguments.
 
   if ((nrhs < 1) || (nrhs > 4)) {
-    error("arecord requires 1 to 3 input arguments!");
+    error("arecord requires 1 to 4 input arguments!");
     return oct_retval;
   }
 
@@ -166,8 +166,8 @@ Input parameters:\n\
     const Matrix tmp1 = args(1).matrix_value();
     channels = (int) tmp1.fortran_vec()[0];
     
-    if (frames < 0) {
-      error("Error in 1st arg. The number of audio frames must > 0!");
+    if (channels < 0) {
+      error("Error in 1st arg. The number of channels must > 0!");
       return oct_retval;
     }
   } else
@@ -237,7 +237,7 @@ Input parameters:\n\
 				fs,
 				1,
 				0)) < 0) {	/* 0.5sec */
-    error("Capture open error: %s\n", snd_strerror(err));
+    error("Capture set params error: %s\n", snd_strerror(err));
     snd_pcm_close(handle);
     return oct_retval;
   }
