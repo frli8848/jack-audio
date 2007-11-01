@@ -59,6 +59,11 @@ using namespace std;
 #endif
 #define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
+#define mxGetM(N)   args(N).matrix_value().rows()
+#define mxGetN(N)   args(N).matrix_value().cols()
+#define mxIsChar(N) args(N).is_string()
+
+
 
 /***
  * Name and date (of revisions):
@@ -103,47 +108,120 @@ Input parameters:\n\
   double *A,*Y; 
   int A_M,A_N;
   int err;
+  int channels,fs;
   unsigned int i,m,n;
   snd_pcm_t *handle;
-  snd_pcm_sframes_t frames;
+  snd_pcm_sframes_t frames,oframes;
   short *buffer;
-  char *device = "plughw:1,0";
+  char device[50];
+  int  buflen;
+  //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
   //char *device = "default";
   octave_value_list oct_retval; 
 
   int nrhs = args.length ();
 
-  // Check for proper inputs arguments.
+  // Check for proper input and output  arguments.
 
-  switch (nrhs) {
-    
-  case 0:
-    error("arecord requires 1 to 5 input arguments!");
+  if ((nrhs < 1) || (nrhs > 4)) {
+    error("arecord requires 1 to 3 input arguments!");
     return oct_retval;
-    break;
-    
-  case 1:
-    break;
-    
-  default:
-    error("arecord requires 1 to 5 input arguments!");
-    return oct_retval;
-    break;
   }
 
-  const Matrix tmp = args(0).matrix_value();
-  A_M = tmp.rows(); // Audio data length.
-  A_N = tmp.cols(); // Number of channels.
-  A = (double*) tmp.fortran_vec();
+  if (nlhs > 1) {
+    error("Too many output arguments for arecord !");
+    return oct_retval;
+  }
 
-  printf("A_M (frames) = %d A_N (channels) = %d\n",A_M,A_N);
 
   //
-  // Call the record subroutine.
+  // Number of audio frames.
   //
 
-  buffer = (short*) malloc(A_M*A_N*sizeof(short));
+  if (mxGetM(0)*mxGetN(0) != 1) {
+    error("1st arg (number of audio frames) must be a scalar !");
+    return oct_retval;
+  }
+
+  const Matrix tmp0 = args(0).matrix_value();
+  frames = (int) tmp0.fortran_vec()[0];
+
+  if (frames < 0) {
+    error("Error in 1st arg. The number of audio frames must > 0!");
+    return oct_retval;
+  }
+
+  //
+  // Number of channels.
+  //
+
+  if (nrhs > 1) {
+    
+    if (mxGetM(1)*mxGetN(1) != 1) {
+      error("2nd arg (number of channels) must be a scalar !");
+      return oct_retval;
+    }
+    
+    const Matrix tmp1 = args(1).matrix_value();
+    channels = (int) tmp1.fortran_vec()[0];
+    
+    if (frames < 0) {
+      error("Error in 1st arg. The number of audio frames must > 0!");
+      return oct_retval;
+    }
+  } else
+    channels = 1; // Default to one channel.
+  
+  //
+  // Sampling frequency.
+  //
+
+  if (nrhs > 2) {
+    
+    if (mxGetM(2)*mxGetN(2) != 1) {
+      error("3rd arg (the sampling frequency) must be a scalar !");
+      return oct_retval;
+    }
+    
+    const Matrix tmp2 = args(2).matrix_value();
+    fs = (int) tmp2.fortran_vec()[0];
+    
+    if (fs < 0) {
+      error("Error in 3rd arg. The samping frequency must be > 0!");
+      return oct_retval;
+    }
+  } else
+    fs = 8000; // Default to 8 kHz.
+
+
+
+  //
+  // Audio device
+  //
+
+  if (nrhs > 3) {
+    
+    if (!mxIsChar(3)) {
+      error("4th arg (the audio device) must be a string !");
+      return oct_retval;
+    }
+    
+    std::string strin = args(3).string_value(); 
+    buflen = strin.length();
+    for ( n=0; n<=buflen; n++ ) {
+      device[n] = strin[n];
+    }
+    device[buflen] = '\0';
+    
+  } else
+      strcpy(device,"default"); 
+
+
+  
+
+  // Allocate buffer space. 
+  buffer = (short*) malloc(frames*channels*sizeof(short));
 
   //
   // Open audio device for capture.
@@ -165,25 +243,25 @@ Input parameters:\n\
     return oct_retval;
   }
   
-  frames = snd_pcm_readi(handle, buffer, A_M);
-  printf("frames=%d\n",frames);
+  oframes = snd_pcm_readi(handle, buffer, A_M);
 
-  if (frames < 0)
+  if (oframes < 0)
     frames = snd_pcm_recover(handle, frames, 0);
   
-  if (frames < 0)
+  if (oframes < 0)
     printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
   
-  //if (frames > 0 && frames < (long) sizeof(buffer))
-  //  printf("Short write (expected %li, wrote %li)\n", (long)sizeof(buffer), frames);
+  if (oframes > 0 && oframes < frames)
+    printf("Short read (expected %li, read %li)\n", frames, oframes);
 
 
-  Matrix Ymat(A_M,A_N);
+  // Allocate space for output data.
+  Matrix Ymat(frames,channels);
   Y = Ymat.fortran_vec();
 
   // Convert from interleaved audio data.
-  for (n = 0; n < A_N; n++) {
-    for (i = n,m = n*A_M; m < (n+1)*A_M; i+=A_N,m++) {// n:th channel.
+  for (n = 0; n < channels; n++) {
+    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
       Y[m] = ((double) buffer[i]) / 32768.0 ;
     }
   }
@@ -193,8 +271,5 @@ Input parameters:\n\
   snd_pcm_close(handle);
   free(buffer);
   
-  //playit(A);
-  
   return oct_retval;
-  
 }
