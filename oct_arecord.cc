@@ -238,6 +238,7 @@ Input parameters:\n\
 				1,
 				0)) < 0) {	/* 0.5sec */
     error("Capture open error: %s\n", snd_strerror(err));
+    snd_pcm_close(handle);
     return oct_retval;
   }
 
