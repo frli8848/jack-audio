@@ -207,7 +207,8 @@ Input parameters:\n\
     }
   }
 
-  if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+  // Open in blocking mode (0, SND_PCM_NONBLOCK, or SND_PCM_ASYNC).
+  if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK,0)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
@@ -223,7 +224,7 @@ Input parameters:\n\
     snd_pcm_close(handle);
     return oct_retval;
   }
-  
+
   oframes = snd_pcm_writei(handle, buffer, frames);
 
   if (oframes < 0)
