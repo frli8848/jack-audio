@@ -105,7 +105,6 @@ Input parameters:\n\
 @end deftypefn")
 {
   double *A; 
-  int A_M,A_N;
   int err;
   unsigned int i,m,n;
   int channels,fs;
@@ -137,10 +136,10 @@ Input parameters:\n\
   // The audio data (a frames x channels matrix).
   //
 
-  const Matrix tmp = args(0).matrix_value();
-  frames = tmp.rows(); // Audio data length for each channel..
-  channels = tmp.cols(); // Number of channels.
-  A = (double*) tmp.fortran_vec();
+  const Matrix tmp0 = args(0).matrix_value();
+  frames = tmp0.rows(); // Audio data length for each channel..
+  channels = tmp0.cols(); // Number of channels.
+  A = (double*) tmp0.fortran_vec();
     
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
@@ -156,18 +155,18 @@ Input parameters:\n\
   // Sampling frequency.
   //
 
-  if (nrhs > 2) {
+  if (nrhs > 1) {
     
-    if (mxGetM(2)*mxGetN(2) != 1) {
-      error("3rd arg (the sampling frequency) must be a scalar !");
+    if (mxGetM(1)*mxGetN(1) != 1) {
+      error("2nd arg (the sampling frequency) must be a scalar !");
       return oct_retval;
     }
     
-    const Matrix tmp2 = args(2).matrix_value();
-    fs = (int) tmp2.fortran_vec()[0];
+    const Matrix tmp1 = args(1).matrix_value();
+    fs = (int) tmp1.fortran_vec()[0];
     
     if (fs < 0) {
-      error("Error in 3rd arg. The samping frequency must be > 0!");
+      error("Error in 2nd arg. The samping frequency must be > 0!");
       return oct_retval;
     }
   } else
@@ -177,14 +176,14 @@ Input parameters:\n\
   // Audio device
   //
 
-  if (nrhs > 3) {
+  if (nrhs > 2) {
     
-    if (!mxIsChar(3)) {
-      error("4th arg (the audio device) must be a string !");
+    if (!mxIsChar(2)) {
+      error("3rd arg (the audio device) must be a string !");
       return oct_retval;
     }
     
-    std::string strin = args(3).string_value(); 
+    std::string strin = args(2).string_value(); 
     buflen = strin.length();
     for ( n=0; n<=buflen; n++ ) {
       device[n] = strin[n];
@@ -203,7 +202,7 @@ Input parameters:\n\
 
   // Convert to interleaved audio data.
   for (n = 0; n < channels; n++) {
-    for (i = n,m = n*frames; m < (n+1)*frames; i+=A_N,m++) {// n:th channel.
+    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
       buffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
     }
   }
@@ -216,8 +215,8 @@ Input parameters:\n\
   if ((err = snd_pcm_set_params(handle,
 				SND_PCM_FORMAT_S16,
 				SND_PCM_ACCESS_RW_INTERLEAVED,
-				A_N,
-				44100,
+				channels,
+				fs,
 				1,
 				0)) < 0) {	/* 0.5sec */
     error("Playback set params error: %s\n", snd_strerror(err));
@@ -225,7 +224,7 @@ Input parameters:\n\
     return oct_retval;
   }
   
-  oframes = snd_pcm_writei(handle, buffer, A_M);
+  oframes = snd_pcm_writei(handle, buffer, frames);
 
   if (oframes < 0)
     oframes = snd_pcm_recover(handle, oframes, 0);
@@ -235,12 +234,10 @@ Input parameters:\n\
   
   
   if (oframes > 0 && oframes < frames)
-    printf("Short write (expected %li, wrote %li)\n", (long)sizeof(buffer), frames);
+    printf("Short write (expected %li, wrote %li)\n", frames, oframes);
   
   snd_pcm_close(handle);
   free(buffer);
-  
-  //playit(A);
   
   return oct_retval;
   
