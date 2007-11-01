@@ -218,8 +218,6 @@ Input parameters:\n\
       strcpy(device,"default"); 
 
 
-  
-
   // Allocate buffer space. 
   buffer = (short*) malloc(frames*channels*sizeof(short));
 
@@ -231,22 +229,22 @@ Input parameters:\n\
     error("Capture open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
-  
+
   if ((err = snd_pcm_set_params(handle,
 				SND_PCM_FORMAT_S16,
 				SND_PCM_ACCESS_RW_INTERLEAVED,
-				A_N,
-				44100,
+				channels,
+				fs,
 				1,
 				0)) < 0) {	/* 0.5sec */
     error("Capture open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
-  
-  oframes = snd_pcm_readi(handle, buffer, A_M);
+
+  oframes = snd_pcm_readi(handle, buffer, frames);
 
   if (oframes < 0)
-    frames = snd_pcm_recover(handle, frames, 0);
+    oframes = snd_pcm_recover(handle, oframes, 0);
   
   if (oframes < 0)
     printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
