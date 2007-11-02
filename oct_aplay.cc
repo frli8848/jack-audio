@@ -70,6 +70,8 @@ using namespace std;
  * Name and date (of revisions):
  * 
  * Fredrik Lingvall 2007-10-31 : File created.
+ * Fredrik Lingvall 2007-11-01 : Added inpout arg checks.
+ * Fredrik Lingvall 2007-11-02 : Added ALSA floating point support.
  *
  ***/
 
@@ -79,13 +81,9 @@ using namespace std;
 //
 
 
-
-
 //
 // Function prototypes.
 //
-
-
 
 
 /***
@@ -108,7 +106,8 @@ Input parameters:\n\
 {
   double *A; 
   int err;
-  unsigned int i,m,n;
+  //unsigned int i,m,n;
+  octave_idx_type i,m,n;
   int channels,fs;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames,oframes;
@@ -247,7 +246,6 @@ Input parameters:\n\
   
   if (oframes < 0)
     printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
-  
   
   if (oframes > 0 && oframes < frames)
     printf("Short write (expected %li, wrote %li)\n", frames, oframes);

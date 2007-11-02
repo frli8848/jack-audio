@@ -65,12 +65,12 @@ using namespace std;
 #define mxGetN(N)   args(N).matrix_value().cols()
 #define mxIsChar(N) args(N).is_string()
 
-
-
 /***
  * Name and date (of revisions):
  * 
  * Fredrik Lingvall 2007-10-31 : File created.
+ * Fredrik Lingvall 2007-11-01 : Added inpout arg checks.
+ * Fredrik Lingvall 2007-11-02 : Added ALSA floating point support.
  *
  ***/
 
@@ -79,14 +79,9 @@ using namespace std;
 // typedef:s
 //
 
-
-
-
 //
 // Function prototypes.
 //
-
-
 
 
 /***
@@ -111,7 +106,8 @@ Input parameters:\n\
   int A_M,A_N;
   int err;
   int channels,fs;
-  unsigned int i,m,n;
+  //unsigned int i,m,n;
+  octave_idx_type i,m,n;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames,oframes;
 #ifdef USE_ALSA_FLOAT
@@ -200,8 +196,6 @@ Input parameters:\n\
   } else
     fs = 8000; // Default to 8 kHz.
 
-
-
   //
   // Audio device
   //
@@ -280,7 +274,6 @@ Input parameters:\n\
 #else
       Y[m] = ((double) buffer[i]) / 32768.0; // Normalize audio data.
 #endif
-
     }
   }
 
