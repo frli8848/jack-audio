@@ -50,6 +50,8 @@ using namespace std;
 #define TRUE 1
 #define FALSE 0
 
+#define USE_ALSA_FLOAT
+
 //
 // Macros.
 //
@@ -110,7 +112,11 @@ Input parameters:\n\
   int channels,fs;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames,oframes;
+#ifdef USE_ALSA_FLOAT
+  float *buffer;
+#else
   short *buffer;
+#endif
   char device[50];
   int  buflen;
   //char *device = "plughw:1,0";
@@ -137,8 +143,8 @@ Input parameters:\n\
   //
 
   const Matrix tmp0 = args(0).matrix_value();
-  frames = tmp0.rows(); // Audio data length for each channel..
-  channels = tmp0.cols(); // Number of channels.
+  frames = tmp0.rows();		// Audio data length for each channel.
+  channels = tmp0.cols();	// Number of channels.
   A = (double*) tmp0.fortran_vec();
     
   if (frames < 0) {
@@ -147,7 +153,7 @@ Input parameters:\n\
   }
   
   if (channels < 0) {
-    error("Error in 1st arg. The number of channels (columns in arg 1) must > 0!");
+    error("The number of channels (columns in arg 1) must > 0!");
     return oct_retval;
   }
 
@@ -194,16 +200,21 @@ Input parameters:\n\
       strcpy(device,"default"); 
 
 
-  //
-  // Call the play subroutine.
-  //
-
+  // Allocate buffer space.
+#ifdef USE_ALSA_FLOAT
+  buffer = (float*) malloc(frames*channels*sizeof(float));
+#else
   buffer = (short*) malloc(frames*channels*sizeof(short));
-
+#endif
+  
   // Convert to interleaved audio data.
   for (n = 0; n < channels; n++) {
     for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+#ifdef USE_ALSA_FLOAT
+      buffer[i] =  (float) CLAMP(A[m], -1.0,1.0);
+#else
       buffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+#endif
     }
   }
 
@@ -214,7 +225,11 @@ Input parameters:\n\
   }
 
   if ((err = snd_pcm_set_params(handle,
+#ifdef USE_ALSA_FLOAT
+				SND_PCM_FORMAT_FLOAT, 
+#else
 				SND_PCM_FORMAT_S16,
+#endif
 				SND_PCM_ACCESS_RW_INTERLEAVED,
 				channels,
 				fs,
