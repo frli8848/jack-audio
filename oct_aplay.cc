@@ -82,10 +82,80 @@ using namespace std;
 // typedef:s
 //
 
+#ifdef USE_ALSA_FLOAT
+typedef float adata_type;
+#else
+typedef short adata_type;
+#endif
 
 //
 // Function prototypes.
 //
+
+int xrun_recovery(snd_pcm_t *handle, int err);
+int write_loop(snd_pcm_t *handle,
+	       adata_type *samples,
+	       int channels);
+
+/***
+ *
+ *   Underrun and suspend recovery.
+ *
+ ***/
+ 
+int xrun_recovery(snd_pcm_t *handle, int err)
+{
+  if (err == -EPIPE) {	/* under-run */
+    err = snd_pcm_prepare(handle);
+    if (err < 0)
+      printf("Can't recovery from underrun, prepare failed: %s\n", snd_strerror(err));
+    return 0;
+  } else if (err == -ESTRPIPE) {
+    while ((err = snd_pcm_resume(handle)) == -EAGAIN)
+      sleep(1);	/* wait until the suspend flag is released */
+    if (err < 0) {
+      err = snd_pcm_prepare(handle);
+      if (err < 0)
+	printf("Can't recovery from suspend, prepare failed: %s\n", snd_strerror(err));
+    }
+    return 0;
+  }
+  return err;
+}
+
+/***
+ *
+ *   Transfer method - write only.
+ * 
+ ***/
+
+int write_loop(snd_pcm_t *handle,
+	       adata_type *adata,
+	       int frames, int channels)
+{
+  double phase = 0;
+  adata_type *ptr;
+  int err, cptr;
+  
+  ptr = adata;
+  cptr = frames;
+  while (cptr > 0) {
+    err = snd_pcm_writei(handle, ptr, cptr);
+
+    if (err == -EAGAIN)
+      continue;
+    
+    if (err < 0) {
+      if (xrun_recovery(handle, err) < 0) {
+	error("Write error: %s\n", snd_strerror(err));
+	return -1;
+      }
+      break;	/* skip one period */
+    }
+    ptr += err * channels;
+    cptr -= err;
+  }
+}
 
 
 /***
@@ -113,11 +183,7 @@ Input parameters:\n\
   int channels,fs;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames,oframes;
-#ifdef USE_ALSA_FLOAT
-  float *buffer;
-#else
-  short *buffer;
-#endif
+  adata_type *buffer;
   char device[50];
   int  buflen;
   //char *device = "plughw:1,0";
@@ -202,25 +268,21 @@ Input parameters:\n\
 
 
   // Allocate buffer space.
-#ifdef USE_ALSA_FLOAT
-  buffer = (float*) malloc(frames*channels*sizeof(float));
-#else
-  buffer = (short*) malloc(frames*channels*sizeof(short));
-#endif
+  buffer = (adata_type*) malloc(frames*channels*sizeof(adata_type));
   
   // Convert to interleaved audio data.
   for (n = 0; n < channels; n++) {
     for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
 #ifdef USE_ALSA_FLOAT
-      buffer[i] =  (float) CLAMP(A[m], -1.0,1.0);
+      buffer[i] =  (adata_type) CLAMP(A[m], -1.0,1.0);
 #else
-      buffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+      buffer[i] =  (adata_type) CLAMP(32768.0*A[m], -32768, 32767);
 #endif
     }
   }
 
   // Open in blocking mode (0, SND_PCM_NONBLOCK, or SND_PCM_ASYNC).
-  if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK,0)) < 0) {
+  if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
@@ -241,6 +303,11 @@ Input parameters:\n\
     return oct_retval;
   }
 
+  err = write_loop(handle,buffer,frames,channels);
+  if (err < 0)
+    printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
+
+  /*  
   oframes = snd_pcm_writei(handle, buffer, frames);
 
   if (oframes < 0)
@@ -251,7 +318,8 @@ Input parameters:\n\
   
   if (oframes > 0 && oframes < frames)
     printf("Short write (expected %li, wrote %li)\n", frames, oframes);
-  
+  */
+
   snd_pcm_close(handle);
   free(buffer);
   
