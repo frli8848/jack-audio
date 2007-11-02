@@ -8,24 +8,22 @@
 
 #include "aaudio.h"
 
-static char *device = "plughw:0,0";			/* playback device */
-static snd_pcm_format_t format = SND_PCM_FORMAT_S16;	/* sample format */
-static unsigned int rate = 44100;			/* stream rate */
-static unsigned int channels = 1;			/* count of channels */
-static unsigned int buffer_time = 500000;		/* ring buffer length in us */
-static unsigned int period_time = 100000;		/* period time in us */
-static double freq = 440;	// sinusoidal wave frequency in Hz.
-static int verbose = 0;		// verbose flag.
-static int resample = 1;	// enable alsa-lib resampling.
+//static char *device = "plughw:0,0";			/* playback device */
+//static snd_pcm_format_t format = SND_PCM_FORMAT_S16;	/* sample format */
+//static unsigned int rate = 44100;			/* stream rate */
+//static unsigned int channels = 1;			/* count of channels */
+//static unsigned int buffer_time = 500000;		/* ring buffer length in us */
+//static unsigned int period_time = 100000;		/* period time in us */
+//static double freq = 440;	// sinusoidal wave frequency in Hz.
+//static int verbose = 0;		// verbose flag.
+//static int resample = 1;	// enable alsa-lib resampling.
 
-static snd_pcm_sframes_t buffer_size;
-static snd_pcm_sframes_t period_size;
-static snd_output_t *output = NULL;
-
-
+//static snd_pcm_sframes_t buffer_size;
+//static snd_pcm_sframes_t period_size;
+//static snd_output_t *output = NULL;
 
 
-static int set_hwparams(snd_pcm_t *handle,
+int set_hwparams(snd_pcm_t *handle,
 			snd_pcm_hw_params_t *params,
 			snd_pcm_access_t access)
 {
@@ -117,7 +115,7 @@ static int set_hwparams(snd_pcm_t *handle,
 
 
 
-static int set_swparams(snd_pcm_t *handle, snd_pcm_sw_params_t *swparams)
+int set_swparams(snd_pcm_t *handle, snd_pcm_sw_params_t *swparams)
 {
   int err;
 
@@ -164,7 +162,7 @@ static int set_swparams(snd_pcm_t *handle, snd_pcm_sw_params_t *swparams)
  *   Underrun and suspend recovery
  */
  
-static int xrun_recovery(snd_pcm_t *handle, int err)
+int xrun_recovery(snd_pcm_t *handle, int err)
 {
   if (err == -EPIPE) {	/* under-run */
     err = snd_pcm_prepare(handle);
@@ -191,7 +189,7 @@ static int xrun_recovery(snd_pcm_t *handle, int err)
  *   Transfer method - write only
  */
 
-static int write_loop(snd_pcm_t *handle,
+int write_loop(snd_pcm_t *handle,
 		      signed short *samples,
 		      snd_pcm_channel_area_t *areas)
 {
@@ -226,7 +224,7 @@ static int write_loop(snd_pcm_t *handle,
  *   Transfer method - write and wait for room in buffer using poll
  */
 
-static int wait_for_poll(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count)
+int wait_for_poll(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count)
 {
   unsigned short revents;
 
@@ -240,7 +238,7 @@ static int wait_for_poll(snd_pcm_t *handle, struct pollfd *ufds, unsigned int co
   }
 }
 
-static int write_and_poll_loop(snd_pcm_t *handle,
+int write_and_poll_loop(snd_pcm_t *handle,
 			       signed short *samples,
 			       snd_pcm_channel_area_t *areas)
 {
@@ -335,7 +333,7 @@ struct async_private_data {
   double phase;
 };
 
-static void async_callback(snd_async_handler_t *ahandler)
+void async_callback(snd_async_handler_t *ahandler)
 {
   snd_pcm_t *handle = snd_async_handler_get_pcm(ahandler);
   struct async_private_data *data = snd_async_handler_get_callback_private(ahandler);
@@ -360,7 +358,7 @@ static void async_callback(snd_async_handler_t *ahandler)
   }
 }
 
-static int async_loop(snd_pcm_t *handle,
+int async_loop(snd_pcm_t *handle,
 		      signed short *samples,
 		      snd_pcm_channel_area_t *areas)
 {
@@ -405,7 +403,7 @@ static int async_loop(snd_pcm_t *handle,
  *   Transfer method - asynchronous notification + direct write
  */
 
-static void async_direct_callback(snd_async_handler_t *ahandler)
+void async_direct_callback(snd_async_handler_t *ahandler)
 {
   snd_pcm_t *handle = snd_async_handler_get_pcm(ahandler);
   struct async_private_data *data = snd_async_handler_get_callback_private(ahandler);
@@ -479,7 +477,7 @@ static void async_direct_callback(snd_async_handler_t *ahandler)
   }
 }
 
-static int async_direct_loop(snd_pcm_t *handle,
+int async_direct_loop(snd_pcm_t *handle,
 			     signed short *samples ATTRIBUTE_UNUSED,
 			     snd_pcm_channel_area_t *areas ATTRIBUTE_UNUSED)
 {
@@ -537,7 +535,7 @@ static int async_direct_loop(snd_pcm_t *handle,
  *   Transfer method - direct write only
  */
 
-static int direct_loop(snd_pcm_t *handle,
+int direct_loop(snd_pcm_t *handle,
 		       signed short *samples ATTRIBUTE_UNUSED,
 		       snd_pcm_channel_area_t *areas ATTRIBUTE_UNUSED)
 {
@@ -623,7 +621,7 @@ static int direct_loop(snd_pcm_t *handle,
  *   Transfer method - direct write only using mmap_write functions
  */
 
-static int direct_write_loop(snd_pcm_t *handle,
+int direct_write_loop(snd_pcm_t *handle,
 			     signed short *samples,
 			     snd_pcm_channel_area_t *areas)
 {
