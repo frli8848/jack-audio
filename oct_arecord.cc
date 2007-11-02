@@ -149,11 +149,12 @@ int read_loop(snd_pcm_t *handle,
 	error("Write error: %s\n", snd_strerror(err));
 	return -1;
       }
-      break;	/* skip one period */
+      //break;	/* skip one period */
     }
     ptr += err * channels;
     cptr -= err;
   }
+  printf("hej %d\n",cptr);
 }
 
 
@@ -183,11 +184,7 @@ Input parameters:\n\
   octave_idx_type i,m,n;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames,oframes;
-#ifdef USE_ALSA_FLOAT
-  float *buffer;
-#else
-  short *buffer;
-#endif
+  adata_type *buffer;
   char device[50];
   int  buflen;
   //char *device = "plughw:1,0";
