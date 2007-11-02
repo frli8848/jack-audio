@@ -81,9 +81,80 @@ using namespace std;
 // typedef:s
 //
 
+#ifdef USE_ALSA_FLOAT
+typedef float adata_type;
+#else
+typedef short adata_type;
+#endif
+
 //
 // Function prototypes.
 //
+
+int xrun_recovery(snd_pcm_t *handle, int err);
+int read_loop(snd_pcm_t *handle,
+	       adata_type *samples,
+	       int channels);
+
+/***
+ *
+ *   Underrun and suspend recovery.
+ *
+ ***/
+ 
+int xrun_recovery(snd_pcm_t *handle, int err)
+{
+  if (err == -EPIPE) {	/* under-run */
+    err = snd_pcm_prepare(handle);
+    if (err < 0)
+      printf("Can't recovery from underrun, prepare failed: %s\n", snd_strerror(err));
+    return 0;
+  } else if (err == -ESTRPIPE) {
+    while ((err = snd_pcm_resume(handle)) == -EAGAIN)
+      sleep(1);	/* wait until the suspend flag is released */
+    if (err < 0) {
+      err = snd_pcm_prepare(handle);
+      if (err < 0)
+	printf("Can't recovery from suspend, prepare failed: %s\n", snd_strerror(err));
+    }
+    return 0;
+  }
+  return err;
+}
+
+/***
+ *
+ *   Transfer method - read only.
+ * 
+ ***/
+
+int read_loop(snd_pcm_t *handle,
+	       adata_type *adata,
+	       int frames, int channels)
+{
+  double phase = 0;
+  adata_type *ptr;
+  int err, cptr;
+  
+  ptr = adata;
+  cptr = frames;
+  while (cptr > 0) {
+    err = snd_pcm_readi(handle, ptr, cptr);
+
+    if (err == -EAGAIN)
+      continue;
+    
+    if (err < 0) {
+      if (xrun_recovery(handle, err) < 0) {
+	error("Write error: %s\n", snd_strerror(err));
+	return -1;
+      }
+      break;	/* skip one period */
+    }
+    ptr += err * channels;
+    cptr -= err;
+  }
+}
 
 
 /***
@@ -251,7 +322,12 @@ Input parameters:\n\
     snd_pcm_close(handle);
     return oct_retval;
   }
+  
+  err = read_loop(handle,buffer,frames,channels);
+  if (err < 0)
+    printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
 
+  /*
   oframes = snd_pcm_readi(handle, buffer, frames);
 
   if (oframes < 0)
@@ -262,7 +338,7 @@ Input parameters:\n\
   
   if (oframes > 0 && oframes < frames)
     printf("Short read (expected %li, read %li)\n", frames, oframes);
-
+  */
 
   // Allocate space for output data.
   Matrix Ymat(frames,channels);
