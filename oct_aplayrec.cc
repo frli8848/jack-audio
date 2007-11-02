@@ -79,9 +79,166 @@ using namespace std;
 // typedef:s
 //
 
+#ifdef USE_ALSA_FLOAT
+typedef float adata_type;
+#else
+typedef short adata_type;
+#endif
+
+typedef struct
+{
+  snd_pcm_t *handle_rec;
+  adata_type *buffer_rec;
+  int frames;
+  int channels;
+} DATA;
+
+//
+// Globals
+//
+volatile int running;
+
+
 //
 // Function prototypes.
 //
+
+void* smp_process(void *arg);
+void sighandler(int signum);
+void sighandler(int signum);
+void sig_abrt_handler(int signum);
+void sig_keyint_handler(int signum);
+
+int xrun_recovery(snd_pcm_t *handle, int err);
+int write_loop(snd_pcm_t *handle,
+	       adata_type *samples,
+	       int channels);
+
+/***
+ *
+ * Audio read thread function. 
+ *
+ ***/
+
+void* smp_process(void *arg)
+{
+  DATA D = *(DATA *)arg;
+  snd_pcm_t *handle_rec = D.handle_rec;
+  adata_type *buffer_rec = D.buffer_rec;
+  int frames = D.frames;
+  int channels = D.channels;
+  adata_type *ptr;
+  int err, cptr;
+  
+  ptr = buffer_rec;
+  cptr = frames;
+  while (cptr > 0) {
+    err = snd_pcm_readi(handle_rec, ptr, cptr);
+
+    if (err == -EAGAIN)
+      continue;
+    
+    if (err < 0) {
+      if (xrun_recovery(handle_rec, err) < 0) {
+	error("Write error: %s\n", snd_strerror(err));
+	return(NULL);
+      }
+      break;	/* skip one period */
+    }
+    ptr += err * channels;
+    cptr -= err;
+
+    if (running==FALSE) {
+      printf("Read thread bailing bailing out!\n");
+      break;
+    }
+  }
+
+  return(NULL);
+}
+
+/***
+ *
+ * Signal handlers.
+ *
+ ***/
+
+void sighandler(int signum) {
+  //printf("Caught signal SIGTERM.\n");
+  running = FALSE;
+}
+
+void sig_abrt_handler(int signum) {
+  //printf("Caught signal SIGABRT.\n");
+}
+
+void sig_keyint_handler(int signum) {
+  //printf("Caught signal SIGINT.\n");
+}
+
+
+
+/***
+ *
+ *   Underrun and suspend recovery.
+ *
+ ***/
+ 
+int xrun_recovery(snd_pcm_t *handle, int err)
+{
+  if (err == -EPIPE) {	/* under-run */
+    err = snd_pcm_prepare(handle);
+    if (err < 0)
+      printf("Can't recovery from underrun, prepare failed: %s\n", snd_strerror(err));
+    return 0;
+  } else if (err == -ESTRPIPE) {
+    while ((err = snd_pcm_resume(handle)) == -EAGAIN)
+      sleep(1);	/* wait until the suspend flag is released */
+    if (err < 0) {
+      err = snd_pcm_prepare(handle);
+      if (err < 0)
+	printf("Can't recovery from suspend, prepare failed: %s\n", snd_strerror(err));
+    }
+    return 0;
+  }
+  return err;
+}
+
+/***
+ *
+ *   Transfer method - write only.
+ * 
+ ***/
+
+int write_loop(snd_pcm_t *handle,
+	       adata_type *adata,
+	       int frames, int channels)
+{
+  double phase = 0;
+  adata_type *ptr;
+  int err, cptr;
+  
+  ptr = adata;
+  cptr = frames;
+  while (cptr > 0) {
+    err = snd_pcm_writei(handle, ptr, cptr);
+
+    if (err == -EAGAIN)
+      continue;
+    
+    if (err < 0) {
+      if (xrun_recovery(handle, err) < 0) {
+	error("Write error: %s\n", snd_strerror(err));
+	return -1;
+      }
+      break;	/* skip one period */
+    }
+    ptr += err * channels;
+    cptr -= err;
+  }
+}
+
+
 
 
 /***
@@ -110,13 +267,13 @@ Input parameters:\n\
   octave_idx_type i,m,n;
   snd_pcm_t *handle_play,*handle_rec;
   snd_pcm_sframes_t frames,oframes_play,oframes_rec;
-#ifdef USE_ALSA_FLOAT
-  float *buffer_play;
-  float *buffer_rec;
-#else
-  short *buffer_play;
-  short *buffer_rec;
-#endif
+  sighandler_t   old_handler, old_handler_abrt, old_handler_keyint;
+  pthread_t *threads;
+  DATA   *D;
+  void   *retval;
+
+  adata_type *buffer_play;
+  adata_type *buffer_rec;
   char device[50];
   int  buflen;
   //char *device = "plughw:1,0";
@@ -125,6 +282,8 @@ Input parameters:\n\
   octave_value_list oct_retval; 
 
   int nrhs = args.length ();
+
+  running = FALSE;
 
   // Check for proper input and output  arguments.
 
@@ -199,18 +358,39 @@ Input parameters:\n\
   } else
       strcpy(device,"default"); 
 
+
+  //
+  // Register signal handlers.
+  //
+
+  if ((old_handler = signal(SIGTERM, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+
+  if ((old_handler_abrt=signal(SIGABRT, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if ((old_handler_keyint=signal(SIGINT, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+
+
   //
   // Allocate buffer space. 
   //
 
-#ifdef USE_ALSA_FLOAT
-  buffer_play = (float*) malloc(frames*channels*sizeof(float));
-  buffer_rec = (float*) malloc(frames*channels*sizeof(float));
-#else
-  buffer_play = (short*) malloc(frames*channels*sizeof(short));
-  buffer_rec = (short*) malloc(frames*channels*sizeof(short));
-#endif
+  buffer_play = (adata_type*) malloc(frames*channels*sizeof(adata_type));
+  buffer_rec = (adata_type*) malloc(frames*channels*sizeof(adata_type));
 
+
+  // Allocate mem for the thread.
+  threads = (pthread_t*) malloc(sizeof(pthread_t));
+  if (!threads) {
+    error("Failed to allocate memory for threads!");
+    return oct_retval;
+  }
+  
   //
   // Open audio device for capture.
   //
@@ -270,23 +450,66 @@ Input parameters:\n\
   for (n = 0; n < channels; n++) {
     for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
 #ifdef USE_ALSA_FLOAT
-      buffer_play[i] =  (float) CLAMP(A[m], -1.0,1.0);
+      buffer_play[i] =  (adata_type) CLAMP(A[m], -1.0,1.0);
 #else
-      buffer_play[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+      buffer_play[i] =  (adata_type) CLAMP(32768.0*A[m], -32768, 32767);
 #endif
     }
   }
+
+  //
+  // Start the read thread.
+  //
+
+  D = (DATA*) malloc(sizeof(DATA));
+  if (!D) {
+    error("Failed to allocate memory for thread data!");
+    return oct_retval;
+  }
   
+  // Init local data.
+  D[0].handle_rec = handle_rec; 
+  D[0].buffer_rec = buffer_rec;
+  D[0].frames = frames;
+  D[0].channels = channels;
+
+  running = TRUE;
+
+  // Start the read thread.
+  err = pthread_create(&threads[0], NULL, smp_process, &D[0]);
+  if (err != 0)
+    error("Error when creating a new thread!\n");
+
   //
   // Play audio data.
   //
   
-  oframes_play = snd_pcm_writei(handle_play, buffer_play, frames);
+  //oframes_play = snd_pcm_writei(handle_play, buffer_play, frames);
+  err = write_loop(handle_play,buffer_play,frames,channels);
+  if (err < 0)
+    printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
   
   //
-  // Read audio data.
+  // Finnish the read thread..
   //
 
+  // Wait for the read thread to finnish.
+  err = pthread_join(threads[0], &retval);
+  if (err != 0) {
+    error("Error when joining a thread!\n");
+    return oct_retval;
+  }
+  
+  // Free memory.
+  if (D) {
+    free((void*) D);
+  }
+
+  //err = read_loop(handle_rec,buffer_rec,frames,channels);
+  //if (err < 0)
+  //  printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
+
+  /*
   oframes_rec = snd_pcm_readi(handle_rec, buffer_rec, frames);
 
   if (oframes_rec < 0)
@@ -297,24 +520,46 @@ Input parameters:\n\
   
   if (oframes_rec > 0 && oframes_rec < frames)
     printf("Short read (expected %li, read %li)\n", frames, oframes_rec);
+  */
 
-
-  // Allocate space for output data.
-  Matrix Ymat(frames,channels);
-  Y = Ymat.fortran_vec();
-
-  // Convert from interleaved audio data.
-  for (n = 0; n < channels; n++) {
-    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-#ifdef USE_ALSA_FLOAT
-      Y[m] = (double) buffer_rec[i];
-#else
-      Y[m] = ((double) buffer_rec[i]) / 32768.0; // Normalize audio data.
-#endif
-    }
+  //
+  // Restore old signal handlers.
+  //
+  
+  if (signal(SIGTERM, old_handler) == SIG_ERR) {
+    printf("Couldn't register old signal handler.\n");
   }
+  
+  if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if (!running) {
+    error("CTRL-C pressed!\n"); // Bail out.
 
-  oct_retval.append(Ymat);
+  } else {
+    
+    // Allocate space for output data.
+    Matrix Ymat(frames,channels);
+    Y = Ymat.fortran_vec();
+    
+    // Convert from interleaved audio data.
+    for (n = 0; n < channels; n++) {
+      for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+#ifdef USE_ALSA_FLOAT
+	Y[m] = (double) buffer_rec[i];
+#else
+	Y[m] = ((double) buffer_rec[i]) / 32768.0; // Normalize audio data.
+#endif
+      }
+    }
+    
+    oct_retval.append(Ymat);
+  }
   
   snd_pcm_close(handle_play);
   snd_pcm_close(handle_rec);
