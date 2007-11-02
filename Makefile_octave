@@ -67,19 +67,23 @@ LIBDIRS		= $(OCT_LIBS) -lasound
 # Rules for the obj. files.
 #
 .c.o:
-	$(CC) $(CFLAGS)  $(FPIC) $(DREAM_INCLUDE) -c $<
+	$(CC) $(CFLAGS)  $(FPIC)  -c $<
 
 .cc.o:
-	$(CXX) $(CXXFLAGS) $(FPIC) $(DREAM_INCLUDE) $(OCTAVE_HEADERS) -c $<
+	$(CXX) $(CXXFLAGS) $(FPIC) $(OCTAVE_HEADERS) -c $<
 
 all: \
 	aplay.oct \
-	arecord.oct
+	arecord.oct \
+	aplayrec.oct
 
 aplay.oct : oct_aplay.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
 
 arecord.oct : oct_arecord.o
+	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
+
+aplayrec.oct : oct_aplayrec.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
 
 

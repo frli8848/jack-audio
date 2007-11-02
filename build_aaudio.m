@@ -6,3 +6,4 @@
 % Octave
 mkoctfile -v oct_aplay.cc   -lasound -o aplay.oct
 mkoctfile -v oct_arecord.cc -lasound -o arecord.oct
+mkoctfile -v oct_aplayrec.cc -lasound -o arecord.oct

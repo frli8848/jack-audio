@@ -69,7 +69,7 @@ using namespace std;
  * Name and date (of revisions):
  * 
  * Fredrik Lingvall 2007-10-31 : File created.
- * Fredrik Lingvall 2007-11-01 : Added inpout arg checks.
+ * Fredrik Lingvall 2007-11-01 : Added input arg checks.
  * Fredrik Lingvall 2007-11-02 : Added ALSA floating point support.
  *
  ***/

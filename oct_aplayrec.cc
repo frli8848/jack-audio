@@ -65,13 +65,10 @@ using namespace std;
 #define mxGetN(N)   args(N).matrix_value().cols()
 #define mxIsChar(N) args(N).is_string()
 
-
 /***
  * Name and date (of revisions):
  * 
- * Fredrik Lingvall 2007-10-31 : File created.
- * Fredrik Lingvall 2007-11-01 : Added input arg checks.
- * Fredrik Lingvall 2007-11-02 : Added ALSA floating point support.
+ * Fredrik Lingvall 2007-11-02 : File created.
  *
  ***/
 
@@ -80,7 +77,6 @@ using namespace std;
 // typedef:s
 //
 
-
 //
 // Function prototypes.
 //
@@ -88,33 +84,36 @@ using namespace std;
 
 /***
  * 
- * Octave (oct) gateway function for APLAY.
+ * Octave (oct) gateway function for APLAYREC.
  *
  ***/
 
-DEFUN_DLD (aplay, args, nlhs,
+DEFUN_DLD (aplayrec, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  [Y] = aplay(A).\n\
+@deftypefn {Loadable Function} {}  [Y] = aplayrec(A,fs,device).\n\
 \n\
-APLAY Computes one dimensional convolutions of the columns in the matrix A and the matrix (or vector) B.\n\
+APLAYREC Computes one dimensional convolutions of the columns in the matrix A and the matrix (or vector) B.\n\
 \n\
 Input parameters:\n\
 \n\
-@copyright{2007-10-31 Fredrik Lingvall}.\n\
-@seealso {play, record}\n\
+@copyright{2007 Fredrik Lingvall}.\n\
+@seealso {aplay, arecord, play, record}\n\
 @end deftypefn")
 {
-  double *A; 
+  double *A,*Y; 
+  int A_M,A_N;
   int err;
+  int channels,fs;
   //unsigned int i,m,n;
   octave_idx_type i,m,n;
-  int channels,fs;
-  snd_pcm_t *handle;
-  snd_pcm_sframes_t frames,oframes;
+  snd_pcm_t *handle_play,*handle_rec;
+  snd_pcm_sframes_t frames,oframes_play,oframes_rec;
 #ifdef USE_ALSA_FLOAT
-  float *buffer;
+  float *buffer_play;
+  float *buffer_rec;
 #else
-  short *buffer;
+  short *buffer_play;
+  short *buffer_rec;
 #endif
   char device[50];
   int  buflen;
@@ -125,15 +124,15 @@ Input parameters:\n\
 
   int nrhs = args.length ();
 
-  // Check for proper inputs arguments.
+  // Check for proper input and output  arguments.
 
   if ((nrhs < 1) || (nrhs > 3)) {
-    error("aplay requires 1 to 3 input arguments!");
+    error("aplayrec requires 1 to 3 input arguments!");
     return oct_retval;
   }
 
-  if (nlhs > 0) {
-    error("aplay don't have output arguments!");
+  if (nlhs > 1) {
+    error("Too many output arguments for aplayrec!");
     return oct_retval;
   }
 
@@ -178,7 +177,7 @@ Input parameters:\n\
     fs = 8000; // Default to 8 kHz.
 
   //
-  // Audio device
+  // Audio device.
   //
 
   if (nrhs > 2) {
@@ -198,32 +197,55 @@ Input parameters:\n\
   } else
       strcpy(device,"default"); 
 
+  //
+  // Allocate buffer space. 
+  //
 
-  // Allocate buffer space.
 #ifdef USE_ALSA_FLOAT
-  buffer = (float*) malloc(frames*channels*sizeof(float));
+  buffer_play = (float*) malloc(frames*channels*sizeof(float));
+  buffer_rec = (float*) malloc(frames*channels*sizeof(float));
 #else
-  buffer = (short*) malloc(frames*channels*sizeof(short));
+  buffer_play = (short*) malloc(frames*channels*sizeof(short));
+  buffer_rec = (short*) malloc(frames*channels*sizeof(short));
 #endif
+
+  //
+  // Open audio device for capture.
+  //
   
-  // Convert to interleaved audio data.
-  for (n = 0; n < channels; n++) {
-    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-#ifdef USE_ALSA_FLOAT
-      buffer[i] =  (float) CLAMP(A[m], -1.0,1.0);
-#else
-      buffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
-#endif
-    }
+  // Open in blocking mode (available modes are: 0, SND_PCM_NONBLOCK, or SND_PCM_ASYNC).
+  if ((err = snd_pcm_open(&handle_rec, device, SND_PCM_STREAM_CAPTURE, 0)) < 0) {
+    error("Capture open error: %s\n", snd_strerror(err));
+    return oct_retval;
   }
 
-  // Open in blocking mode (0, SND_PCM_NONBLOCK, or SND_PCM_ASYNC).
-  if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK,0)) < 0) {
+  if ((err = snd_pcm_set_params(handle_rec,
+#ifdef USE_ALSA_FLOAT
+				SND_PCM_FORMAT_FLOAT, 
+#else
+				SND_PCM_FORMAT_S16,
+#endif
+				SND_PCM_ACCESS_RW_INTERLEAVED,
+				channels,
+				fs,
+				1,
+				0)) < 0) {	/* 0.5sec */
+    error("Capture set params error: %s\n", snd_strerror(err));
+    snd_pcm_close(handle_rec);
+    return oct_retval;
+  }
+
+  //
+  // Open audio device for play.
+  //
+
+  // Open in non-blocking mode (available modes are: 0, SND_PCM_NONBLOCK, or SND_PCM_ASYNC).
+  if ((err = snd_pcm_open(&handle_play, device, SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
 
-  if ((err = snd_pcm_set_params(handle,
+  if ((err = snd_pcm_set_params(handle_play,
 #ifdef USE_ALSA_FLOAT
 				SND_PCM_FORMAT_FLOAT, 
 #else
@@ -235,24 +257,67 @@ Input parameters:\n\
 				1,
 				0)) < 0) {	/* 0.5sec */
     error("Playback set params error: %s\n", snd_strerror(err));
-    snd_pcm_close(handle);
+    snd_pcm_close(handle_play);
     return oct_retval;
   }
 
-  oframes = snd_pcm_writei(handle, buffer, frames);
+  //
+  // Convert to interleaved audio data and copy to output buffer.
+  //
+  
+  for (n = 0; n < channels; n++) {
+    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+#ifdef USE_ALSA_FLOAT
+      buffer_play[i] =  (float) CLAMP(A[m], -1.0,1.0);
+#else
+      buffer_play[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+#endif
+    }
+  }
+  
+  //
+  // Play audio data.
+  //
+  
+  oframes_play = snd_pcm_writei(handle_play, buffer_play, frames);
+  
+  //
+  // Read audio data.
+  //
 
-  if (oframes < 0)
-    oframes = snd_pcm_recover(handle, oframes, 0);
+  oframes_rec = snd_pcm_readi(handle_rec, buffer_rec, frames);
+
+  if (oframes_rec < 0)
+    oframes_rec = snd_pcm_recover(handle_rec, oframes_rec, 0);
   
-  if (oframes < 0)
-    printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
+  if (oframes_rec < 0)
+    printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
   
-  if (oframes > 0 && oframes < frames)
-    printf("Short write (expected %li, wrote %li)\n", frames, oframes);
+  if (oframes_rec > 0 && oframes_rec < frames)
+    printf("Short read (expected %li, read %li)\n", frames, oframes_rec);
+
+
+  // Allocate space for output data.
+  Matrix Ymat(frames,channels);
+  Y = Ymat.fortran_vec();
+
+  // Convert from interleaved audio data.
+  for (n = 0; n < channels; n++) {
+    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+#ifdef USE_ALSA_FLOAT
+      Y[m] = (double) buffer_rec[i];
+#else
+      Y[m] = ((double) buffer_rec[i]) / 32768.0; // Normalize audio data.
+#endif
+    }
+  }
+
+  oct_retval.append(Ymat);
   
-  snd_pcm_close(handle);
-  free(buffer);
+  snd_pcm_close(handle_play);
+  snd_pcm_close(handle_rec);
+  free(buffer_play);
+  free(buffer_rec);
   
   return oct_retval;
-  
 }
