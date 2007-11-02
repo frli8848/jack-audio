@@ -84,7 +84,7 @@ arecord.oct : oct_arecord.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
 
 aplayrec.oct : oct_aplayrec.o
-	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
+	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) -lpthread $^ -o $@ 
 
 
 .PHONY : clean
