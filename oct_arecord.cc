@@ -50,6 +50,8 @@ using namespace std;
 #define TRUE 1
 #define FALSE 0
 
+#define USE_ALSA_FLOAT
+
 //
 // Macros.
 //
@@ -112,7 +114,11 @@ Input parameters:\n\
   unsigned int i,m,n;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames,oframes;
+#ifdef USE_ALSA_FLOAT
+  float *buffer;
+#else
   short *buffer;
+#endif
   char device[50];
   int  buflen;
   //char *device = "plughw:1,0";
@@ -219,7 +225,11 @@ Input parameters:\n\
 
 
   // Allocate buffer space. 
+#ifdef USE_ALSA_FLOAT
+  buffer = (float*) malloc(frames*channels*sizeof(float));
+#else
   buffer = (short*) malloc(frames*channels*sizeof(short));
+#endif
 
   //
   // Open audio device for capture.
@@ -231,7 +241,11 @@ Input parameters:\n\
   }
 
   if ((err = snd_pcm_set_params(handle,
+#ifdef USE_ALSA_FLOAT
+				SND_PCM_FORMAT_FLOAT, 
+#else
 				SND_PCM_FORMAT_S16,
+#endif
 				SND_PCM_ACCESS_RW_INTERLEAVED,
 				channels,
 				fs,
@@ -261,7 +275,12 @@ Input parameters:\n\
   // Convert from interleaved audio data.
   for (n = 0; n < channels; n++) {
     for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-      Y[m] = ((double) buffer[i]) / 32768.0 ;
+#ifdef USE_ALSA_FLOAT
+      Y[m] = (double) buffer[i];
+#else
+      Y[m] = ((double) buffer[i]) / 32768.0; // Normalize audio data.
+#endif
+
     }
   }
 
