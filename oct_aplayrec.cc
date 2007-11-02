@@ -51,6 +51,7 @@ using namespace std;
 #define FALSE 0
 
 #define LATENCY 0
+#define ALLOW_ALSA_RESAMPLE TRUE
 #define USE_ALSA_FLOAT
 
 //
@@ -229,7 +230,7 @@ Input parameters:\n\
 				SND_PCM_ACCESS_RW_INTERLEAVED,
 				channels,
 				fs,
-				TRUE,
+				ALLOW_ALSA_RESAMPLE,
 				LATENCY)) < 0) {
     error("Capture set params error: %s\n", snd_strerror(err));
     snd_pcm_close(handle_rec);
@@ -255,7 +256,7 @@ Input parameters:\n\
 				SND_PCM_ACCESS_RW_INTERLEAVED,
 				channels,
 				fs,
-				TRUE,
+				ALLOW_ALSA_RESAMPLE,
 				LATENCY)) < 0) {
     error("Playback set params error: %s\n", snd_strerror(err));
     snd_pcm_close(handle_play);
