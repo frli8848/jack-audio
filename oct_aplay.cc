@@ -150,7 +150,7 @@ int write_loop(snd_pcm_t *handle,
 	error("Write error: %s\n", snd_strerror(err));
 	return -1;
       }
-      break;	/* skip one period */
+      //break;	/* skip one period */
     }
     ptr += err * channels;
     cptr -= err;
