@@ -96,6 +96,12 @@ int xrun_recovery(snd_pcm_t *handle, int err);
 int write_loop(snd_pcm_t *handle,
 	       adata_type *samples,
 	       int channels);
+int set_hwparams(snd_pcm_t *handle);
+int set_swparams(snd_pcm_t *handle, snd_pcm_uframes_t avail_min,
+		 snd_pcm_uframes_t start_threshold,
+		 snd_pcm_uframes_t stop_threshold);
+
+
 
 /***
  *
@@ -157,6 +163,140 @@ int write_loop(snd_pcm_t *handle,
   }
 }
 
+/***
+ *
+ * Setter hardware-parametre. Ved feil, print feilmelding og avslutt. 
+ *
+ */
+
+int set_hwparams(snd_pcm_t *handle, driver_t *driver)
+{
+  snd_pcm_hw_params_t *hwparams;
+  snd_pcm_hw_params_alloca(&hwparams);
+  
+  int direction = 0;
+  int err;
+  
+  if((err = snd_pcm_hw_params_any(handle, hwparams)) < 0){
+		fprintf(stderr, "Kan ikke initialisere parameter struktur: %s\n",
+			snd_strerror(err));
+		exit(-1);
+  }
+
+  if((err = snd_pcm_hw_params_set_access(handle, hwparams,
+					 SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0){
+    fprintf(stderr, "Kan ikke sette Aksesstype: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+
+  // Try to set format1, else set format 2, which should fit. 
+  if(snd_pcm_hw_params_test_format(handle, hwparams, 
+				   FORMAT1) == 0){
+    driver.format = FORMAT1;
+  }else{
+    driver.format = FORMAT2;
+  }
+
+  if((err = snd_pcm_hw_params_set_format(handle, hwparams,
+					 driver.format)) < 0){
+    fprintf(stderr, "Kan ikke sette sampleformat: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+  
+  if((err = snd_pcm_hw_params_set_rate_near(handle, hwparams,
+					    &(driver.rate), &direction)) < 0){
+    fprintf(stderr, "Kan ikke sette samplerate: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+
+  if((err = snd_pcm_hw_params_set_channels(handle, hwparams,
+					   driver.num_channels)) < 0){
+    fprintf(stderr, "Kan ikke sette antall kanaler: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+
+  direction = 0;
+  if((err = snd_pcm_hw_params_set_period_size_near(handle, hwparams,
+						   &(driver.period_size), &direction)) < 0){
+    fprintf(stderr, "Kan ikke sette periodestørrelse: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+
+  direction = 0;
+  if((err = snd_pcm_hw_params_set_periods_near(handle, hwparams,
+					       &(driver.num_periods), &direction)) < 0){
+    fprintf(stderr, "Kan ikke sette antall perioder: %s\n",
+	    snd_strerror(err));
+    exit(-1);
+  }
+	
+  if((err = snd_pcm_hw_params(handle, hwparams)) < 0){
+    fprintf(stderr, "Kan ikke sette HW parametre: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+  
+  return 0;
+}
+
+
+/***
+ *
+ * Setter software-parametre for en pcm handle.
+ *
+ ***/
+
+int set_swparams(snd_pcm_t *handle, snd_pcm_uframes_t avail_min,
+		 snd_pcm_uframes_t start_threshold,
+		 snd_pcm_uframes_t stop_threshold)
+{
+  snd_pcm_sw_params_t *swparams;
+  snd_pcm_sw_params_alloca(&swparams);
+  int err;
+  
+  if((err = snd_pcm_sw_params_current(handle, swparams)) < 0){
+    fprintf(stderr, "Kan ikke initiere SW parameter struktur: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+ 
+  if((err = snd_pcm_sw_params_set_avail_min(handle,
+					    swparams, avail_min)) < 0){
+    fprintf(stderr, "Kan ikke sette grense for minimum avail: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+  
+  if((err = snd_pcm_sw_params_set_start_threshold(handle,
+						  swparams, start_threshold)) < 0){
+    fprintf(stderr, "Kan ikke sette start-terskel%s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+
+  if((err = snd_pcm_sw_params_set_stop_threshold(handle,
+						 swparams, stop_threshold)) < 0){
+    fprintf(stderr, "Kan ikke sette stop-terskel%s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+  
+  if((err = snd_pcm_sw_params(handle, swparams)) < 0){
+    fprintf(stderr, "Kan ikke sette SW parametre: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+
+  return 0;
+}
+
+
+
 
 /***
  * 
@@ -183,6 +323,7 @@ Input parameters:\n\
   int channels,fs;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames,oframes;
+  driver_t driver; 
   adata_type *buffer;
   char device[50];
   int  buflen;
@@ -281,31 +422,75 @@ Input parameters:\n\
     }
   }
 
+
+
+  /*
   // Open in blocking mode (0, SND_PCM_NONBLOCK, or SND_PCM_ASYNC).
   if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
+  error("Playback open error: %s\n", snd_strerror(err));
+  return oct_retval;
+  }
+  
+  if ((err = snd_pcm_set_params(handle,
+  #ifdef USE_ALSA_FLOAT
+  SND_PCM_FORMAT_FLOAT, 
+  #else
+  SND_PCM_FORMAT_S16,
+  #endif
+  SND_PCM_ACCESS_RW_INTERLEAVED,
+  channels,
+  fs,
+  ALLOW_ALSA_RESAMPLE,
+  LATENCY)) < 0) {
+  error("Playback set params error: %s\n", snd_strerror(err));
+  snd_pcm_close(handle);
+  return oct_retval;
+  }
+  */
+
+
+  driver.device_name = device;
+  driver.block = 0; // (0, SND_PCM_NONBLOCK, or SND_PCM_ASYNC).
+  driver.rate = fs;
+  driver.period_size = 2;    // PERIOD_SIZE; ?
+  driver.num_periods = 64; //NUM_PERIODS; Number of frames between interupts (=latency?)
+  driver.num_channels = channels;
+  
+  // Åpne to PCM-devicer. En for lesing og en for skriving.
+  if ((err = snd_pcm_open(&handle,device,SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
+  
+  set_hwparams(driver.play_handle);
+  // swparams: (handle, min_avail, start_thres, stop_thres)
+  set_swparams(handle,
+	       driver.period_size >> 1,
+	       driver.period_size >> 3,
+	       driver.period_size << 3);
+  
+  sample_bytes = snd_pcm_format_width(driver.format)/8;
+  framesize = channels * sample_bytes;
+  driver.buf = calloc(/*driver.num_periods **/ driver.period_size,
+		      driver.framesize);
 
-  if ((err = snd_pcm_set_params(handle,
-#ifdef USE_ALSA_FLOAT
-				SND_PCM_FORMAT_FLOAT, 
-#else
-				SND_PCM_FORMAT_S16,
+  nfds = snd_pcm_poll_descriptors_count(handle);
+  pfd = malloc(sizeof(struct pollfd));
+  poll_timeout = floor(1.5 * 1000000 * 
+			      driver.period_size / driver.rate);
+#if 1
+  // Infoutskrifter. 
+  snd_output_t *snderr;
+  snd_output_stdio_attach(&snderr ,stderr, 0);
+  
+  fprintf(stderr, "play_state:%d\n", snd_pcm_state(handle));
+  snd_pcm_dump_setup(handle, snderr);
 #endif
-				SND_PCM_ACCESS_RW_INTERLEAVED,
-				channels,
-				fs,
-				ALLOW_ALSA_RESAMPLE,
-				LATENCY)) < 0) {
-    error("Playback set params error: %s\n", snd_strerror(err));
-    snd_pcm_close(handle);
-    return oct_retval;
-  }
 
-  err = write_loop(handle,buffer,frames,channels);
-  if (err < 0)
-    printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
+
+  //err = write_loop(handle,buffer,frames,channels);
+  //if (err < 0)
+  //  printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
 
   /*  
   oframes = snd_pcm_writei(handle, buffer, frames);
@@ -320,6 +505,8 @@ Input parameters:\n\
     printf("Short write (expected %li, wrote %li)\n", frames, oframes);
   */
 
+  free(driver.pfd);
+  free(driver.buf);
   snd_pcm_close(handle);
   free(buffer);
   
