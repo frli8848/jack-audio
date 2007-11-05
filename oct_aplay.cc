@@ -366,9 +366,9 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
   unsigned short revents;
 
 
-  if ((err = snd_pcm_prepare(handle)) < 0) {
-    fprintf(stderr, "Cannot prepare audio device:%s\n",snd_strerror(err));
-  } 
+  //if ((err = snd_pcm_prepare(handle)) < 0) {
+  //  fprintf(stderr, "Cannot prepare audio device:%s\n",snd_strerror(err));
+  //} 
 
   // Poll-loop
   while (need_play) { 
@@ -384,7 +384,7 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
       tmp_nfds += nfds;
     }
     
-    //printf("nfds=%d, pfd: fd=%d events=%d revents=%d tmp_nfds=%d\n",nfds,pfd[0].fd,pfd[0].events,pfd[0].revents,tmp_nfds);
+
 
     // Legge til pollevent err. // This is useless according to poll man page.
     //    for (i = 0; i < tmp_nfds; i++)
@@ -409,7 +409,11 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
       if(revents & POLLERR){
 	xrun_true = 1;
       }
-	
+
+
+      //printf("nfds=%d, pfd: fd=%d revents=%d tmp_nfds=%d\n",nfds,pfd[0].fd,revents,tmp_nfds);
+      
+      
       //if (revents & POLLOUT)
       //printf("Got a POLLOUT event!\n");
       
@@ -613,8 +617,8 @@ Input parameters:\n\
   }
 
   // Setup the hardwear parameters for the playback device.
-  period_size = 64;
-  num_periods = 2;
+  period_size = 256;
+  num_periods = 1;
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   set_hwparams(handle,&format,&fs,channels,&period_size,&num_periods);
 
@@ -637,9 +641,9 @@ Input parameters:\n\
   
   printf("fs = %d period_size = %d num_periods = %d\n",fs,period_size,num_periods);
   // swparams: (handle, min_avail, start_thres, stop_thres)
-  avail_min = 256; // Play 4096 frames before interrupt.
-  start_threshold = 256;
-  stop_threshold = 256;
+  avail_min = 512; // Play this many frames before interrupt.
+  start_threshold = 0;
+  stop_threshold = 1024;
   set_swparams(handle,avail_min,start_threshold,stop_threshold);
   
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
@@ -664,7 +668,8 @@ Input parameters:\n\
   // Write the audio data to the PCM device.
   //
 
-  err = snd_pcm_prepare(handle);
+  //err = snd_pcm_prepare(handle);
+  //snd_pcm_start(handle);   	
 
   frames_played = 0;
   while((frames - frames_played) > 0) { // Loop until all frames are played.
