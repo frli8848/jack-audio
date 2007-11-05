@@ -709,11 +709,11 @@ Input parameters:\n\
 
 	if (format == SND_PCM_FORMAT_FLOAT) {
 	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-		  (((unsigned char*) fbuffer) + (nwritten) * framesize),
+		  (((unsigned char*) fbuffer) + (frames_played+nwritten) * framesize),
 		  (contiguous * framesize));
 	} else {
 	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-		  (((unsigned char*) ibuffer) + (nwritten) * framesize),
+		  (((unsigned char*) ibuffer) + (frames_played+nwritten) * framesize),
 		  (contiguous * framesize));
 	}
 
