@@ -117,7 +117,7 @@ int set_swparams(snd_pcm_t *handle, snd_pcm_uframes_t avail_min,
 snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
 			    unsigned int nfds, 
 			    unsigned int poll_timeout,
-			    struct pollfd *pfd,
+			    pollfd *pfd,
 			    snd_pcm_uframes_t period_size);
 
 
@@ -208,7 +208,7 @@ int set_hwparams(snd_pcm_t *handle,
   }
   
   if((err = snd_pcm_hw_params_set_access(handle,hwparams,SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0){
-    fprintf(stderr, "Kan ikke sette Aksesstype: %s\n",
+    fprintf(stderr, "Cannot set the PCM access type: %s\n",
 	    snd_strerror(err));
     //exit(-1);
   }
@@ -217,7 +217,7 @@ int set_hwparams(snd_pcm_t *handle,
   // audio format.
   if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
     // Fallback format.
-    printf(" Warning: Cannot set the selected audio format. Falling back to SND_PCM_FORMAT_S16\n"); 
+    printf("Warning: Cannot set the selected audio format. Falling back to SND_PCM_FORMAT_S16\n"); 
     *format = SND_PCM_FORMAT_S16;
   }
 
@@ -242,7 +242,7 @@ int set_hwparams(snd_pcm_t *handle,
 	    snd_strerror(err));
     //exit(-1);
   }
-
+  
   // Set approximate target period size in frames (Frames/Period). The chosen approximate target period 
   // size is returned.
   direction = 0;
@@ -258,7 +258,8 @@ int set_hwparams(snd_pcm_t *handle,
     fprintf(stderr, "Kan ikke sette antall perioder: %s\n",snd_strerror(err));
     //exit(-1);
   }
-	
+  
+
   if((err = snd_pcm_hw_params(handle, hwparams)) < 0){
     fprintf(stderr,"Kan ikke sette HW parametre: %s\n",snd_strerror(err));
     //exit(-1);
@@ -341,7 +342,7 @@ int set_swparams(snd_pcm_t *handle,
 snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
 			    unsigned int nfds, 
 			    unsigned int poll_timeout,
-			    struct pollfd *pfd,
+			    pollfd *pfd,
 			    snd_pcm_uframes_t period_size)
 {
   snd_pcm_sframes_t avail = 0;
@@ -366,9 +367,9 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
       tmp_nfds += nfds;
     }
     
-    //printf("nfds=%d, pfd: fd=%d events=%d revents=%d\n",nfds,pfd[0].fd,pfd[0].events,pfd[0].revents);
+    //printf("nfds=%d, pfd: fd=%d events=%d revents=%d tmp_nfds=%d\n",nfds,pfd[0].fd,pfd[0].events,pfd[0].revents,tmp_nfds);
 
-    // Legge til pollevent err. 
+    // Legge til pollevent err. // This is useless according to poll man page.
     //    for (i = 0; i < tmp_nfds; i++)
     //      pfd[i].events |= POLLERR;
     
@@ -381,32 +382,35 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
 		
     p_timeout = 0;
     if (need_play) {
-      // teller opp for playback.
-      for (i = 0; i < nfds; i++) {
-	snd_pcm_poll_descriptors_revents(handle,&(pfd[0]),nfds,&revents);
-	if(revents & POLLERR){
-	  xrun_true = 1;
-	}
-	
-	if(revents == 0) {
-	  // Timeout. Ingen events. 
-	  p_timeout++;
-	}
+
+      snd_pcm_poll_descriptors_revents(handle,&(pfd[0]),nfds,&revents);
+      if(revents & POLLERR){
+	xrun_true = 1;
       }
+
+      //if (revents & POLLOUT)
+      //printf("Got a POLLOUT event!\n");
       
-      if (p_timeout == 0){
-	// play har event. Trenger ikke mer poll.. 
-	need_play = 0;
+      if(revents == 0) {
+	// Timeout. Ingen events. 
+	p_timeout++;
       }
+    }
+    
+    if (p_timeout == 0){
+      // play har event. Trenger ikke mer poll.
+      need_play = 0;
     }
     
     if (p_timeout && (p_timeout == nfds)) {
       fprintf(stderr, "poll timeout.\n");
       //return 0;
     }
-
-  }
+    
+  } // while (need_play).
   
+
+
   if ((play_avail = snd_pcm_avail_update(handle)) < 0) {
     if(play_avail == -EPIPE){
       xrun_true = 1;
@@ -417,6 +421,7 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
   }
 
   if(xrun_true) {
+    printf("XRUN\n");
     xrun_recovery(handle,play_avail);
     //printf("XRUN\n");
     //snd_pcm_drop(handle);
@@ -468,7 +473,7 @@ Input parameters:\n\
   int  buflen;
   unsigned int nfds;
   unsigned int poll_timeout;
-  struct pollfd *pfd;
+  pollfd *pfd;
 
   //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
@@ -587,7 +592,7 @@ Input parameters:\n\
   }
 
   // Setup the hardwear parameters for the playback device.
-  period_size = 256;
+  period_size = 64;
   num_periods = 2;
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   set_hwparams(handle,&format,&fs,channels,&period_size,&num_periods);
@@ -613,7 +618,7 @@ Input parameters:\n\
   // swparams: (handle, min_avail, start_thres, stop_thres)
   avail_min = 256; // Play 4096 frames before interrupt.
   start_threshold = 0;
-  stop_threshold = 0;
+  stop_threshold = 4096;
   set_swparams(handle,avail_min,start_threshold,stop_threshold);
   
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
@@ -621,7 +626,7 @@ Input parameters:\n\
   //driver.buf = calloc(period_size,framesize); // Should be frames*channels here.
   
   nfds = snd_pcm_poll_descriptors_count(handle);
-  pfd = (pollfd*)  malloc(sizeof(struct pollfd));
+  pfd = (pollfd*)  malloc(sizeof(pollfd));
   poll_timeout = (unsigned int) floor(1.5 * 1000000 * period_size / fs);
   //poll_timeout = -1; // Infinite timeout.
 
