@@ -104,7 +104,7 @@ int write_loop(snd_pcm_t *handle,
 	       int channels);
 
 int set_hwparams(snd_pcm_t *handle,
-		 snd_pcm_format_t format,
+		 snd_pcm_format_t *format,
 		 unsigned int *fs,
 		 unsigned int channels,
 		 snd_pcm_uframes_t *period_size,
@@ -188,7 +188,7 @@ int write_loop(snd_pcm_t *handle,
  */
 
 int set_hwparams(snd_pcm_t *handle,
-		 snd_pcm_format_t format,
+		 snd_pcm_format_t *format,
 		 unsigned int *fs,
 		 unsigned int channels,
 		 snd_pcm_uframes_t *period_size,
@@ -215,16 +215,14 @@ int set_hwparams(snd_pcm_t *handle,
 
   // Test if the audio hardwear supports the audio format otherwise use a fallback 
   // audio format.
-  if(snd_pcm_hw_params_test_format(handle, hwparams,format) == 0){
-    tmp_format = format;
-  } else {
+  if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
     // Fallback format.
     printf(" Warning: Cannot set the selected audio format. Falling back to SND_PCM_FORMAT_S16\n"); 
-    tmp_format = SND_PCM_FORMAT_S16;
+    *format = SND_PCM_FORMAT_S16;
   }
 
   // Set the audio format.
-  if((err = snd_pcm_hw_params_set_format(handle,hwparams,tmp_format)) < 0){
+  if((err = snd_pcm_hw_params_set_format(handle,hwparams,*format)) < 0){
     fprintf(stderr, "Kan ikke sette sampleformat: %s\n",
 	    snd_strerror(err));
     //exit(-1);
@@ -351,8 +349,8 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
   int need_play = 1;
   unsigned int tmp_nfds; 
   unsigned int i; // teller. 
-  unsigned int ci; // teller for capture fd. 
   int xrun_true = 0;
+  unsigned short revents;
 
   // Poll-loop
   while (need_play) { 
@@ -368,9 +366,11 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
       tmp_nfds += nfds;
     }
     
+    //printf("nfds=%d, pfd: fd=%d events=%d revents=%d\n",nfds,pfd[0].fd,pfd[0].events,pfd[0].revents);
+
     // Legge til pollevent err. 
-    for (i = 0; i < tmp_nfds; i++)
-      pfd[i].events |= POLLERR;
+    //    for (i = 0; i < tmp_nfds; i++)
+    //      pfd[i].events |= POLLERR;
     
     
     if (poll (pfd, tmp_nfds,poll_timeout) < 0) {
@@ -383,16 +383,17 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
     if (need_play) {
       // teller opp for playback.
       for (i = 0; i < nfds; i++) {
-	if(pfd[i].revents & POLLERR){
+	snd_pcm_poll_descriptors_revents(handle,&(pfd[0]),nfds,&revents);
+	if(revents & POLLERR){
 	  xrun_true = 1;
 	}
-				
-	if(pfd[i].revents == 0) {
+	
+	if(revents == 0) {
 	  // Timeout. Ingen events. 
 	  p_timeout++;
 	}
       }
-
+      
       if (p_timeout == 0){
 	// play har event. Trenger ikke mer poll.. 
 	need_play = 0;
@@ -405,7 +406,6 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
     }
 
   }
-    
   
   if ((play_avail = snd_pcm_avail_update(handle)) < 0) {
     if(play_avail == -EPIPE){
@@ -415,9 +415,12 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
       //return -1;
     }
   }
-  
+
   if(xrun_true) {
-    printf("XRUN");
+    xrun_recovery(handle,play_avail);
+    //printf("XRUN\n");
+    //snd_pcm_drop(handle);
+    //snd_pcm_prepare(handle);
     //xrun_recovery();
     //return 0;
   }
@@ -459,7 +462,8 @@ Input parameters:\n\
   snd_pcm_sframes_t frames,frames_played;
   unsigned int framesize;
   unsigned int sample_bytes;
-  adata_type *buffer;
+  float *fbuffer;
+  short *ibuffer;
   char device[50];
   int  buflen;
   unsigned int nfds;
@@ -495,11 +499,11 @@ Input parameters:\n\
 
 
   // Set the ALSA audio data format.
-#ifdef USE_ALSA_FLOAT
-  format = SND_PCM_FORMAT_FLOAT;
-#else
-  format = SND_PCM_FORMAT_S16;
-#endif
+  //#ifdef USE_ALSA_FLOAT
+  //  format = SND_PCM_FORMAT_FLOAT;
+  //#else
+  //  format = SND_PCM_FORMAT_S16;
+  //#endif
 
   // Check for proper inputs arguments.
 
@@ -575,19 +579,6 @@ Input parameters:\n\
     strcpy(device,"default"); 
 
 
-  // Allocate buffer space.
-  buffer = (adata_type*) malloc(frames*channels*sizeof(adata_type));
-  
-  // Convert to interleaved audio data.
-  for (n = 0; n < channels; n++) {
-    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-#ifdef USE_ALSA_FLOAT
-      buffer[i] =  (adata_type) CLAMP(A[m], -1.0,1.0);
-#else
-      buffer[i] =  (adata_type) CLAMP(32768.0*A[m], -32768, 32767);
-#endif
-    }
-  }
 
   // Open the PCM playback device. 
   if ((err = snd_pcm_open(&handle,device,SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
@@ -596,12 +587,31 @@ Input parameters:\n\
   }
 
   // Setup the hardwear parameters for the playback device.
-  period_size = 2;
-  num_periods = 4096;
-  set_hwparams(handle,format,&fs,channels,&period_size,&num_periods);
+  period_size = 256;
+  num_periods = 2;
+  format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
+  set_hwparams(handle,&format,&fs,channels,&period_size,&num_periods);
 
+  // Allocate buffer space.
+  //buffer = (adata_type*) malloc(frames*channels*sizeof(adata_type));
+  if(format == SND_PCM_FORMAT_FLOAT) 
+    fbuffer = (float*) malloc(frames*channels*sizeof(float));
+  else
+    ibuffer = (short*) malloc(frames*channels*sizeof(short));
+
+  // Convert to interleaved audio data.
+  for (n = 0; n < channels; n++) {
+    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+      if(format == SND_PCM_FORMAT_FLOAT) 
+	fbuffer[i] =  (float) CLAMP(A[m], -1.0,1.0);
+      else
+	ibuffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+    }
+  }
+  
+  printf("fs = %d period_size = %d num_periods = %d\n",fs,period_size,num_periods);
   // swparams: (handle, min_avail, start_thres, stop_thres)
-  avail_min = 4096; // Play 4096 frames before interrupt.
+  avail_min = 256; // Play 4096 frames before interrupt.
   start_threshold = 0;
   stop_threshold = 0;
   set_swparams(handle,avail_min,start_threshold,stop_threshold);
@@ -613,6 +623,7 @@ Input parameters:\n\
   nfds = snd_pcm_poll_descriptors_count(handle);
   pfd = (pollfd*)  malloc(sizeof(struct pollfd));
   poll_timeout = (unsigned int) floor(1.5 * 1000000 * period_size / fs);
+  //poll_timeout = -1; // Infinite timeout.
 
 #if 1
   // Infoutskrifter. 
@@ -626,9 +637,11 @@ Input parameters:\n\
   //
   // Write the audio data to the PCM device.
   //
-  
+
+  err = snd_pcm_prepare(handle);
+
   frames_played = 0;
-  while(frames - frames_played > 0) { // Loop until all frames are played.
+  while((frames - frames_played) > 0) { // Loop until all frames are played.
     
     // Poll the playback device.
     if ((frames_to_write = poll_loop(handle,nfds,poll_timeout,pfd,period_size)) < 0) {
@@ -653,21 +666,37 @@ Input parameters:\n\
 	  fprintf(stderr, "MMAP begin\n");
 	  //return -1;
 	}
+
+	if (contiguous > frames_to_write)
+	  contiguous = frames_to_write;
+
+	//printf("WARNING!!!!!\n");
+	
 	//if (offset != 7)
 	//  printf("offset=%d\n",offset);
 	
 	// Copy audio data from the buffer to the MMAP:ed memory.
-	//memcpy( (((char*) play_areas->addr) + offset * framesize),
-	//	(((char*) buffer) + (frames_played+nwritten) * framesize),
+	//memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+	//	(((unsigned char*) buffer) + (frames_played+nwritten) * framesize),
 	//	(contiguous * framesize));
-	
+
+	if (format == SND_PCM_FORMAT_FLOAT) {
+	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+		  (((unsigned char*) fbuffer) + (nwritten) * framesize),
+		  (contiguous * framesize));
+	} else {
+	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+		  (((unsigned char*) ibuffer) + (nwritten) * framesize),
+		  (contiguous * framesize));
+	}
+
 	if((err = snd_pcm_mmap_commit(handle,offset,contiguous)) < 0){
 	  fprintf(stderr, "MMAP commit error\n");
 	  //return -1;
 	}
 
-	printf("frames_to_write=%d offset=%d contiguous=%d\n",frames_to_write,offset,contiguous);
-	printf("Remainig frames = %d frames_played = %d\n",frames - frames_played,frames_played );
+	//printf("frames_to_write=%d offset=%d contiguous=%d\n",frames_to_write,offset,contiguous);
+	//printf("Remainig frames = %d frames_played = %d\n",frames - frames_played,frames_played );
 	if (contiguous > 0) {
 	  frames_to_write -= contiguous;
 	  nwritten += contiguous;
@@ -675,13 +704,13 @@ Input parameters:\n\
 
       }
     }
+    //printf("Remainig frames = %d frames_played = %d\n",frames - frames_played,frames_played );
     frames_played += nwritten;
-    
     
     if (snd_pcm_state(handle) < 3) {
       snd_pcm_start(handle);
     }
-
+    
   }
 
 
@@ -691,8 +720,11 @@ Input parameters:\n\
 
   free(pfd);
   snd_pcm_close(handle);
-  free(buffer);
-  
+  if (format == SND_PCM_FORMAT_FLOAT)
+    free(fbuffer);
+  else
+    free(ibuffer);
+
   return oct_retval;
   
 }
