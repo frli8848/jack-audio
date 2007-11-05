@@ -242,7 +242,19 @@ int set_hwparams(snd_pcm_t *handle,
 	    snd_strerror(err));
     //exit(-1);
   }
-  
+
+  /* From aplay.
+  unsigned int buffer_time = 0, period_time = 0;
+  if ((err = snd_pcm_hw_params_get_buffer_time_max(hwparams,&buffer_time, 0)) < 0) {
+    fprintf(stderr, "Cannot get max buffer time: %s\n",
+	    snd_strerror(err));
+  }
+  printf("buffer_time %d\n", buffer_time);
+  period_time = buffer_time / 4;
+
+  err = snd_pcm_hw_params_set_period_time_near(handle,hwparams,&period_time, 0);
+  */
+
   // Set approximate target period size in frames (Frames/Period). The chosen approximate target period 
   // size is returned.
   direction = 0;
@@ -347,11 +359,16 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
 {
   snd_pcm_sframes_t avail = 0;
   snd_pcm_sframes_t play_avail = 0;
-  int need_play = 1;
+  int need_play = 1, err;
   unsigned int tmp_nfds; 
   unsigned int i; // teller. 
   int xrun_true = 0;
   unsigned short revents;
+
+
+  if ((err = snd_pcm_prepare(handle)) < 0) {
+    fprintf(stderr, "Cannot prepare audio device:%s\n",snd_strerror(err));
+  } 
 
   // Poll-loop
   while (need_play) { 
@@ -373,6 +390,11 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
     //    for (i = 0; i < tmp_nfds; i++)
     //      pfd[i].events |= POLLERR;
     
+
+    //if ((err = snd_pcm_wait(handle, 1000)) < 0) {
+    //  fprintf (stderr, "poll failed (%s)\n", snd_strerror (err));
+    //  break;
+    //}
     
     if (poll (pfd, tmp_nfds,poll_timeout) < 0) {
       // poll error. 
@@ -387,7 +409,7 @@ snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
       if(revents & POLLERR){
 	xrun_true = 1;
       }
-
+	
       //if (revents & POLLOUT)
       //printf("Got a POLLOUT event!\n");
       
@@ -584,7 +606,6 @@ Input parameters:\n\
     strcpy(device,"default"); 
 
 
-
   // Open the PCM playback device. 
   if ((err = snd_pcm_open(&handle,device,SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
@@ -617,8 +638,8 @@ Input parameters:\n\
   printf("fs = %d period_size = %d num_periods = %d\n",fs,period_size,num_periods);
   // swparams: (handle, min_avail, start_thres, stop_thres)
   avail_min = 256; // Play 4096 frames before interrupt.
-  start_threshold = 0;
-  stop_threshold = 4096;
+  start_threshold = 256;
+  stop_threshold = 256;
   set_swparams(handle,avail_min,start_threshold,stop_threshold);
   
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
@@ -656,7 +677,13 @@ Input parameters:\n\
 
     if (frames_to_write >  (frames - frames_played) )
       frames_to_write = frames - frames_played; 
-    
+
+    //if ((err = snd_pcm_writei(handle,fbuffer,frames_to_write) ) < 0) {
+    //  fprintf(stderr, "Write error (%s)\n",snd_strerror(err));
+    //} else
+    //  nwritten = frames_to_write;
+
+
     //printf("frames_to_write=%d\n",frames_to_write);
     // Write  
     if (frames_to_write > 0){
@@ -674,16 +701,6 @@ Input parameters:\n\
 
 	if (contiguous > frames_to_write)
 	  contiguous = frames_to_write;
-
-	//printf("WARNING!!!!!\n");
-	
-	//if (offset != 7)
-	//  printf("offset=%d\n",offset);
-	
-	// Copy audio data from the buffer to the MMAP:ed memory.
-	//memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-	//	(((unsigned char*) buffer) + (frames_played+nwritten) * framesize),
-	//	(contiguous * framesize));
 
 	if (format == SND_PCM_FORMAT_FLOAT) {
 	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
@@ -709,6 +726,7 @@ Input parameters:\n\
 
       }
     }
+
     //printf("Remainig frames = %d frames_played = %d\n",frames - frames_played,frames_played );
     frames_played += nwritten;
     
@@ -717,6 +735,8 @@ Input parameters:\n\
     }
     
   }
+
+
 
 
   //
