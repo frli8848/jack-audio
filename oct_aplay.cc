@@ -110,6 +110,8 @@ int set_hwparams(snd_pcm_t *handle,
 		 snd_pcm_uframes_t *period_size,
 		 unsigned int *num_periods);
 
+void check_hw(snd_pcm_t *handle,snd_pcm_hw_params_t *hwparams);
+
 int set_swparams(snd_pcm_t *handle, snd_pcm_uframes_t avail_min,
 		 snd_pcm_uframes_t start_threshold,
 		 snd_pcm_uframes_t stop_threshold);
@@ -197,7 +199,8 @@ int set_hwparams(snd_pcm_t *handle,
   snd_pcm_hw_params_t *hwparams;
   snd_pcm_format_t tmp_format;
   int direction, err;
-
+  unsigned int tmp_fs;
+  
   snd_pcm_hw_params_alloca(&hwparams);
   
   // Initialize the hw structure.
@@ -212,6 +215,8 @@ int set_hwparams(snd_pcm_t *handle,
 	    snd_strerror(err));
     //exit(-1);
   }
+
+  check_hw(handle,hwparams);
 
   // Test if the audio hardwear supports the audio format otherwise use a fallback 
   // audio format.
@@ -230,11 +235,22 @@ int set_hwparams(snd_pcm_t *handle,
 
   // Set the sampling frequency.
   direction = 0;
-  if((err = snd_pcm_hw_params_set_rate_near(handle, hwparams,fs, &direction)) < 0){
+  tmp_fs = *fs;
+  if((err = snd_pcm_hw_params_set_rate_near(handle, hwparams,&tmp_fs, &direction)) < 0){
     fprintf(stderr, "Kan ikke sette samplerate: %s\n",
 	    snd_strerror(err));
     //exit(-1);
   }
+
+  if((err = snd_pcm_hw_params_get_rate(hwparams,&tmp_fs, &direction)) < 0){
+    fprintf(stderr, "Cannot get sample rate: %s\n",
+	    snd_strerror(err));
+    //exit(-1);
+  }
+  if (*fs != tmp_fs)
+    printf("Warning using sampling rate %d\n",tmp_fs);
+
+  *fs = tmp_fs;
 
   // Set the number of channels.
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,channels)) < 0){
@@ -283,6 +299,8 @@ int set_hwparams(snd_pcm_t *handle,
   snd_pcm_hw_params_get_period_size(hwparams, &chunk_size, 0);
   snd_pcm_hw_params_get_buffer_size(hwparams, &buffer_size);
   printf("chunk_size = %d buffer_size = %d\n",chunk_size,buffer_size);
+
+  //  check_hw(handle,hwparams);
   
   return 0;
 }
@@ -345,6 +363,186 @@ int set_swparams(snd_pcm_t *handle,
   return 0;
 }
 
+
+void check_hw(snd_pcm_t *handle,snd_pcm_hw_params_t *hwparams)
+{
+  unsigned int val;
+  snd_pcm_uframes_t val2;
+  int err,dir;
+
+  // Double buffering.
+  if (snd_pcm_hw_params_is_batch(hwparams))
+    printf("The hardware can do double buffering data transfers for given configuration\n");
+  else
+    printf("The hardware cannot do double buffering data transfers for given configuration\n");
+
+
+  // Block transfers.
+  if (snd_pcm_hw_params_is_block_transfer(hwparams))
+    printf("The hardware can do block transfers of samples for given configuration\n");
+  else
+    printf("The hardware cannot do block transfers of samples for given configuration\n");
+
+  // Half-duplex.
+  if (snd_pcm_hw_params_is_half_duplex(hwparams))
+    printf("The hardware does half-duplex\n");
+  else
+    printf("The hardware doesn't do half-duplex\n");
+      
+  // Joint-duplex.
+  if (snd_pcm_hw_params_is_joint_duplex(hwparams))
+    printf("The hardware can do joint-duplex.\n");
+  else
+    printf("The hardware doesn't do joint-duplex\n");
+
+  //
+  // Max/min number of channels.
+  //
+  if ((err=snd_pcm_hw_params_get_channels_max(hwparams,&val)) < 0)
+    fprintf(stderr,"Can't get max number of channels: %s\n", snd_strerror(err));
+  else
+    printf("Max number of channels = %d\n",val);
+
+  if ((err=snd_pcm_hw_params_get_channels_min(hwparams,&val)) < 0)
+    fprintf(stderr,"Can't get min number of channels: %s\n", snd_strerror(err));
+  else
+    printf("Min number of channels = %d\n",val);
+
+  //
+  // Max/min buffer size.
+  //
+  val2 = 0;
+  if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams,&val2)) < 0)
+    fprintf(stderr,"Can't get max buffer size: %s\n", snd_strerror(err));
+  else
+    printf("Max buffer size = %u\n",val2);
+
+  val2 = 0;
+  if ((err=snd_pcm_hw_params_get_buffer_size_min(hwparams,&val2)) < 0)
+    fprintf(stderr,"Can't get min buffer size: %s\n", snd_strerror(err));
+  else
+    printf("Min buffer size = %u\n",val2);
+
+  //
+  // Max/min buffer size.
+  //
+  dir = 0;
+  val = 0;
+  if ((err=snd_pcm_hw_params_get_buffer_time_max(hwparams,&val,&dir)) < 0)
+    fprintf(stderr,"Can't get max buffer time: %s\n", snd_strerror(err));
+  else
+    printf("Max buffer time = %d [us]\n",val);
+
+  dir = 0;
+  val = 0;
+  if ((err=snd_pcm_hw_params_get_buffer_time_min(hwparams,&val,&dir)) < 0)
+    fprintf(stderr,"Can't get min buffer time: %s\n", snd_strerror(err));
+  else
+    printf("Min buffer time = %d [us]\n",val);
+  
+  // Hardware FIFO size.
+  if ((val = snd_pcm_hw_params_get_fifo_size(hwparams)) < 0)
+    fprintf(stderr,"Can't get hardware FIFO size: %s\n", snd_strerror(val));
+  else
+    printf("Hardware FIFO size = %d\n",val);
+
+ // Minimum transfer align value.
+  val2 = 0;
+ if ((err=snd_pcm_hw_params_get_min_align(hwparams,&val2)) < 0)
+   fprintf(stderr,"Can't get min align value: %s\n", snd_strerror(err));
+ else
+   printf("Min align value = %u [samples]\n",val2);
+
+ //
+ // Max/min period size.
+ //
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&val2,&dir)) < 0)
+   fprintf(stderr,"Can't get max period size: %s\n", snd_strerror(err));
+ else
+   printf("Max period size = %d\n",val2);
+ 
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_period_size_min(hwparams,&val2,&dir)) < 0)
+   fprintf(stderr,"Can't get min period size: %s\n", snd_strerror(err));
+ else
+   printf("Min period size = %d\n",val2);
+
+
+ //
+ // Max/min period time.
+ //
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_period_time_max(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get max period time: %s\n", snd_strerror(err));
+ else
+   printf("Max period time = %d [us]\n",val);
+ 
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_period_time_min(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get min period time: %s\n", snd_strerror(err));
+ else
+   printf("Min period time = %d [us]\n",val);
+
+ //
+ // Max/min periods.
+ //
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_periods_max(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get max periods: %s\n", snd_strerror(err));
+ else
+   printf("Max periods = %d\n",val);
+ 
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_periods_min(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get min periods: %s\n", snd_strerror(err));
+ else
+   printf("Min periods = %d\n",val);
+
+
+ //
+ // Max/min rate.
+ //
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_rate_max(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get max rate: %s\n", snd_strerror(err));
+ else
+   printf("Max rate = %d [Hz]\n",val);
+ 
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_rate_min(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get min rate: %s\n", snd_strerror(err));
+ else
+   printf("Min rate = %d [Hz]\n",val);
+
+//
+ // Max/min tick time.
+ //
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_tick_time_max(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get max tick time: %s\n", snd_strerror(err));
+ else
+   printf("Max tick time = %d [us]\n",val);
+ 
+ dir = 0;
+ val2 = 0;
+ if ((err=snd_pcm_hw_params_get_tick_time_min(hwparams,&val,&dir)) < 0)
+   fprintf(stderr,"Can't get min tick time: %s\n", snd_strerror(err));
+ else
+   printf("Min tick time = %d [us]\n",val);
+ 
+ 
+ return;
+}
 
 /***
  *
@@ -512,6 +710,8 @@ Input parameters:\n\
   //char *device = "hw:1,0";
   //char *device = "default";
 
+  double *hw_sw_par;
+
   // HW parameters
   snd_pcm_format_t format;
   unsigned int fs;
@@ -545,8 +745,8 @@ Input parameters:\n\
 
   // Check for proper inputs arguments.
 
-  if ((nrhs < 1) || (nrhs > 3)) {
-    error("aplay requires 1 to 3 input arguments!");
+  if ((nrhs < 1) || (nrhs > 4)) {
+    error("aplay requires 1 to 4 input arguments!");
     return oct_retval;
   }
 
@@ -616,6 +816,32 @@ Input parameters:\n\
   } else
     strcpy(device,"default"); 
 
+  //
+  // HW/SW parameters
+  //
+  
+  if (nrhs > 3) {    
+    
+    if (mxGetM(3)*mxGetN(3) != 5) {
+      error("4th arg must be a 5 element vector !");
+      return oct_retval;
+    }
+    
+    const Matrix tmp3 = args(3).matrix_value();
+    hw_sw_par = (double*) tmp3.fortran_vec();
+    
+    // hw parameters.
+    period_size = (int) hw_sw_par[0];
+    num_periods = (int) hw_sw_par[1];
+    
+    // sw parameters.
+    avail_min = (int) hw_sw_par[2];
+    start_threshold = (int) hw_sw_par[3];
+    stop_threshold = (int) hw_sw_par[4];
+  } 
+
+
+//******************************************************************************************
 
   // Open the PCM playback device. 
   if ((err = snd_pcm_open(&handle,device,SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
@@ -624,10 +850,12 @@ Input parameters:\n\
   }
 
   // Setup the hardwear parameters for the playback device.
-  period_size = 512;
-  num_periods = 1;
-  //period_size = 16;
-  //num_periods = 2;
+  if (nrhs <= 3) {
+    period_size = 512;
+    num_periods = 1;
+    //period_size = 16;
+    //num_periods = 2;
+  }
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   set_hwparams(handle,&format,&fs,channels,&period_size,&num_periods);
 
@@ -649,19 +877,21 @@ Input parameters:\n\
   }
   
   printf("fs = %d period_size = %d num_periods = %d\n",fs,period_size,num_periods);
-  // swparams: (handle, min_avail, start_thres, stop_thres)
-  //avail_min = 512; // Play this many frames before interrupt.
-  //start_threshold = 0;
-  //stop_threshold = 1024;
-  //avail_min = period_size/4; 
-  //avail_min = 8; 
-  avail_min = period_size; // aplay uses this setting. 
-  //start_threshold = avail_min/4;
-  //start_threshold = 0;
-  start_threshold = avail_min;
-  stop_threshold = 16*period_size;
-  set_swparams(handle,avail_min,start_threshold,stop_threshold);
-  
+
+  if (nrhs <= 3) {
+    // swparams: (handle, min_avail, start_thres, stop_thres)
+    //avail_min = 512; // Play this many frames before interrupt.
+    //start_threshold = 0;
+    //stop_threshold = 1024;
+    //avail_min = period_size/4; 
+    //avail_min = 8; 
+    avail_min = period_size; // aplay uses this setting. 
+    //start_threshold = avail_min/4;
+    //start_threshold = 0;
+    start_threshold = avail_min;
+    stop_threshold = 16*period_size;
+    set_swparams(handle,avail_min,start_threshold,stop_threshold);
+  }
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
   framesize = channels * sample_bytes; // Compute the framesize;
   //driver.buf = calloc(period_size,framesize); // Should be frames*channels here.
