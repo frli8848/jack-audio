@@ -941,6 +941,11 @@ Input parameters:\n\
     set_swparams(handle,avail_min,start_threshold,stop_threshold);
   }
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
+
+  // Check if the hardware are using less then 32 bits.
+  if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
+    sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
+  
   framesize = channels * sample_bytes; // Compute the framesize;
   //driver.buf = calloc(period_size,framesize); // Should be frames*channels here.
   
