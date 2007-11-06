@@ -222,8 +222,13 @@ int set_hwparams(snd_pcm_t *handle,
   // audio format.
   if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
     // Fallback format.
-    printf("Warning: Cannot set the selected audio format. Falling back to SND_PCM_FORMAT_S16\n"); 
-    *format = SND_PCM_FORMAT_S16;
+
+    printf("Warning: Cannot set the selected audio format. Trying SND_PCM_FORMAT_S32 instead\n"); 
+    *format = SND_PCM_FORMAT_S32;
+    if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
+      printf("Warning: Cannot set the selected audio format. Falling back to SND_PCM_FORMAT_S16\n"); 
+      *format = SND_PCM_FORMAT_S16;
+    }
   }
 
   // Set the audio format.
@@ -699,7 +704,8 @@ Input parameters:\n\
   unsigned int framesize;
   unsigned int sample_bytes;
   float *fbuffer;
-  short *ibuffer;
+  int *ibuffer;
+  short *sbuffer;
   char device[50];
   int  buflen;
   unsigned int nfds;
@@ -861,18 +867,45 @@ Input parameters:\n\
 
   // Allocate buffer space.
   //buffer = (adata_type*) malloc(frames*channels*sizeof(adata_type));
-  if(format == SND_PCM_FORMAT_FLOAT) 
+  switch(format) {
+  
+  case SND_PCM_FORMAT_FLOAT:
     fbuffer = (float*) malloc(frames*channels*sizeof(float));
-  else
-    ibuffer = (short*) malloc(frames*channels*sizeof(short));
+    break;    
+    
+  case SND_PCM_FORMAT_S32:
+    ibuffer = (int*) malloc(frames*channels*sizeof(int));
+    break;
+
+  case SND_PCM_FORMAT_S16:
+    sbuffer = (short*) malloc(frames*channels*sizeof(short));
+    break;
+
+  default:
+    sbuffer = (short*) malloc(frames*channels*sizeof(short));
+  }
 
   // Convert to interleaved audio data.
   for (n = 0; n < channels; n++) {
     for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-      if(format == SND_PCM_FORMAT_FLOAT) 
+      
+      switch(format) {
+	
+      case SND_PCM_FORMAT_FLOAT:
 	fbuffer[i] =  (float) CLAMP(A[m], -1.0,1.0);
-      else
-	ibuffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+	break;    
+	
+      case SND_PCM_FORMAT_S32:
+	ibuffer[i] =  (int) CLAMP(-214748364.0*A[m], -2147483648, 2147483647);
+	break;
+	
+      case SND_PCM_FORMAT_S16:
+	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+	break;
+	
+      default:
+	sbuffer = (short*) malloc(frames*channels*sizeof(short));
+      }
     }
   }
   
@@ -954,17 +987,34 @@ Input parameters:\n\
 
 	if (contiguous > frames_to_write)
 	  contiguous = frames_to_write;
-
-	if (format == SND_PCM_FORMAT_FLOAT) {
+	
+	switch(format) {
+	  
+	case SND_PCM_FORMAT_FLOAT:
 	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
 		  (((unsigned char*) fbuffer) + (frames_played+nwritten) * framesize),
 		  (contiguous * framesize));
-	} else {
+	  break;    
+	  
+	case SND_PCM_FORMAT_S32:
 	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
 		  (((unsigned char*) ibuffer) + (frames_played+nwritten) * framesize),
 		  (contiguous * framesize));
+	  break;
+	  
+	case SND_PCM_FORMAT_S16:
+	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+		  (((unsigned char*) sbuffer) + (frames_played+nwritten) * framesize),
+		  (contiguous * framesize));
+	  break;
+	  
+	default:
+	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+		  (((unsigned char*) sbuffer) + (frames_played+nwritten) * framesize),
+		  (contiguous * framesize));
+	  
 	}
-
+	
 	if((err = snd_pcm_mmap_commit(handle,offset,contiguous)) < 0){
 	  fprintf(stderr, "MMAP commit error\n");
 	  //return -1;
@@ -1000,11 +1050,25 @@ Input parameters:\n\
 
   free(pfd);
   snd_pcm_close(handle);
-  if (format == SND_PCM_FORMAT_FLOAT)
-    free(fbuffer);
-  else
+
+  switch (format) {
+    
+  case SND_PCM_FORMAT_FLOAT:
+    free(fbuffer);    
+    break;    
+    
+  case SND_PCM_FORMAT_S32:
     free(ibuffer);
+    break;
+    
+  case SND_PCM_FORMAT_S16:
+    free(sbuffer);
+    break;
+    
+  default:
+    free(sbuffer);
+    
+  }
 
   return oct_retval;
-  
 }
