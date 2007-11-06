@@ -108,7 +108,8 @@ int set_hwparams(snd_pcm_t *handle,
 		 unsigned int *fs,
 		 unsigned int *channels,
 		 snd_pcm_uframes_t *period_size,
-		 unsigned int *num_periods);
+		 unsigned int *num_periods,
+		 snd_pcm_uframes_t *buffer_size);
 
 void check_hw(snd_pcm_t *handle,snd_pcm_hw_params_t *hwparams);
 
@@ -194,7 +195,8 @@ int set_hwparams(snd_pcm_t *handle,
 		 unsigned int *fs,
 		 unsigned int *channels,
 		 snd_pcm_uframes_t *period_size,
-		 unsigned int *num_periods)
+		 unsigned int *num_periods,
+		 snd_pcm_uframes_t *buffer_size)
 {
   snd_pcm_hw_params_t *hwparams;
   snd_pcm_format_t tmp_format;
@@ -304,10 +306,9 @@ int set_hwparams(snd_pcm_t *handle,
   }
 
   snd_pcm_uframes_t chunk_size = 0;
-  snd_pcm_uframes_t buffer_size;
   snd_pcm_hw_params_get_period_size(hwparams, &chunk_size, 0);
-  snd_pcm_hw_params_get_buffer_size(hwparams, &buffer_size);
-  printf("chunk_size = %d buffer_size = %d\n",chunk_size,buffer_size);
+  snd_pcm_hw_params_get_buffer_size(hwparams, buffer_size);
+  printf("chunk_size = %d buffer_size = %d\n",chunk_size,*buffer_size);
 
   //  check_hw(handle,hwparams);
   
@@ -728,6 +729,7 @@ Input parameters:\n\
   unsigned int channels, wanted_channels;
   snd_pcm_uframes_t period_size;
   unsigned int num_periods;
+  snd_pcm_uframes_t buffer_size;
 
   // SW parameters.
   snd_pcm_uframes_t avail_min;
@@ -739,6 +741,8 @@ Input parameters:\n\
   snd_pcm_uframes_t nwritten;
   snd_pcm_uframes_t offset; 
   const snd_pcm_channel_area_t *play_areas;
+
+
 
   octave_value_list oct_retval; 
 
@@ -869,7 +873,7 @@ Input parameters:\n\
     //num_periods = 2;
   }
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
-  set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods);
+  set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size);
 
   // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
@@ -936,7 +940,9 @@ Input parameters:\n\
     avail_min = period_size; // aplay uses this setting. 
     //start_threshold = avail_min/4;
     //start_threshold = 0;
-    start_threshold = avail_min;
+    start_threshold = (buffer_size/avail_min) * avail_min;
+
+    //start_threshold = avail_min;
     stop_threshold = 16*period_size;
     set_swparams(handle,avail_min,start_threshold,stop_threshold);
   }
