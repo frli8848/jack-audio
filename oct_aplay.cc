@@ -911,15 +911,15 @@ Input parameters:\n\
 	break;    
 	
       case SND_PCM_FORMAT_S32:
-	ibuffer[i] =  (int) CLAMP(-214748364.0*A[m], -2147483648, 2147483647);
+	ibuffer[i] =  (int) CLAMP(-214748364.0*A[m], -2147483648.0, 2147483647.0);
 	break;
 	
       case SND_PCM_FORMAT_S16:
-	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
 	break;
 	
       default:
-	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
+	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
       }
     }
   }
