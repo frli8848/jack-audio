@@ -272,10 +272,17 @@ int set_hwparams(snd_pcm_t *handle,
   }
   
 
+
   if((err = snd_pcm_hw_params(handle, hwparams)) < 0){
     fprintf(stderr,"Kan ikke sette HW parametre: %s\n",snd_strerror(err));
     //exit(-1);
   }
+
+  snd_pcm_uframes_t chunk_size = 0;
+  snd_pcm_uframes_t buffer_size;
+  snd_pcm_hw_params_get_period_size(hwparams, &chunk_size, 0);
+  snd_pcm_hw_params_get_buffer_size(hwparams, &buffer_size);
+  printf("chunk_size = %d buffer_size = %d\n",chunk_size,buffer_size);
   
   return 0;
 }
@@ -617,8 +624,10 @@ Input parameters:\n\
   }
 
   // Setup the hardwear parameters for the playback device.
-  period_size = 256;
+  period_size = 512;
   num_periods = 1;
+  //period_size = 16;
+  //num_periods = 2;
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   set_hwparams(handle,&format,&fs,channels,&period_size,&num_periods);
 
@@ -641,9 +650,16 @@ Input parameters:\n\
   
   printf("fs = %d period_size = %d num_periods = %d\n",fs,period_size,num_periods);
   // swparams: (handle, min_avail, start_thres, stop_thres)
-  avail_min = 512; // Play this many frames before interrupt.
-  start_threshold = 0;
-  stop_threshold = 1024;
+  //avail_min = 512; // Play this many frames before interrupt.
+  //start_threshold = 0;
+  //stop_threshold = 1024;
+  //avail_min = period_size/4; 
+  //avail_min = 8; 
+  avail_min = period_size; // aplay uses this setting. 
+  //start_threshold = avail_min/4;
+  //start_threshold = 0;
+  start_threshold = avail_min;
+  stop_threshold = 16*period_size;
   set_swparams(handle,avail_min,start_threshold,stop_threshold);
   
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
@@ -704,6 +720,8 @@ Input parameters:\n\
 	  //return -1;
 	}
 
+	//printf("frames_to_write=%d\n",frames_to_write);
+
 	if (contiguous > frames_to_write)
 	  contiguous = frames_to_write;
 
@@ -727,7 +745,9 @@ Input parameters:\n\
 	if (contiguous > 0) {
 	  frames_to_write -= contiguous;
 	  nwritten += contiguous;
-	}
+	} else
+	  printf("negative\n");
+
 
       }
     }
