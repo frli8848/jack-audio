@@ -106,7 +106,7 @@ int write_loop(snd_pcm_t *handle,
 int set_hwparams(snd_pcm_t *handle,
 		 snd_pcm_format_t *format,
 		 unsigned int *fs,
-		 unsigned int channels,
+		 unsigned int *channels,
 		 snd_pcm_uframes_t *period_size,
 		 unsigned int *num_periods);
 
@@ -192,7 +192,7 @@ int write_loop(snd_pcm_t *handle,
 int set_hwparams(snd_pcm_t *handle,
 		 snd_pcm_format_t *format,
 		 unsigned int *fs,
-		 unsigned int channels,
+		 unsigned int *channels,
 		 snd_pcm_uframes_t *period_size,
 		 unsigned int *num_periods)
 {
@@ -226,8 +226,7 @@ int set_hwparams(snd_pcm_t *handle,
     printf("Warning: Cannot set the selected audio format. Trying SND_PCM_FORMAT_S32 instead\n"); 
     *format = SND_PCM_FORMAT_S32;
     if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
-      printf("Warning: Cannot set the selected audio format. Falling back to SND_PCM_FORMAT_S16\n"); 
-      *format = SND_PCM_FORMAT_S16;
+      printf("Warning: Cannot set the audio format to SND_PCM_FORMAT_S32. Falling back to SND_PCM_FORMAT_S16\n");       *format = SND_PCM_FORMAT_S16;
     }
   }
 
@@ -242,25 +241,30 @@ int set_hwparams(snd_pcm_t *handle,
   direction = 0;
   tmp_fs = *fs;
   if((err = snd_pcm_hw_params_set_rate_near(handle, hwparams,&tmp_fs, &direction)) < 0){
-    fprintf(stderr, "Kan ikke sette samplerate: %s\n",
+    fprintf(stderr, "Waring: Cannot set the sampling rate: %s\n",
 	    snd_strerror(err));
     //exit(-1);
   }
 
   if((err = snd_pcm_hw_params_get_rate(hwparams,&tmp_fs, &direction)) < 0){
-    fprintf(stderr, "Cannot get sample rate: %s\n",
+    fprintf(stderr, "Waring: Cannot get the sample rate: %s\n",
 	    snd_strerror(err));
     //exit(-1);
   }
   if (*fs != tmp_fs)
-    printf("Warning using sampling rate %d\n",tmp_fs);
+    printf("Warning using the sampling rate %d instead\n",tmp_fs);
 
   *fs = tmp_fs;
 
   // Set the number of channels.
-  if((err = snd_pcm_hw_params_set_channels(handle, hwparams,channels)) < 0){
-    fprintf(stderr, "Kan ikke sette antall kanaler: %s\n",
+  if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
+    fprintf(stderr, "Warning: Cannot set the number of channels: %s\n",
 	    snd_strerror(err));
+    if((err = snd_pcm_hw_params_get_channels(hwparams,channels)) < 0) {
+      fprintf(stderr, "Cannot get the number of channels: %s\n",
+	      snd_strerror(err));
+    }
+    fprintf(stderr, "Using channels %d number of channels instead.\n",*channels);
     //exit(-1);
   }
 
@@ -721,7 +725,7 @@ Input parameters:\n\
   // HW parameters
   snd_pcm_format_t format;
   unsigned int fs;
-  unsigned int channels;
+  unsigned int channels, wanted_channels;
   snd_pcm_uframes_t period_size;
   unsigned int num_periods;
 
@@ -768,6 +772,8 @@ Input parameters:\n\
   const Matrix tmp0 = args(0).matrix_value();
   frames = tmp0.rows();		// Audio data length for each channel.
   channels = tmp0.cols();	// Number of channels.
+  wanted_channels = channels;
+
   A = (double*) tmp0.fortran_vec();
     
   if (frames < 0) {
@@ -863,10 +869,19 @@ Input parameters:\n\
     //num_periods = 2;
   }
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
-  set_hwparams(handle,&format,&fs,channels,&period_size,&num_periods);
+  set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods);
+
+  // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
+  // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
+  // copy data to the interleaved buffer. Another solution is just to print an error message and bail
+  // out. 
+  if (wanted_channels < channels) {
+    error("You must have (at least) %d input channels for the used hardware!\n", channels);
+    snd_pcm_close(handle);
+    return oct_retval;
+  }
 
   // Allocate buffer space.
-  //buffer = (adata_type*) malloc(frames*channels*sizeof(adata_type));
   switch(format) {
   
   case SND_PCM_FORMAT_FLOAT:
@@ -904,7 +919,7 @@ Input parameters:\n\
 	break;
 	
       default:
-	sbuffer = (short*) malloc(frames*channels*sizeof(short));
+	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768, 32767);
       }
     }
   }
