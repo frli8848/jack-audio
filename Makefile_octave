@@ -77,7 +77,7 @@ all: \
 	arecord.oct \
 	aplayrec.oct
 
-aplay.oct : oct_aplay.o
+aplay.oct : oct_aplay.o aaudio.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
 
 arecord.oct : oct_arecord.o
