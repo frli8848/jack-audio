@@ -357,12 +357,6 @@ Input parameters:\n\
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
   
   framesize = channels * sample_bytes; // Compute the framesize;
-  //driver.buf = calloc(period_size,framesize); // Should be frames*channels here.
-  
-  nfds = snd_pcm_poll_descriptors_count(handle);
-  pfd = (pollfd*)  malloc(sizeof(pollfd));
-  poll_timeout = (unsigned int) floor(1.5 * 1000000 * period_size / fs);
-  //poll_timeout = -1; // Infinite timeout.
 
 #if 1
   // Infoutskrifter. 
@@ -400,7 +394,6 @@ Input parameters:\n\
   // Cleanup.
   //
 
-  free(pfd);
   snd_pcm_close(handle);
 
   switch (format) {
