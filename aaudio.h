@@ -34,3 +34,11 @@ int write_and_poll_loop(snd_pcm_t *handle,
 			void *buffer,
 			snd_pcm_sframes_t frames,
 			snd_pcm_sframes_t framesize);
+
+
+int read_and_poll_loop(snd_pcm_t *handle,
+		       const snd_pcm_channel_area_t *record_areas,
+		       snd_pcm_format_t format, 
+		       void *buffer,
+		       snd_pcm_sframes_t frames,
+		       snd_pcm_sframes_t framesize);

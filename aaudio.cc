@@ -14,6 +14,9 @@
 #endif
 #define MIN(a, b) (a) < (b) ? (a) : (b)
 
+int wait_for_poll_out(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
+int wait_for_poll_in(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
+
 //*********************************************************************************************
 
 /***
@@ -610,8 +613,9 @@ int write_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_uframes_t offset;
   snd_pcm_sframes_t frames_played;
   snd_pcm_sframes_t commit_res;
+  int first = 0;
 
-  count = snd_pcm_poll_descriptors_count (handle);
+  count = snd_pcm_poll_descriptors_count(handle);
   if (count <= 0) {
     printf("Invalid poll descriptors count\n");
     return count;
@@ -622,6 +626,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
     printf("No enough memory\n");
     return -ENOMEM;
   }
+
   if ((err = snd_pcm_poll_descriptors(handle, ufds, count)) < 0) {
     printf("Unable to obtain poll descriptors for playback: %s\n", snd_strerror(err));
     return err;
@@ -651,9 +656,17 @@ int write_and_poll_loop(snd_pcm_t *handle,
       }
     }
 
-    //generate_sine(areas, 0, period_size, &phase);
-    frames_to_write = snd_pcm_avail_update(handle);
-    
+    frames_to_write = snd_pcm_avail_update(handle); 
+    if (frames_to_write < 0) {
+      err = xrun_recovery(handle, frames_to_write);
+      if (err < 0) {
+	printf("avail update failed: %s\n", snd_strerror(err));
+	//return EXIT_FAILURE;
+      }
+      first = 1;
+      continue;
+    }
+
     if (frames_to_write >  (frames - frames_played) )
       frames_to_write = frames - frames_played; 
     
@@ -690,11 +703,6 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	  //first = 1;
 	}
 	
-	//if((err = snd_pcm_mmap_commit(handle,offset,contiguous)) < 0){
-	//  fprintf(stderr, "MMAP commit error\n");
-	//return -1;
-	//}
-	
 	if (contiguous > 0) {
 	  frames_to_write -= contiguous;
 	  nwritten += contiguous;
@@ -704,6 +712,10 @@ int write_and_poll_loop(snd_pcm_t *handle,
       }
     }
     frames_played += nwritten;
+
+    if (snd_pcm_state(handle) < 3) {
+      snd_pcm_start(handle);
+    }
     
     // It is possible, that the initial buffer cannot store
     // all data from the last period, so wait awhile.
@@ -714,7 +726,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	  err = snd_pcm_state(handle) == SND_PCM_STATE_XRUN ? -EPIPE : -ESTRPIPE;
 	  if (xrun_recovery(handle, err) < 0) {
 	    printf("Write error: %s\n", snd_strerror(err));
-	    exit(EXIT_FAILURE);
+	    //return EXIT_FAILURE;
 	  }
 	  init = 1;
 	} else {
@@ -722,9 +734,177 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	  return err;
 	}
       }
-
+      
+      
   } // while((frames - frames_played) > 0)
+  
+  free(ufds);
+  
+  return 0;
+}
 
+/***
+ *
+ *   Transfer method - read (record) and wait for room in buffer using poll.
+ *
+ ***/
+
+int wait_for_poll_in(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count)
+{
+  unsigned short revents;
+
+  while (1) {
+    poll(ufds, count, -1);
+    snd_pcm_poll_descriptors_revents(handle, ufds, count, &revents);
+    if (revents & POLLERR)
+      return -EIO;
+    if (revents & POLLIN)
+      return 0;
+  }
+}
+
+int read_and_poll_loop(snd_pcm_t *handle,
+			const snd_pcm_channel_area_t *record_areas,
+			snd_pcm_format_t format, 
+			void *buffer,
+			snd_pcm_sframes_t frames,
+			snd_pcm_sframes_t framesize)
+{
+  struct pollfd *ufds;
+  int err, count, init;
+  snd_pcm_uframes_t frames_to_read;
+  snd_pcm_sframes_t contiguous; 
+  snd_pcm_uframes_t nwritten;
+  snd_pcm_uframes_t offset;
+  snd_pcm_sframes_t frames_recorded;
+  snd_pcm_sframes_t commit_res;
+  int first = 0;
+
+  count = snd_pcm_poll_descriptors_count(handle);
+  if (count <= 0) {
+    printf("Invalid poll descriptors count\n");
+    return count;
+  }
+
+  ufds = (struct pollfd*) malloc(sizeof(struct pollfd) * count);
+  if (ufds == NULL) {
+    printf("No enough memory\n");
+    return -ENOMEM;
+  }
+
+  if ((err = snd_pcm_poll_descriptors(handle, ufds, count)) < 0) {
+    printf("Unable to obtain poll descriptors for capture: %s\n", snd_strerror(err));
+    return err;
+  }
+
+  frames_recorded = 0;
+  init = 1;
+  //while (1) {
+  while((frames - frames_recorded) > 0) { // Loop until all frames are recorded.
+
+    if (!init) {
+
+      err = wait_for_poll_in(handle, ufds, count);
+      if (err < 0) {
+	if (snd_pcm_state(handle) == SND_PCM_STATE_XRUN || 
+	    snd_pcm_state(handle) == SND_PCM_STATE_SUSPENDED) {
+	  err = snd_pcm_state(handle) == SND_PCM_STATE_XRUN ? -EPIPE : -ESTRPIPE;
+	  if (xrun_recovery(handle, err) < 0) {
+	    printf("Read error: %s\n",snd_strerror(err));
+	    return EXIT_FAILURE;
+	  }
+	  init = 1;
+	} else {
+	  printf("Wait for poll failed\n");
+	  return err;
+	}
+      }
+    }
+
+    frames_to_read = snd_pcm_avail_update(handle); 
+    if (frames_to_read < 0) {
+      err = xrun_recovery(handle, frames_to_read);
+      if (err < 0) {
+	printf("avail update failed: %s\n", snd_strerror(err));
+	//return EXIT_FAILURE;
+      }
+      first = 1;
+      continue;
+    }
+
+    if (frames_to_read >  (frames - frames_recorded) )
+      frames_to_read = frames - frames_recorded; 
+    
+    if (frames_to_read > 0){
+      
+      nwritten = 0;
+      while(frames_to_read > 0){
+	
+	// ønsket sammenhengende område. 
+	contiguous = frames_to_read; 
+	
+	if ((err = snd_pcm_mmap_begin(handle,&record_areas,&offset,&frames_to_read)) < 0) {
+	  if ((err = xrun_recovery(handle, err)) < 0) {
+	    printf("MMAP begin avail error: %s\n", snd_strerror(err));
+	    //return EXIT_FAILURE;
+	  }
+	}
+	
+	// Test if the number if available frames exceeds the remaining
+	// number of frames to read.
+	if (contiguous > frames_to_read)
+	  contiguous = frames_to_read;
+	
+	memcpy( (((unsigned char*) buffer) + (frames_recorded+nwritten) * framesize),
+		(((unsigned char*) record_areas->addr) + offset * framesize),
+		(contiguous * framesize));
+	
+	commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
+	if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
+	  if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
+	    printf("MMAP commit error: %s\n", snd_strerror(err));
+	    //return EXIT_FAILURE;
+	  }
+	  //first = 1;
+	}
+	
+	if (contiguous > 0) {
+	  frames_to_read -= contiguous;
+	  nwritten += contiguous;
+	} else
+	  printf("Warning negative byte count\n"); // This should never happend. 
+
+      }
+    }
+    frames_recorded += nwritten;
+
+    if (snd_pcm_state(handle) < 3) {
+      snd_pcm_start(handle);
+    }
+    
+    // It is possible, that the initial buffer cannot store
+    // all data from the last period, so wait awhile.
+    err = wait_for_poll_in(handle, ufds, count);
+      if (err < 0) {
+	if (snd_pcm_state(handle) == SND_PCM_STATE_XRUN ||
+	    snd_pcm_state(handle) == SND_PCM_STATE_SUSPENDED) {
+	  err = snd_pcm_state(handle) == SND_PCM_STATE_XRUN ? -EPIPE : -ESTRPIPE;
+	  if (xrun_recovery(handle, err) < 0) {
+	    printf("Read error: %s\n", snd_strerror(err));
+	    //return EXIT_FAILURE;
+	  }
+	  init = 1;
+	} else {
+	  printf("Wait for poll failed\n");
+	  return err;
+	}
+      }
+      
+      
+  } // while((frames - frames_recorded) > 0)
+  
+  free(ufds);
+  
   return 0;
 }
 
