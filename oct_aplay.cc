@@ -82,6 +82,7 @@ using namespace std;
  * Fredrik Lingvall 2007-10-31 : File created.
  * Fredrik Lingvall 2007-11-01 : Added input arg checks.
  * Fredrik Lingvall 2007-11-02 : Added ALSA floating point support.
+ * Fredrik Lingvall 2007-11-07 : Moved all init and poll, xrun etc functions to a new file.
  *
  ***/
 
@@ -95,142 +96,6 @@ using namespace std;
 // Function prototypes.
 //
 
-
-snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
-			    unsigned int nfds, 
-			    unsigned int poll_timeout,
-			    pollfd *pfd,
-			    snd_pcm_uframes_t period_size);
-
-
-
-/***
- *
- * Mainloop som holder styr på flere fildeskriptorer via en poll().
- * Denne funksjonen er hentet fra prosjektet JACK (www.jackaudio.org),
- * og tilpasset bruk her. 
- *
- * JACK is free software; you can redistribute it and/or modify it 
- * under the terms of the GNU GPL and LGPL licenses as published by 
- * the Free Software Foundation, <http://www.gnu.org> 
- *
- ***/
-
-snd_pcm_sframes_t poll_loop(snd_pcm_t *handle,
-			    unsigned int nfds, 
-			    unsigned int poll_timeout,
-			    pollfd *pfd,
-			    snd_pcm_uframes_t period_size)
-{
-  snd_pcm_sframes_t avail = 0;
-  snd_pcm_sframes_t play_avail = 0;
-  int need_play = 1, err;
-  unsigned int tmp_nfds; 
-  unsigned int i; // teller. 
-  int xrun_true = 0;
-  unsigned short revents;
-
-
-  //if ((err = snd_pcm_prepare(handle)) < 0) {
-  //  fprintf(stderr, "Cannot prepare audio device:%s\n",snd_strerror(err));
-  //} 
-
-  // Poll-loop
-  while (need_play) { 
-    
-    int p_timeout; 
-    
-    // finne riktig antall poll descriptors. Dette kan variere med
-    // pcm-type
-    // ALSA fikser dette. Setter også riktige events. 
-    tmp_nfds = 0;
-    if (need_play){
-      snd_pcm_poll_descriptors(handle,&(pfd[tmp_nfds]),nfds);
-      tmp_nfds += nfds;
-    }
-    
-
-
-    // Legge til pollevent err. // This is useless according to poll man page.
-    //    for (i = 0; i < tmp_nfds; i++)
-    //      pfd[i].events |= POLLERR;
-    
-
-    //if ((err = snd_pcm_wait(handle, 1000)) < 0) {
-    //  fprintf (stderr, "poll failed (%s)\n", snd_strerror (err));
-    //  break;
-    //}
-    
-    if (poll (pfd, tmp_nfds,poll_timeout) < 0) {
-      // poll error. 
-      perror("poll error");
-      //return -1;
-    }
-		
-    p_timeout = 0;
-    if (need_play) {
-
-      snd_pcm_poll_descriptors_revents(handle,&(pfd[0]),nfds,&revents);
-      if(revents & POLLERR){
-	xrun_true = 1;
-      }
-
-
-      //printf("nfds=%d, pfd: fd=%d revents=%d tmp_nfds=%d\n",nfds,pfd[0].fd,revents,tmp_nfds);
-      
-      
-      //if (revents & POLLOUT)
-      //printf("Got a POLLOUT event!\n");
-      
-      if(revents == 0) {
-	// Timeout. Ingen events. 
-	p_timeout++;
-      }
-    }
-    
-    if (p_timeout == 0){
-      // play har event. Trenger ikke mer poll.
-      need_play = 0;
-    }
-    
-    if (p_timeout && (p_timeout == nfds)) {
-      fprintf(stderr, "poll timeout.\n");
-      //return 0;
-    }
-    
-  } // while (need_play).
-  
-
-
-  if ((play_avail = snd_pcm_avail_update(handle)) < 0) {
-    if(play_avail == -EPIPE){
-      xrun_true = 1;
-    } else {
-      fprintf(stderr, "Feil i avail_update(play)\n");
-      //return -1;
-    }
-  }
-
-  if(xrun_true) {
-    printf("XRUN\n");
-    xrun_recovery(handle,play_avail);
-    //printf("XRUN\n");
-    //snd_pcm_drop(handle);
-    //snd_pcm_prepare(handle);
-    //xrun_recovery();
-    //return 0;
-  }
-  
-  avail = play_avail;
-  
-#ifdef DEBUG
-  fprintf(stderr, "poll loop, avail = %lu, playavail = %lu\n", MIN(avail, period_size), play_avail);
-#endif
-  
-  return MIN(avail, period_size);
-}
-  
-  
   
 /***
  * 
@@ -292,20 +157,9 @@ Input parameters:\n\
   snd_pcm_uframes_t offset; 
   const snd_pcm_channel_area_t *play_areas;
 
-
-
-  octave_value_list oct_retval; 
+  octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
-
-
-
-  // Set the ALSA audio data format.
-  //#ifdef USE_ALSA_FLOAT
-  //  format = SND_PCM_FORMAT_FLOAT;
-  //#else
-  //  format = SND_PCM_FORMAT_S16;
-  //#endif
 
   // Check for proper inputs arguments.
 
@@ -523,102 +377,24 @@ Input parameters:\n\
   // Write the audio data to the PCM device.
   //
 
-  //err = snd_pcm_prepare(handle);
-  //snd_pcm_start(handle);   	
-
-  frames_played = 0;
-  while((frames - frames_played) > 0) { // Loop until all frames are played.
+  switch(format) {
     
-    // Poll the playback device.
-    if ((frames_to_write = poll_loop(handle,nfds,poll_timeout,pfd,period_size)) < 0) {
-      fprintf(stderr, "Poll loop error\n");
-      //return NULL;
-    }
-
-    if (frames_to_write >  (frames - frames_played) )
-      frames_to_write = frames - frames_played; 
-
-    //if ((err = snd_pcm_writei(handle,fbuffer,frames_to_write) ) < 0) {
-    //  fprintf(stderr, "Write error (%s)\n",snd_strerror(err));
-    //} else
-    //  nwritten = frames_to_write;
-
-
-    //printf("frames_to_write=%d\n",frames_to_write);
-    // Write  
-    if (frames_to_write > 0){
-      
-      nwritten = 0;
-      while(frames_to_write > 0){
-	
-	// ønsket sammenhengende område. 
-	contiguous = frames_to_write; 
-	
-	if ((err = snd_pcm_mmap_begin(handle,&play_areas,&offset,&frames_to_write)) < 0) {
-	  fprintf(stderr, "MMAP begin\n");
-	  //return -1;
-	}
-
-	//printf("frames_to_write=%d\n",frames_to_write);
-
-	if (contiguous > frames_to_write)
-	  contiguous = frames_to_write;
-	
-	switch(format) {
-	  
-	case SND_PCM_FORMAT_FLOAT:
-	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-		  (((unsigned char*) fbuffer) + (frames_played+nwritten) * framesize),
-		  (contiguous * framesize));
-	  break;    
-	  
-	case SND_PCM_FORMAT_S32:
-	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-		  (((unsigned char*) ibuffer) + (frames_played+nwritten) * framesize),
-		  (contiguous * framesize));
-	  break;
-	  
-	case SND_PCM_FORMAT_S16:
-	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-		  (((unsigned char*) sbuffer) + (frames_played+nwritten) * framesize),
-		  (contiguous * framesize));
-	  break;
-	  
-	default:
-	  memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-		  (((unsigned char*) sbuffer) + (frames_played+nwritten) * framesize),
-		  (contiguous * framesize));
-	  
-	}
-	
-	if((err = snd_pcm_mmap_commit(handle,offset,contiguous)) < 0){
-	  fprintf(stderr, "MMAP commit error\n");
-	  //return -1;
-	}
-
-	//printf("frames_to_write=%d offset=%d contiguous=%d\n",frames_to_write,offset,contiguous);
-	//printf("Remainig frames = %d frames_played = %d\n",frames - frames_played,frames_played );
-	if (contiguous > 0) {
-	  frames_to_write -= contiguous;
-	  nwritten += contiguous;
-	} else
-	  printf("negative\n");
-
-
-      }
-    }
-
-    //printf("Remainig frames = %d frames_played = %d\n",frames - frames_played,frames_played );
-    frames_played += nwritten;
+  case SND_PCM_FORMAT_FLOAT:
+    write_and_poll_loop(handle,play_areas,format,fbuffer,frames,framesize);
+    break;    
     
-    if (snd_pcm_state(handle) < 3) {
-      snd_pcm_start(handle);
-    }
+  case SND_PCM_FORMAT_S32:
+    write_and_poll_loop(handle,play_areas,format,ibuffer,frames,framesize);
+    break;
     
+  case SND_PCM_FORMAT_S16:
+    write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize);
+    break;
+    
+  default:
+    write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize);
   }
-
-
-
+  
 
   //
   // Cleanup.

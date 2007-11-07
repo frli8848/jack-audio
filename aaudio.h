@@ -20,3 +20,17 @@ int set_swparams(snd_pcm_t *handle,
 
 void check_hw(snd_pcm_hw_params_t *hwparams);
 int xrun_recovery(snd_pcm_t *handle, int err);
+
+snd_pcm_sframes_t play_poll_loop(snd_pcm_t *handle,
+				 unsigned int nfds, 
+				 unsigned int poll_timeout,
+				 pollfd *pfd,
+				 snd_pcm_uframes_t period_size);
+
+
+int write_and_poll_loop(snd_pcm_t *handle,
+			const snd_pcm_channel_area_t *areas,
+			snd_pcm_format_t format, 
+			void *buffer,
+			snd_pcm_sframes_t frames,
+			snd_pcm_sframes_t framesize);

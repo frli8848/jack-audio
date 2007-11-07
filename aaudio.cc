@@ -1,5 +1,20 @@
-
 #include "aaudio.h"
+
+//
+// Macros.
+//
+
+#ifdef CLAMP
+#undef CLAMP
+#endif
+#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
+#ifdef MIN
+#undef MIN
+#endif
+#define MIN(a, b) (a) < (b) ? (a) : (b)
+
+//*********************************************************************************************
 
 /***
  *
@@ -430,4 +445,286 @@ int xrun_recovery(snd_pcm_t *handle, int err)
   return err;
 }
 
+
+//*********************************************************************************************
+
+/***
+ *
+ * Write (play) poll loop
+ * 
+ * 
+ *
+ * JACK is free software; you can redistribute it and/or modify it 
+ * under the terms of the GNU GPL and LGPL licenses as published by 
+ * the Free Software Foundation, <http://www.gnu.org> 
+ *
+ ***/
+
+snd_pcm_sframes_t play_poll_loop(snd_pcm_t *handle,
+			    unsigned int nfds, 
+			    unsigned int poll_timeout,
+			    pollfd *pfd,
+			    snd_pcm_uframes_t period_size)
+{
+  snd_pcm_sframes_t avail = 0;
+  snd_pcm_sframes_t play_avail = 0;
+  int need_play = 1, err;
+  unsigned int tmp_nfds; 
+  unsigned int i; // teller. 
+  int xrun_true = 0;
+  unsigned short revents;
+
+
+  //if ((err = snd_pcm_prepare(handle)) < 0) {
+  //  fprintf(stderr, "Cannot prepare audio device:%s\n",snd_strerror(err));
+  //} 
+
+  // Poll-loop
+  while (need_play) { 
+    
+    int p_timeout; 
+    
+    // finne riktig antall poll descriptors. Dette kan variere med
+    // pcm-type
+    // ALSA fikser dette. Setter også riktige events. 
+    tmp_nfds = 0;
+    if (need_play){
+      snd_pcm_poll_descriptors(handle,&(pfd[tmp_nfds]),nfds);
+      tmp_nfds += nfds;
+    }
+    
+
+
+    // Legge til pollevent err. // This is useless according to poll man page.
+    //    for (i = 0; i < tmp_nfds; i++)
+    //      pfd[i].events |= POLLERR;
+    
+
+    //if ((err = snd_pcm_wait(handle, 1000)) < 0) {
+    //  fprintf (stderr, "poll failed (%s)\n", snd_strerror (err));
+    //  break;
+    //}
+    
+    if (poll (pfd, tmp_nfds,poll_timeout) < 0) {
+      // poll error. 
+      perror("poll error");
+      //return -1;
+    }
+		
+    p_timeout = 0;
+    if (need_play) {
+
+      snd_pcm_poll_descriptors_revents(handle,&(pfd[0]),nfds,&revents);
+      if(revents & POLLERR){
+	xrun_true = 1;
+      }
+
+
+      //printf("nfds=%d, pfd: fd=%d revents=%d tmp_nfds=%d\n",nfds,pfd[0].fd,revents,tmp_nfds);
+      
+      
+      //if (revents & POLLOUT)
+      //printf("Got a POLLOUT event!\n");
+      
+      if(revents == 0) {
+	// Timeout. Ingen events. 
+	p_timeout++;
+      }
+    }
+    
+    if (p_timeout == 0){
+      // play har event. Trenger ikke mer poll.
+      need_play = 0;
+    }
+    
+    if (p_timeout && (p_timeout == nfds)) {
+      fprintf(stderr, "poll timeout.\n");
+      //return 0;
+    }
+    
+  } // while (need_play).
+  
+
+
+  if ((play_avail = snd_pcm_avail_update(handle)) < 0) {
+    if(play_avail == -EPIPE){
+      xrun_true = 1;
+    } else {
+      fprintf(stderr, "Feil i avail_update(play)\n");
+      //return -1;
+    }
+  }
+
+  if(xrun_true) {
+    printf("XRUN\n");
+    xrun_recovery(handle,play_avail);
+    //printf("XRUN\n");
+    //snd_pcm_drop(handle);
+    //snd_pcm_prepare(handle);
+    //xrun_recovery();
+    //return 0;
+  }
+  
+  avail = play_avail;
+  
+#ifdef DEBUG
+  fprintf(stderr, "poll loop, avail = %lu, playavail = %lu\n", MIN(avail, period_size), play_avail);
+#endif
+  
+  return MIN(avail, period_size);
+}
+
+
+/***
+ *
+ *   Transfer method - write (play) and wait for room in buffer using poll.
+ *
+ ***/
+
+int wait_for_poll_out(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count)
+{
+  unsigned short revents;
+
+  while (1) {
+    poll(ufds, count, -1);
+    snd_pcm_poll_descriptors_revents(handle, ufds, count, &revents);
+    if (revents & POLLERR)
+      return -EIO;
+    if (revents & POLLOUT)
+      return 0;
+  }
+}
+
+int write_and_poll_loop(snd_pcm_t *handle,
+			const snd_pcm_channel_area_t *play_areas,
+			snd_pcm_format_t format, 
+			void *buffer,
+			snd_pcm_sframes_t frames,
+			snd_pcm_sframes_t framesize)
+{
+  struct pollfd *ufds;
+  int err, count, init;
+  snd_pcm_uframes_t frames_to_write;
+  snd_pcm_sframes_t contiguous; 
+  snd_pcm_uframes_t nwritten;
+  snd_pcm_uframes_t offset;
+  snd_pcm_sframes_t frames_played;
+  snd_pcm_sframes_t commit_res;
+
+  count = snd_pcm_poll_descriptors_count (handle);
+  if (count <= 0) {
+    printf("Invalid poll descriptors count\n");
+    return count;
+  }
+
+  ufds = (struct pollfd*) malloc(sizeof(struct pollfd) * count);
+  if (ufds == NULL) {
+    printf("No enough memory\n");
+    return -ENOMEM;
+  }
+  if ((err = snd_pcm_poll_descriptors(handle, ufds, count)) < 0) {
+    printf("Unable to obtain poll descriptors for playback: %s\n", snd_strerror(err));
+    return err;
+  }
+
+  frames_played = 0;
+  init = 1;
+  //while (1) {
+  while((frames - frames_played) > 0) { // Loop until all frames are played.
+
+    if (!init) {
+
+      err = wait_for_poll_out(handle, ufds, count);
+      if (err < 0) {
+	if (snd_pcm_state(handle) == SND_PCM_STATE_XRUN || 
+	    snd_pcm_state(handle) == SND_PCM_STATE_SUSPENDED) {
+	  err = snd_pcm_state(handle) == SND_PCM_STATE_XRUN ? -EPIPE : -ESTRPIPE;
+	  if (xrun_recovery(handle, err) < 0) {
+	    printf("Write error: %s\n",snd_strerror(err));
+	    return EXIT_FAILURE;
+	  }
+	  init = 1;
+	} else {
+	  printf("Wait for poll failed\n");
+	  return err;
+	}
+      }
+    }
+
+    //generate_sine(areas, 0, period_size, &phase);
+    frames_to_write = snd_pcm_avail_update(handle);
+    
+    if (frames_to_write >  (frames - frames_played) )
+      frames_to_write = frames - frames_played; 
+    
+    if (frames_to_write > 0){
+      
+      nwritten = 0;
+      while(frames_to_write > 0){
+	
+	// ønsket sammenhengende område. 
+	contiguous = frames_to_write; 
+	
+	if ((err = snd_pcm_mmap_begin(handle,&play_areas,&offset,&frames_to_write)) < 0) {
+	  if ((err = xrun_recovery(handle, err)) < 0) {
+	    printf("MMAP begin avail error: %s\n", snd_strerror(err));
+	    //return EXIT_FAILURE;
+	  }
+	}
+	
+	// Test if the number if available frames exceeds the remaining
+	// number of frames to write.
+	if (contiguous > frames_to_write)
+	  contiguous = frames_to_write;
+	
+	memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+		(((unsigned char*) buffer) + (frames_played+nwritten) * framesize),
+		(contiguous * framesize));
+	
+	commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
+	if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
+	  if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
+	    printf("MMAP commit error: %s\n", snd_strerror(err));
+	    //return EXIT_FAILURE;
+	  }
+	  //first = 1;
+	}
+	
+	//if((err = snd_pcm_mmap_commit(handle,offset,contiguous)) < 0){
+	//  fprintf(stderr, "MMAP commit error\n");
+	//return -1;
+	//}
+	
+	if (contiguous > 0) {
+	  frames_to_write -= contiguous;
+	  nwritten += contiguous;
+	} else
+	  printf("Warning negative byte count\n"); // This should never happend. 
+
+      }
+    }
+    frames_played += nwritten;
+    
+    // It is possible, that the initial buffer cannot store
+    // all data from the last period, so wait awhile.
+    err = wait_for_poll_out(handle, ufds, count);
+      if (err < 0) {
+	if (snd_pcm_state(handle) == SND_PCM_STATE_XRUN ||
+	    snd_pcm_state(handle) == SND_PCM_STATE_SUSPENDED) {
+	  err = snd_pcm_state(handle) == SND_PCM_STATE_XRUN ? -EPIPE : -ESTRPIPE;
+	  if (xrun_recovery(handle, err) < 0) {
+	    printf("Write error: %s\n", snd_strerror(err));
+	    exit(EXIT_FAILURE);
+	  }
+	  init = 1;
+	} else {
+	  printf("Wait for poll failed\n");
+	  return err;
+	}
+      }
+
+  } // while((frames - frames_played) > 0)
+
+  return 0;
+}
 

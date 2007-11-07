@@ -481,6 +481,7 @@ static void async_direct_callback(snd_async_handler_t *ahandler)
       }
       continue;
     }
+
     size = period_size;
     while (size > 0) {
       frames = size;
@@ -492,8 +493,11 @@ static void async_direct_callback(snd_async_handler_t *ahandler)
 	}
 	first = 1;
       }
+
       generate_sine(my_areas, offset, frames, &data->phase);
+
       commitres = snd_pcm_mmap_commit(handle, offset, frames);
+
       if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
 	if ((err = xrun_recovery(handle, commitres >= 0 ? -EPIPE : commitres)) < 0) {
 	  printf("MMAP commit error: %s\n", snd_strerror(err));
