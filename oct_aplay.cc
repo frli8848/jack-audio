@@ -214,8 +214,8 @@ Input parameters:\n\
     
     std::string strin = args(2).string_value(); 
     buflen = strin.length();
-    for ( i=0; i<=buflen; i++ ) {
-      device[n] = strin[i];
+    for ( n=0; n<=buflen; n++ ) {
+      device[n] = strin[n];
     }
     device[buflen] = '\0';
     
@@ -263,8 +263,12 @@ Input parameters:\n\
     //num_periods = 2;
   }
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
-  set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size);
-
+  if (set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
+    error("Unable to set hardware parameters. Bailing out!");
+    snd_pcm_close(handle);
+    return oct_retval;
+  }
+  
   // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
   // copy data to the interleaved buffer. Another solution is just to print an error message and bail
@@ -331,11 +335,16 @@ Input parameters:\n\
     //start_threshold = avail_min/4;
     //start_threshold = 0;
     start_threshold = (buffer_size/avail_min) * avail_min;
-
     //start_threshold = avail_min;
     stop_threshold = 16*period_size;
-    set_swparams(handle,avail_min,start_threshold,stop_threshold);
   }
+
+  if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
+    error("Unable to set sofware parameters. Bailing out!");
+    snd_pcm_close(handle);
+    return oct_retval;
+  }
+
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
 
   // Check if the hardware are using less then 32 bits.
