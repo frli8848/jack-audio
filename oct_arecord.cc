@@ -47,21 +47,17 @@ using namespace std;
 #include <octave/symtab.h>
 #include <octave/variables.h>
 
+#include "aaudio.h"
+
 #define TRUE 1
 #define FALSE 0
 
 #define LATENCY 0
 #define ALLOW_ALSA_RESAMPLE TRUE
-#define USE_ALSA_FLOAT
 
 //
 // Macros.
 //
-
-#ifdef CLAMP
-#undef CLAMP
-#endif
-#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 #define mxGetM(N)   args(N).matrix_value().rows()
 #define mxGetN(N)   args(N).matrix_value().cols()
@@ -81,82 +77,9 @@ using namespace std;
 // typedef:s
 //
 
-#ifdef USE_ALSA_FLOAT
-typedef float adata_type;
-#else
-typedef short adata_type;
-#endif
-
 //
 // Function prototypes.
 //
-
-int xrun_recovery(snd_pcm_t *handle, int err);
-int read_loop(snd_pcm_t *handle,
-	       adata_type *samples,
-	       int channels);
-
-/***
- *
- *   Underrun and suspend recovery.
- *
- ***/
- 
-int xrun_recovery(snd_pcm_t *handle, int err)
-{
-  if (err == -EPIPE) {	/* under-run */
-    err = snd_pcm_prepare(handle);
-    if (err < 0)
-      printf("Can't recovery from underrun, prepare failed: %s\n", snd_strerror(err));
-    return 0;
-  } else if (err == -ESTRPIPE) {
-    while ((err = snd_pcm_resume(handle)) == -EAGAIN)
-      sleep(1);	/* wait until the suspend flag is released */
-    if (err < 0) {
-      err = snd_pcm_prepare(handle);
-      if (err < 0)
-	printf("Can't recovery from suspend, prepare failed: %s\n", snd_strerror(err));
-    }
-    return 0;
-  }
-  return err;
-}
-
-/***
- *
- *   Transfer method - read only.
- * 
- ***/
-
-int read_loop(snd_pcm_t *handle,
-	       adata_type *adata,
-	       int frames, int channels)
-{
-  double phase = 0;
-  adata_type *ptr;
-  int err, cptr;
-  
-  ptr = adata;
-  cptr = frames;
-  while (cptr > 0) {
-    err = snd_pcm_readi(handle, ptr, cptr);
-
-    if (err == -EAGAIN)
-      continue;
-    
-    if (err < 0) {
-      if (xrun_recovery(handle, err) < 0) {
-	error("Write error: %s\n", snd_strerror(err));
-	return -1;
-      }
-      //break;	/* skip one period */
-    }
-    ptr += err * channels;
-    cptr -= err;
-  }
-  printf("hej %d\n",cptr);
-}
-
 
 /***
  * 
@@ -173,25 +96,45 @@ ARECORD Computes one dimensional convolutions of the columns in the matrix A and
 Input parameters:\n\
 \n\
 @copyright{2007-10-31 Fredrik Lingvall}.\n\
-@seealso {play, record}\n\
+@seealso {aplay, play, record}\n\
 @end deftypefn")
 {
   double *A,*Y; 
   int A_M,A_N;
   int err;
-  int channels,fs;
-  //unsigned int i,m,n;
-  octave_idx_type i,m,n;
+  octave_idx_type i,n,m;
   snd_pcm_t *handle;
-  snd_pcm_sframes_t frames,oframes;
-  adata_type *buffer;
+  snd_pcm_sframes_t frames;
+  unsigned int framesize;
+  unsigned int sample_bytes;
+  float *fbuffer;
+  int *ibuffer;
+  short *sbuffer;
   char device[50];
   int  buflen;
   //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
   //char *device = "default";
-  octave_value_list oct_retval; 
 
+  double *hw_sw_par;
+
+  // HW parameters
+  snd_pcm_format_t format;
+  unsigned int fs;
+  unsigned int channels, wanted_channels;
+  snd_pcm_uframes_t period_size;
+  unsigned int num_periods;
+  snd_pcm_uframes_t buffer_size;
+  
+  // SW parameters.
+  snd_pcm_uframes_t avail_min;
+  snd_pcm_uframes_t start_threshold;
+  snd_pcm_uframes_t stop_threshold;
+
+  const snd_pcm_channel_area_t *record_areas;
+
+  octave_value_list oct_retval; 
+  
   int nrhs = args.length ();
 
   // Check for proper input and output  arguments.
@@ -205,7 +148,6 @@ Input parameters:\n\
     error("Too many output arguments for arecord !");
     return oct_retval;
   }
-
 
   //
   // Number of audio frames.
@@ -264,7 +206,7 @@ Input parameters:\n\
       return oct_retval;
     }
   } else
-    fs = 8000; // Default to 8 kHz.
+    fs = 44100; // Default to 44.1 kHz.
 
   //
   // Audio device
@@ -287,75 +229,197 @@ Input parameters:\n\
   } else
       strcpy(device,"default"); 
 
-
-  // Allocate buffer space. 
-#ifdef USE_ALSA_FLOAT
-  buffer = (float*) malloc(frames*channels*sizeof(float));
-#else
-  buffer = (short*) malloc(frames*channels*sizeof(short));
-#endif
-
   //
-  // Open audio device for capture.
+  // HW/SW parameters
   //
   
+  if (nrhs > 4) {    
+    
+    if (mxGetM(4)*mxGetN(4) != 5) {
+      error("5th arg must be a 5 element vector !");
+      return oct_retval;
+    }
+    
+    const Matrix tmp4 = args(4).matrix_value();
+    hw_sw_par = (double*) tmp4.fortran_vec();
+    
+    // hw parameters.
+    period_size = (int) hw_sw_par[0];
+    num_periods = (int) hw_sw_par[1];
+    
+    // sw parameters.
+    avail_min = (int) hw_sw_par[2];
+    start_threshold = (int) hw_sw_par[3];
+    stop_threshold = (int) hw_sw_par[4];
+  } 
+
+
+//******************************************************************************************
+
+  // Open the PCM device for capture.
   if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0) {
     error("Capture open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
 
-  if ((err = snd_pcm_set_params(handle,
-#ifdef USE_ALSA_FLOAT
-				SND_PCM_FORMAT_FLOAT, 
-#else
-				SND_PCM_FORMAT_S16,
-#endif
-				SND_PCM_ACCESS_RW_INTERLEAVED,
-				channels,
-				fs,
-				ALLOW_ALSA_RESAMPLE,
-				LATENCY)) < 0) {
-    error("Capture set params error: %s\n", snd_strerror(err));
+  // Setup the hardwear parameters for the playback device.
+  if (nrhs <= 4) {
+    period_size = 512;
+    num_periods = 1;
+    //period_size = 16;
+    //num_periods = 2;
+  }
+  format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
+  if (set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
+    error("Unable to set hardware parameters. Bailing out!");
     snd_pcm_close(handle);
     return oct_retval;
   }
-  
-  err = read_loop(handle,buffer,frames,channels);
-  if (err < 0)
-    printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
 
-  /*
-  oframes = snd_pcm_readi(handle, buffer, frames);
+  // If the number of wanted_channels < channels (which depends on hardwear)
+  // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
+  // copy data to the interleaved buffer. Another solution is just to print an error message and bail
+  // out. 
+  if (wanted_channels < channels) {
+    error("You must have (at least) %d input channels for the used hardware!\n", channels);
+    snd_pcm_close(handle);
+    return oct_retval;
+  }
 
-  if (oframes < 0)
-    oframes = snd_pcm_recover(handle, oframes, 0);
+  // Allocate buffer space.
+  switch(format) {
   
-  if (oframes < 0)
-    printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
-  
-  if (oframes > 0 && oframes < frames)
-    printf("Short read (expected %li, read %li)\n", frames, oframes);
-  */
+  case SND_PCM_FORMAT_FLOAT:
+    fbuffer = (float*) malloc(frames*channels*sizeof(float));
+    break;    
+    
+  case SND_PCM_FORMAT_S32:
+    ibuffer = (int*) malloc(frames*channels*sizeof(int));
+    break;
 
+  case SND_PCM_FORMAT_S16:
+    sbuffer = (short*) malloc(frames*channels*sizeof(short));
+    break;
+    
+  default:
+    sbuffer = (short*) malloc(frames*channels*sizeof(short));
+  }
+
+  if (nrhs <= 4) {
+    // swparams: (handle, min_avail, start_thres, stop_thres)
+    //avail_min = 512; // Play this many frames before interrupt.
+    //start_threshold = 0;
+    //stop_threshold = 1024;
+    //avail_min = period_size/4; 
+    //avail_min = 8; 
+    avail_min = period_size; // aplay uses this setting. 
+    //start_threshold = avail_min/4;
+    //start_threshold = 0;
+    start_threshold = (buffer_size/avail_min) * avail_min;
+
+    //start_threshold = avail_min;
+    stop_threshold = 16*period_size;
+  }
+
+  if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
+    error("Unable to set sofware parameters. Bailing out!");
+    snd_pcm_close(handle);
+    return oct_retval;
+  }
+
+  sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
+  
+  // Check if the hardware are using less then 32 bits.
+  if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
+    sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
+  
+  framesize = channels * sample_bytes; // Compute the framesize;
+
+#if 1
+  // Infoutskrifter. 
+  snd_output_t *snderr;
+  snd_output_stdio_attach(&snderr ,stderr, 0);
+  
+  fprintf(stderr, "Record state:%d\n", snd_pcm_state(handle));
+  snd_pcm_dump_setup(handle, snderr);
+#endif
+
+  //
+  // Read the audio data from the PCM device.
+  //
+
+  switch(format) {
+    
+  case SND_PCM_FORMAT_FLOAT:
+    read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize);
+    break;    
+    
+  case SND_PCM_FORMAT_S32:
+    read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize);
+    break;
+    
+  case SND_PCM_FORMAT_S16:
+    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize);
+    break;
+    
+  default:
+    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize);
+  }
+  
   // Allocate space for output data.
   Matrix Ymat(frames,channels);
   Y = Ymat.fortran_vec();
-
+  
   // Convert from interleaved audio data.
   for (n = 0; n < channels; n++) {
     for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-#ifdef USE_ALSA_FLOAT
-      Y[m] = (double) buffer[i];
-#else
-      Y[m] = ((double) buffer[i]) / 32768.0; // Normalize audio data.
-#endif
+      
+      switch(format) {
+	
+      case SND_PCM_FORMAT_FLOAT:
+	Y[m] = (double) fbuffer[i];  
+	break;    
+	
+      case SND_PCM_FORMAT_S32:
+	Y[m] = ((double) sbuffer[i]) / 214748364.0; // Normalize audio data.
+	break;
+	
+      case SND_PCM_FORMAT_S16:
+	Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	break;
+	
+      default:
+	Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+      }
     }
   }
 
-  oct_retval.append(Ymat);
-  
+  //
+  // Cleanup.
+  //
+
   snd_pcm_close(handle);
-  free(buffer);
+
+  switch (format) {
+    
+  case SND_PCM_FORMAT_FLOAT:
+    free(fbuffer);    
+    break;    
+    
+  case SND_PCM_FORMAT_S32:
+    free(ibuffer);
+    break;
+    
+  case SND_PCM_FORMAT_S16:
+    free(sbuffer);
+    break;
+    
+  default:
+    free(sbuffer);
+    
+  }
+
+  oct_retval.append(Ymat);
   
   return oct_retval;
 }
