@@ -871,6 +871,10 @@ int read_and_poll_loop(snd_pcm_t *handle,
       }
     }
 
+
+    // TODO this should be inside the while loop below,
+    // above snd_pcm_mmap_begin, accoring to also documantation.
+    // Fix also this for play.
     frames_to_read = snd_pcm_avail_update(handle); 
     if (frames_to_read < 0) {
       err = xrun_recovery(handle, frames_to_read);
@@ -878,8 +882,8 @@ int read_and_poll_loop(snd_pcm_t *handle,
 	printf("avail update failed: %s\n", snd_strerror(err));
 	//return EXIT_FAILURE;
       }
-      first = 1;
-      continue;
+      //first = 1;
+      //continue;
     }
 
     if (frames_to_read >  (frames - frames_recorded) )
