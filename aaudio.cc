@@ -83,23 +83,38 @@ int set_hwparams(snd_pcm_t *handle,
   // Set the sampling frequency.
   //
 
-
+ // First get max and min values supporded by the device.
   direction = 0;
   tmp_fs = *fs;
-  if((err = snd_pcm_hw_params_set_rate_near(handle, hwparams,&tmp_fs, &direction)) < 0){
+  if ((err=snd_pcm_hw_params_get_rate_max(hwparams,&max1,&direction)) < 0)
+    fprintf(stderr,"Unable to get max rate: %s\n", snd_strerror(err));
+  
+  if ((err=snd_pcm_hw_params_get_rate_min(hwparams,&min1,&direction)) < 0)
+    fprintf(stderr,"Unable to get min rate: %s\n", snd_strerror(err));
+
+  if (*fs > max1 || *fs < min1) {
+    printf("Warning: The sampling rate (%d) is outside the min (%d) and max (%d) supported by the device.\n",
+	   *fs,min1,max1);
+
+    if (*fs > max1)
+      *fs = max1;
+    
+    if (*fs < min1)
+      *fs = min1;
+
+    printf("Warning: Trying to use the  rate %d.\n",*fs);
+
+  }
+
+  direction = 0;
+  if((err = snd_pcm_hw_params_set_rate_near(handle, hwparams,fs, &direction)) < 0){
     fprintf(stderr, "Warning: Unable to set the sampling rate: %s\n",snd_strerror(err));
     //return err;
   }
 
-  if((err = snd_pcm_hw_params_get_rate(hwparams,&tmp_fs, &direction)) < 0){
-    fprintf(stderr, "Warning: Unable to get the sample rate: %s\n",snd_strerror(err));
-    //return err;
-  }
   if (*fs != tmp_fs)
-    printf("Warning: Using the sampling rate %d instead\n",tmp_fs);
-
-  *fs = tmp_fs;
-
+    printf("Warning: Using the sampling rate %d.\n",*fs);
+  
   //
   // Set the number of channels.
   //
@@ -111,39 +126,29 @@ int set_hwparams(snd_pcm_t *handle,
   if ((err=snd_pcm_hw_params_get_channels_min(hwparams,&min1)) < 0)
     fprintf(stderr,"Unable to get min number of channels: %s\n", snd_strerror(err));
   
-  if (*channels > max1 || *channels < min1)  
+  val = *channels;
+  if (*channels > max1 || *channels < min1) {
     printf("Warning: The number of channels (%d) is outside the min (%d) and max (%d) supported by the device.\n",
 	   *channels,min1,max1);
+    
+    if (*channels > max1)
+      *channels = max1;
+    
+    if (*channels < min1)
+      *channels = min1;
 
-  if (*channels > max1)
-    *channels = max1;
-  
-  if (*channels < min1)
-    *channels = min1;
+    printf("Warning: Trying to use %d channels.\n",*channels);
+  }
   
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
     fprintf(stderr, "Warning: Unable to set the number of channels: %s\n",
 	    snd_strerror(err));
-    
-    // Get the max and min number of channels for the device..
-    if ((err=snd_pcm_hw_params_get_channels_max(hwparams,&val)) < 0)
-      fprintf(stderr,"Unable to get max number of channels: %s\n", snd_strerror(err));
-    else
-      printf("(max number of channels is %d)\n",val);
-    
-    if ((err=snd_pcm_hw_params_get_channels_min(hwparams,&val)) < 0)
-      fprintf(stderr,"Unable to get min number of channels: %s\n", snd_strerror(err));
-    else
-      printf("(min number of channels is %d\n)",val);
-
-    if((err = snd_pcm_hw_params_get_channels(hwparams,channels)) < 0) {
-      fprintf(stderr,"Unable to get the number of channels: %s\n",
-	      snd_strerror(err));
-    }
-    fprintf(stderr,"Using channels %d number of channels instead.\n",*channels);
     //exit(-1);
   }
-
+  
+  if (val > max1 || val < min1)
+    printf("Warning: Using %d channels.\n",*channels);
+    
   /* From aplay.
   unsigned int buffer_time = 0, period_time = 0;
   if ((err = snd_pcm_hw_params_get_buffer_time_max(hwparams,&buffer_time, 0)) < 0) {
