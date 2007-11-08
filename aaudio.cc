@@ -35,7 +35,8 @@ int set_hwparams(snd_pcm_t *handle,
 {
   snd_pcm_hw_params_t *hwparams;
   snd_pcm_format_t tmp_format;
-  unsigned int val;
+  unsigned int val,max1,min1;
+  snd_pcm_uframes_t max2,min2;
   int direction, err;
   unsigned int tmp_fs;
   
@@ -45,14 +46,14 @@ int set_hwparams(snd_pcm_t *handle,
   if((err = snd_pcm_hw_params_any(handle, hwparams)) < 0){
     fprintf(stderr,"Broken configuration: no configurations available: %s\n",
 	    snd_strerror(err));
-    return(err);
+    return err;
   }
   
   // Set read/write format to MMPAP:ed interleaved .
   if((err = snd_pcm_hw_params_set_access(handle,hwparams,SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0){
-    fprintf(stderr, "Cannot set the PCM access type: %s\n",
+    fprintf(stderr, "Unable to set the PCM access type: %s\n",
 	    snd_strerror(err));
-    return(err);
+    return err;
   }
   
   check_hw(hwparams);
@@ -60,42 +61,66 @@ int set_hwparams(snd_pcm_t *handle,
   // Test if the audio hardwear supports the chosen audio sample format otherwise try S32,
   // or fallback to S16.
   if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
-    printf("Warning: Cannot set the selected audio format. Trying SND_PCM_FORMAT_S32 instead\n"); 
+    printf("Warning: Unable to set the selected audio format. Trying SND_PCM_FORMAT_S32 instead..."); 
     *format = SND_PCM_FORMAT_S32; // Try S32.
     if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
-      printf("Warning: Cannot set the audio format to SND_PCM_FORMAT_S32. Falling back to SND_PCM_FORMAT_S16\n");       
+      printf("no. Falling back to SND_PCM_FORMAT_S16\n");       
       // Fallback format.
       *format = SND_PCM_FORMAT_S16;
+    } else {
+      printf("ok.\n"); // SND_PCM_FORMAT_S32 works.      
     }
   }
 
   // Set the audio sample format.
   if((err = snd_pcm_hw_params_set_format(handle,hwparams,*format)) < 0){
-    fprintf(stderr, "Kan ikke sette sampleformat: %s\n",
+    fprintf(stderr, "Unable to set the sample format: %s\n",
 	    snd_strerror(err));
     //exit(-1);
   }
 
+  //
   // Set the sampling frequency.
+  //
+
+
   direction = 0;
   tmp_fs = *fs;
   if((err = snd_pcm_hw_params_set_rate_near(handle, hwparams,&tmp_fs, &direction)) < 0){
-    fprintf(stderr, "Waring: Cannot set the sampling rate: %s\n",
-	    snd_strerror(err));
-    //exit(-1);
+    fprintf(stderr, "Warning: Unable to set the sampling rate: %s\n",snd_strerror(err));
+    //return err;
   }
 
   if((err = snd_pcm_hw_params_get_rate(hwparams,&tmp_fs, &direction)) < 0){
-    fprintf(stderr, "Waring: Cannot get the sample rate: %s\n",
-	    snd_strerror(err));
-    //exit(-1);
+    fprintf(stderr, "Warning: Unable to get the sample rate: %s\n",snd_strerror(err));
+    //return err;
   }
   if (*fs != tmp_fs)
-    printf("Warning using the sampling rate %d instead\n",tmp_fs);
+    printf("Warning: Using the sampling rate %d instead\n",tmp_fs);
 
   *fs = tmp_fs;
 
+  //
   // Set the number of channels.
+  //
+
+  // First get max and min values supporded by the device.
+  if ((err=snd_pcm_hw_params_get_channels_max(hwparams,&max1)) < 0)
+    fprintf(stderr,"Unable to get max number of channels: %s\n", snd_strerror(err));
+  
+  if ((err=snd_pcm_hw_params_get_channels_min(hwparams,&min1)) < 0)
+    fprintf(stderr,"Unable to get min number of channels: %s\n", snd_strerror(err));
+  
+  if (*channels > max1 || *channels < min1)  
+    printf("Warning: The number of channels (%d) is outside the min (%d) and max (%d) supported by the device.\n",
+	   *channels,min1,max1);
+
+  if (*channels > max1)
+    *channels = max1;
+  
+  if (*channels < min1)
+    *channels = min1;
+  
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
     fprintf(stderr, "Warning: Unable to set the number of channels: %s\n",
 	    snd_strerror(err));
@@ -131,25 +156,45 @@ int set_hwparams(snd_pcm_t *handle,
   err = snd_pcm_hw_params_set_period_time_near(handle,hwparams,&period_time, 0);
   */
 
+  //
   // Set approximate target period size in frames (Frames/Period). The chosen approximate target period 
   // size is returned.
+  //
+
+  // First get max and min values supporded by the device.
+  direction = 0;
+  max2 = 0;
+  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&max2,&direction)) < 0)
+    fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
+  
+  direction = 0;
+  min2 = 0;
+  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams,&min2,&direction)) < 0)
+    fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
+
+  if (*period_size > max2 || *period_size < min2)  
+    printf("Warning: The period size (%d) is outside the min (%d) and max (%d) supported by the device.\n",
+	   *period_size,min2,max2);
+  
   direction = 0;
   if((err = snd_pcm_hw_params_set_period_size_near(handle, hwparams,period_size, &direction)) < 0){
     fprintf(stderr, "Unable to set the period size: %s\n",snd_strerror(err));
-    //exit(-1);
+    return err;
   }
 
+  //  
   // Set approximate number of periods in the buffer (Periods/Buffer). The chosen approximate number of
   // periods per buffer is returned.
+  //
   direction = 0;
   if((err = snd_pcm_hw_params_set_periods_near(handle, hwparams,num_periods, &direction)) < 0){
     fprintf(stderr, "Unable to set the number of periods: %s\n",snd_strerror(err));
-    //exit(-1);
+    return err;
   }
   
   if((err = snd_pcm_hw_params(handle, hwparams)) < 0){
     fprintf(stderr,"Unable to set HW parameters: %s\n",snd_strerror(err));
-    //exit(-1);
+    return err;
   }
 
   //snd_pcm_uframes_t chunk_size = 0;
@@ -209,12 +254,12 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   // Max/min number of channels.
   //
   if ((err=snd_pcm_hw_params_get_channels_max(hwparams,&val)) < 0)
-    fprintf(stderr,"Can't get max number of channels: %s\n", snd_strerror(err));
+    fprintf(stderr,"Unable to get max number of channels: %s\n", snd_strerror(err));
   else
     printf("Max number of channels = %d\n",val);
 
   if ((err=snd_pcm_hw_params_get_channels_min(hwparams,&val)) < 0)
-    fprintf(stderr,"Can't get min number of channels: %s\n", snd_strerror(err));
+    fprintf(stderr,"Unable to get min number of channels: %s\n", snd_strerror(err));
   else
     printf("Min number of channels = %d\n",val);
 
@@ -223,13 +268,13 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   //
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams,&val2)) < 0)
-    fprintf(stderr,"Can't get max buffer size: %s\n", snd_strerror(err));
+    fprintf(stderr,"Unable get max buffer size: %s\n", snd_strerror(err));
   else
     printf("Max buffer size = %u\n",val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_min(hwparams,&val2)) < 0)
-    fprintf(stderr,"Can't get min buffer size: %s\n", snd_strerror(err));
+    fprintf(stderr,"Unable to get min buffer size: %s\n", snd_strerror(err));
   else
     printf("Min buffer size = %u\n",val2);
 
@@ -239,27 +284,27 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   dir = 0;
   val = 0;
   if ((err=snd_pcm_hw_params_get_buffer_time_max(hwparams,&val,&dir)) < 0)
-    fprintf(stderr,"Can't get max buffer time: %s\n", snd_strerror(err));
+    fprintf(stderr,"Unable to get max buffer time: %s\n", snd_strerror(err));
   else
     printf("Max buffer time = %d [us]\n",val);
 
   dir = 0;
   val = 0;
   if ((err=snd_pcm_hw_params_get_buffer_time_min(hwparams,&val,&dir)) < 0)
-    fprintf(stderr,"Can't get min buffer time: %s\n", snd_strerror(err));
+    fprintf(stderr,"Unable to get min buffer time: %s\n", snd_strerror(err));
   else
     printf("Min buffer time = %d [us]\n",val);
   
   // Hardware FIFO size.
   if ((val = snd_pcm_hw_params_get_fifo_size(hwparams)) < 0)
-    fprintf(stderr,"Can't get hardware FIFO size: %s\n", snd_strerror(val));
+    fprintf(stderr,"Unable to get hardware FIFO size: %s\n", snd_strerror(val));
   else
     printf("Hardware FIFO size = %d\n",val);
 
  // Minimum transfer align value.
   val2 = 0;
  if ((err=snd_pcm_hw_params_get_min_align(hwparams,&val2)) < 0)
-   fprintf(stderr,"Can't get min align value: %s\n", snd_strerror(err));
+   fprintf(stderr,"Unable to get min align value: %s\n", snd_strerror(err));
  else
    printf("Min align value = %u [samples]\n",val2);
 
@@ -269,14 +314,14 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&val2,&dir)) < 0)
-   fprintf(stderr,"Can't get max period size: %s\n", snd_strerror(err));
+   fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
  else
    printf("Max period size = %d\n",val2);
  
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams,&val2,&dir)) < 0)
-   fprintf(stderr,"Can't get min period size: %s\n", snd_strerror(err));
+   fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
  else
    printf("Min period size = %d\n",val2);
 
@@ -287,14 +332,14 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_time_max(hwparams,&val,&dir)) < 0)
-   fprintf(stderr,"Can't get max period time: %s\n", snd_strerror(err));
+   fprintf(stderr,"Unable to get max period time: %s\n", snd_strerror(err));
  else
    printf("Max period time = %d [us]\n",val);
  
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_time_min(hwparams,&val,&dir)) < 0)
-   fprintf(stderr,"Can't get min period time: %s\n", snd_strerror(err));
+   fprintf(stderr,"Unable to get min period time: %s\n", snd_strerror(err));
  else
    printf("Min period time = %d [us]\n",val);
 
@@ -707,7 +752,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	  frames_to_write -= contiguous;
 	  nwritten += contiguous;
 	} else
-	  printf("Warning negative byte count\n"); // This should never happend. 
+	  printf("Warning: Negative byte count\n"); // This should never happend. 
 
       }
     }
@@ -872,7 +917,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
 	  frames_to_read -= contiguous;
 	  nwritten += contiguous;
 	} else
-	  printf("Warning negative byte count\n"); // This should never happend. 
+	  printf("Warning: Negative byte count\n"); // This should never happend. 
 
       }
     }
