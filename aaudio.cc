@@ -97,25 +97,25 @@ int set_hwparams(snd_pcm_t *handle,
 
   // Set the number of channels.
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
-    fprintf(stderr, "Warning: Cannot set the number of channels: %s\n",
+    fprintf(stderr, "Warning: Unable to set the number of channels: %s\n",
 	    snd_strerror(err));
     
     // Get the max and min number of channels for the device..
     if ((err=snd_pcm_hw_params_get_channels_max(hwparams,&val)) < 0)
-      fprintf(stderr,"Can't get max number of channels: %s\n", snd_strerror(err));
+      fprintf(stderr,"Unable to get max number of channels: %s\n", snd_strerror(err));
     else
       printf("(max number of channels is %d)\n",val);
     
     if ((err=snd_pcm_hw_params_get_channels_min(hwparams,&val)) < 0)
-      fprintf(stderr,"Can't get min number of channels: %s\n", snd_strerror(err));
+      fprintf(stderr,"Unable to get min number of channels: %s\n", snd_strerror(err));
     else
       printf("(min number of channels is %d\n)",val);
 
     if((err = snd_pcm_hw_params_get_channels(hwparams,channels)) < 0) {
-      fprintf(stderr, "Cannot get the number of channels: %s\n",
+      fprintf(stderr,"Unable to get the number of channels: %s\n",
 	      snd_strerror(err));
     }
-    fprintf(stderr, "Using channels %d number of channels instead.\n",*channels);
+    fprintf(stderr,"Using channels %d number of channels instead.\n",*channels);
     //exit(-1);
   }
 
@@ -135,7 +135,7 @@ int set_hwparams(snd_pcm_t *handle,
   // size is returned.
   direction = 0;
   if((err = snd_pcm_hw_params_set_period_size_near(handle, hwparams,period_size, &direction)) < 0){
-    fprintf(stderr, "Kan ikke sette periodestørrelse: %s\n",snd_strerror(err));
+    fprintf(stderr, "Unable to set the period size: %s\n",snd_strerror(err));
     //exit(-1);
   }
 
@@ -143,19 +143,19 @@ int set_hwparams(snd_pcm_t *handle,
   // periods per buffer is returned.
   direction = 0;
   if((err = snd_pcm_hw_params_set_periods_near(handle, hwparams,num_periods, &direction)) < 0){
-    fprintf(stderr, "Kan ikke sette antall perioder: %s\n",snd_strerror(err));
+    fprintf(stderr, "Unable to set the number of periods: %s\n",snd_strerror(err));
     //exit(-1);
   }
   
   if((err = snd_pcm_hw_params(handle, hwparams)) < 0){
-    fprintf(stderr,"Kan ikke sette HW parametre: %s\n",snd_strerror(err));
+    fprintf(stderr,"Unable to set HW parameters: %s\n",snd_strerror(err));
     //exit(-1);
   }
 
   //snd_pcm_uframes_t chunk_size = 0;
   //snd_pcm_hw_params_get_period_size(hwparams, &chunk_size, 0);
   if((err = snd_pcm_hw_params_get_buffer_size(hwparams, buffer_size)) < 0){
-    fprintf(stderr, "Cannot get the buffer size: %s\n",snd_strerror(err));
+    fprintf(stderr,"Unable to get the buffer size: %s\n",snd_strerror(err));
     return err;
   }
   
