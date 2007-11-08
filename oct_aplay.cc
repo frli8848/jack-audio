@@ -55,7 +55,6 @@ using namespace std;
 
 #define LATENCY 0
 #define ALLOW_ALSA_RESAMPLE TRUE
-#define USE_ALSA_FLOAT
 
 //
 // Macros.
@@ -65,11 +64,6 @@ using namespace std;
 #undef CLAMP
 #endif
 #define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-
-#ifdef MIN
-#undef MIN
-#endif
-#define MIN(a, b) (a) < (b) ? (a) : (b)
 
 #define mxGetM(N)   args(N).matrix_value().rows()
 #define mxGetN(N)   args(N).matrix_value().cols()
@@ -117,10 +111,9 @@ Input parameters:\n\
 {
   double *A; 
   int err;
-  //unsigned int i,m,n;
-  octave_idx_type i,m,n;
+  octave_idx_type i,n,m;
   snd_pcm_t *handle;
-  snd_pcm_sframes_t frames,frames_played;
+  snd_pcm_sframes_t frames;
   unsigned int framesize;
   unsigned int sample_bytes;
   float *fbuffer;
@@ -128,9 +121,6 @@ Input parameters:\n\
   short *sbuffer;
   char device[50];
   int  buflen;
-  unsigned int nfds;
-  unsigned int poll_timeout;
-  pollfd *pfd;
 
   //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
@@ -151,10 +141,6 @@ Input parameters:\n\
   snd_pcm_uframes_t start_threshold;
   snd_pcm_uframes_t stop_threshold;
   
-  snd_pcm_uframes_t frames_to_write;
-  snd_pcm_sframes_t contiguous; 
-  snd_pcm_uframes_t nwritten;
-  snd_pcm_uframes_t offset; 
   const snd_pcm_channel_area_t *play_areas;
 
   octave_value_list oct_retval; // Octave return (output) parameters
@@ -213,7 +199,7 @@ Input parameters:\n\
       return oct_retval;
     }
   } else
-    fs = 8000; // Default to 8 kHz.
+    fs = 44100; // Default to 44.1 kHz.
 
   //
   // Audio device
@@ -228,8 +214,8 @@ Input parameters:\n\
     
     std::string strin = args(2).string_value(); 
     buflen = strin.length();
-    for ( n=0; n<=buflen; n++ ) {
-      device[n] = strin[n];
+    for ( i=0; i<=buflen; i++ ) {
+      device[n] = strin[i];
     }
     device[buflen] = '\0';
     
@@ -319,7 +305,7 @@ Input parameters:\n\
 	break;    
 	
       case SND_PCM_FORMAT_S32:
-	ibuffer[i] =  (int) CLAMP(-214748364.0*A[m], -2147483648.0, 2147483647.0);
+	ibuffer[i] =  (int) CLAMP(214748364.0*A[m], -2147483648.0, 2147483647.0);
 	break;
 	
       case SND_PCM_FORMAT_S16:
