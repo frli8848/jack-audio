@@ -185,7 +185,7 @@ Input parameters:\n\
       return oct_retval;
     }
   } else
-    channels = 1; // Default to one channel.
+    channels = 2; // Default to two capture channels.
   
   //
   // Sampling frequency.
