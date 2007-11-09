@@ -381,7 +381,7 @@ Input parameters:\n\
 	break;    
 	
       case SND_PCM_FORMAT_S32:
-	Y[m] = ((double) sbuffer[i]) / 214748364.0; // Normalize audio data.
+	Y[m] = ((double) ibuffer[i]) / 214748364.0; // Normalize audio data.
 	break;
 	
       case SND_PCM_FORMAT_S16:
