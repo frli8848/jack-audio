@@ -30,6 +30,13 @@ int wait_for_poll_in(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count)
 
 //*********************************************************************************************
 
+
+/***
+ *
+ * Functions for CTRL-C support.
+ *
+ */
+
 int is_running(void)
 {
 
@@ -50,10 +57,6 @@ void clear_running_flag(void)
   
   return;
 }
-
-
-
-
 
 /***
  *
