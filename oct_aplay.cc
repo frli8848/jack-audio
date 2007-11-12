@@ -69,7 +69,6 @@ using namespace std;
 #define mxGetN(N)   args(N).matrix_value().cols()
 #define mxIsChar(N) args(N).is_string()
 
-
 /***
  * Name and date (of revisions):
  * 
@@ -89,6 +88,30 @@ using namespace std;
 //
 // Function prototypes.
 //
+
+void sighandler(int signum);
+void sighandler(int signum);
+void sig_abrt_handler(int signum);
+void sig_keyint_handler(int signum);
+
+/***
+ *
+ * Signal handlers.
+ *
+ ***/
+
+void sighandler(int signum) {
+  //printf("Caught signal SIGTERM.\n");
+  clear_running_flag();
+}
+
+void sig_abrt_handler(int signum) {
+  //printf("Caught signal SIGABRT.\n");
+}
+
+void sig_keyint_handler(int signum) {
+  //printf("Caught signal SIGINT.\n");
+}
 
   
 /***
@@ -116,6 +139,7 @@ Input parameters:\n\
   snd_pcm_sframes_t frames;
   unsigned int framesize;
   unsigned int sample_bytes;
+  sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   float *fbuffer;
   int *ibuffer;
   short *sbuffer;
@@ -249,13 +273,35 @@ Input parameters:\n\
 
 //******************************************************************************************
 
+  //
+  // Register signal handlers.
+  //
+
+  if ((old_handler = signal(SIGTERM, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+
+  if ((old_handler_abrt=signal(SIGABRT, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if ((old_handler_keyint=signal(SIGINT, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  //
   // Open the PCM playback device. 
+  //
+
   if ((err = snd_pcm_open(&handle,device,SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
 
+  //
   // Setup the hardwear parameters for the playback device.
+  //
+
   if (nrhs <= 3) {
     period_size = 512;
     num_periods = 1;
@@ -362,6 +408,10 @@ Input parameters:\n\
   snd_pcm_dump_setup(handle, snderr);
 #endif
 
+
+  // Set status to running (CTRL-C will clear the flag and stop playback).
+  set_running_flag(); 
+
   //
   // Write the audio data to the PCM device.
   //
@@ -383,7 +433,26 @@ Input parameters:\n\
   default:
     write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize);
   }
+
+
+  //
+  // Restore old signal handlers.
+  //
   
+  if (signal(SIGTERM, old_handler) == SIG_ERR) {
+    printf("Couldn't register old signal handler.\n");
+  }
+  
+  if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if (!is_running())
+    error("CTRL-C pressed - playback interrupted!\n"); // Bail out.
 
   //
   // Cleanup.
@@ -409,6 +478,9 @@ Input parameters:\n\
     free(sbuffer);
     
   }
-
+  
+  if (!is_running())
+    error("CTRL-C pressed - playback interrupted!\n");
+  
   return oct_retval;
 }
