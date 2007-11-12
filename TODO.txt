@@ -1,0 +1,4 @@
+* Reduce HW parameter to just period_size and num_periods.
+
+* Check how to use realtime mode.
+   

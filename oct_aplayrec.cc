@@ -503,7 +503,7 @@ Input parameters:\n\
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
 
   if (verbose)
-    printf("Sample format width: %d [bits]\n",sample_bytes);
+    printf("Sample format width: %d [bits]\n",snd_pcm_format_width(format));
 
   // Check if the hardware are using less then 32 bits.
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
@@ -523,7 +523,7 @@ Input parameters:\n\
     fprintf(stderr, "Playback state:%d\n", snd_pcm_state(handle_play));
     snd_pcm_dump_setup(handle_play, snderr);
     
-    fprintf(stderr, "Record_state:%d\n", snd_pcm_state(handle_rec));
+    fprintf(stderr, "Record state:%d\n", snd_pcm_state(handle_rec));
     snd_pcm_dump_setup(handle_rec, snderr);
   }
 

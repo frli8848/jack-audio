@@ -386,7 +386,8 @@ Input parameters:\n\
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
 
   if (verbose)
-    printf("Sample format width: %d [bits]\n",sample_bytes);
+    printf("Sample format width: %d [bits]\n",snd_pcm_format_width(format));
+
   
   // Check if the hardware are using less then 32 bits.
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
