@@ -257,6 +257,10 @@ Input parameters:\n\
     snd_pcm_close(handle_rec);
     return oct_retval;
   }
+
+  printf("|---------------------------------|--------------------\n");
+  printf("|         Parameter               | Playback / Capture \n");
+  printf("|---------------------------------|--------------------\n");
   
   //
   // Test Double buffering.
@@ -593,6 +597,7 @@ Input parameters:\n\
  else
    printf(" / %d [us]\n",val);
 
+  printf("|---------------------------------|--------------------\n");
 
   snd_pcm_close(handle_play);
   snd_pcm_close(handle_rec);
