@@ -15,15 +15,15 @@ u = sin((1:128*1024)/(16*1024)*400*pi);
 
 figure(1);
 clf
-plot(u);
+plot(u(1:1000));
 
 disp('Testing aplay');
-aplay(repmat(u(:),2,channels),fs,device);
+aplay(repmat(u(:),1,channels),fs,device);
 
 figure(2);
 clf
 disp('Testing arecord');
-Y = arecord(10000,2,fs,device);
+Y = arecord(10000,channels,fs,device);
 plot(Y);
 
 

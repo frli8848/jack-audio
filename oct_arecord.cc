@@ -125,7 +125,7 @@ Input parameters:\n\
 {
   double *A,*Y; 
   int A_M,A_N;
-  int err;
+  int err, verbose = 0;;
   octave_idx_type i,n,m;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames;
@@ -374,21 +374,26 @@ Input parameters:\n\
 
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
   
+  if (verbose)
+    printf("Sample format width: %d [bits]\n",sample_bytes);
+  
   // Check if the hardware are using less then 32 bits.
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
   
   framesize = channels * sample_bytes; // Compute the framesize;
 
-#if 0
-  // Infoutskrifter. 
-  snd_output_t *snderr;
-  snd_output_stdio_attach(&snderr ,stderr, 0);
-  
-  fprintf(stderr, "Record state:%d\n", snd_pcm_state(handle));
-  snd_pcm_dump_setup(handle, snderr);
-#endif
+  //
+  // Verbose status info.
+  //
 
+  if (verbose) {
+    snd_output_t *snderr;
+    snd_output_stdio_attach(&snderr ,stderr, 0);
+    
+    fprintf(stderr, "Record state:%d\n", snd_pcm_state(handle));
+    snd_pcm_dump_setup(handle, snderr);
+  }
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
   set_running_flag(); 

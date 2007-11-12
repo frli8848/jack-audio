@@ -168,7 +168,7 @@ Input parameters:\n\
 {
   double *A,*Y; 
   int A_M,A_N;
-  int err;
+  int err, verbose = 0;
   octave_idx_type i,m,n;
   snd_pcm_t *handle_play,*handle_rec;
   snd_pcm_sframes_t frames;
@@ -176,23 +176,18 @@ Input parameters:\n\
   unsigned int sample_bytes;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   pthread_t *threads;
-  DATA   *D;
-  void   *retval;
-
+  DATA  *D;
+  void  *retval;
   float *fbuffer_play;
-  int *ibuffer_play;
+  int   *ibuffer_play;
   short *sbuffer_play;
-
   float *fbuffer_rec;
-  int *ibuffer_rec;
+  int   *ibuffer_rec;
   short *sbuffer_rec;
-
   const snd_pcm_channel_area_t *record_areas;
   const snd_pcm_channel_area_t *play_areas;
-  
   char device[50];
   int  buflen;
-
   //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
   //char *device = "default";
@@ -205,7 +200,6 @@ Input parameters:\n\
   unsigned int num_periods;
   snd_pcm_uframes_t play_buffer_size;
   snd_pcm_uframes_t rec_buffer_size;
-  
   // SW parameters.
   snd_pcm_uframes_t avail_min;
   snd_pcm_uframes_t start_threshold;
@@ -508,13 +502,30 @@ Input parameters:\n\
 
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
 
+  if (verbose)
+    printf("Sample format width: %d [bits]\n",sample_bytes);
+
   // Check if the hardware are using less then 32 bits.
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
-  
+
   play_framesize = play_channels * sample_bytes; // Compute the framesize;
   rec_framesize = rec_channels * sample_bytes; // Compute the framesize;
-  
+
+  //
+  // Verbose status info.
+  //
+
+  if (verbose) {
+    snd_output_t *snderr;
+    snd_output_stdio_attach(&snderr ,stderr, 0);
+    
+    fprintf(stderr, "Playback state:%d\n", snd_pcm_state(handle_play));
+    snd_pcm_dump_setup(handle_play, snderr);
+    
+    fprintf(stderr, "Record_state:%d\n", snd_pcm_state(handle_rec));
+    snd_pcm_dump_setup(handle_rec, snderr);
+  }
 
   //
   // Initialize and start the capture thread.

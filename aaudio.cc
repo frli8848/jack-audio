@@ -76,7 +76,7 @@ int set_hwparams(snd_pcm_t *handle,
   snd_pcm_format_t tmp_format;
   unsigned int val,max1,min1;
   snd_pcm_uframes_t max2,min2;
-  int direction, err;
+  int direction, err, verbose = 0;
   unsigned int tmp_fs;
   
   snd_pcm_hw_params_alloca(&hwparams);
@@ -100,14 +100,22 @@ int set_hwparams(snd_pcm_t *handle,
   // Test if the audio hardwear supports the chosen audio sample format otherwise try S32,
   // or fallback to S16.
   if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
-    printf("Warning: Unable to set the selected audio format. Trying SND_PCM_FORMAT_S32 instead..."); 
+
+    if (verbose)
+      printf("Warning: Unable to set the selected audio format. Trying SND_PCM_FORMAT_S32 instead..."); 
+    
     *format = SND_PCM_FORMAT_S32; // Try S32.
     if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
-      printf("no. Falling back to SND_PCM_FORMAT_S16\n");       
+    
+      if (verbose)
+	printf("no.\n");       
+      
+      printf("Warning. Unable to set the select audio format, falling back to SND_PCM_FORMAT_S16\n");       
       // Fallback format.
       *format = SND_PCM_FORMAT_S16;
     } else {
-      printf("ok.\n"); // SND_PCM_FORMAT_S32 works.      
+      if (verbose)
+	printf("ok.\n"); // SND_PCM_FORMAT_S32 works.      
     }
   }
 

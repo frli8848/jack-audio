@@ -133,7 +133,7 @@ Input parameters:\n\
 @end deftypefn")
 {
   double *A; 
-  int err;
+  int err,verbose = 0;
   octave_idx_type i,n,m;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames;
@@ -145,13 +145,11 @@ Input parameters:\n\
   short *sbuffer;
   char device[50];
   int  buflen;
-
+  const snd_pcm_channel_area_t *play_areas;
   //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
   //char *device = "default";
-
   double *hw_sw_par;
-
   // HW parameters
   snd_pcm_format_t format;
   unsigned int fs;
@@ -159,14 +157,10 @@ Input parameters:\n\
   snd_pcm_uframes_t period_size;
   unsigned int num_periods;
   snd_pcm_uframes_t buffer_size;
-
   // SW parameters.
   snd_pcm_uframes_t avail_min;
   snd_pcm_uframes_t start_threshold;
   snd_pcm_uframes_t stop_threshold;
-  
-  const snd_pcm_channel_area_t *play_areas;
-
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
@@ -391,21 +385,27 @@ Input parameters:\n\
 
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
 
+  if (verbose)
+    printf("Sample format width: %d [bits]\n",sample_bytes);
+  
   // Check if the hardware are using less then 32 bits.
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
   
   framesize = channels * sample_bytes; // Compute the framesize;
 
-#if 0
-  // Infoutskrifter. 
-  snd_output_t *snderr;
-  snd_output_stdio_attach(&snderr ,stderr, 0);
-  
-  fprintf(stderr, "play_state:%d\n", snd_pcm_state(handle));
-  snd_pcm_dump_setup(handle, snderr);
-#endif
+  //
+  // Verbose status info.
+  //
 
+  if (verbose) {
+    snd_output_t *snderr;
+    snd_output_stdio_attach(&snderr ,stderr, 0);
+    
+    fprintf(stderr, "play_state:%d\n", snd_pcm_state(handle));
+    snd_pcm_dump_setup(handle, snderr);
+  }
+  
 
   // Set status to running (CTRL-C will clear the flag and stop playback).
   set_running_flag(); 
