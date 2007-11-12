@@ -29,6 +29,8 @@
 
 #include <alsa/asoundlib.h>
 
+#include "aaudio.h"
+
 //
 // Octave headers.
 //
@@ -84,14 +86,15 @@ typedef struct
 {
   snd_pcm_t *handle_rec;
   void *buffer_rec;
-  int frames;
-  int channels;
+  const snd_pcm_channel_area_t *record_areas;
+  snd_pcm_format_t format;
+  unsigned int frames;
+  unsigned int framesize;
 } DATA;
 
 //
 // Globals
 //
-volatile int running;
 
 
 //
@@ -106,7 +109,7 @@ void sig_keyint_handler(int signum);
 
 /***
  *
- * Audio read thread function. 
+ * Audio read (capture) thread function. 
  *
  ***/
 
@@ -114,37 +117,15 @@ void* smp_process(void *arg)
 {
   DATA D = *(DATA *)arg;
   snd_pcm_t *handle_rec = D.handle_rec;
-  adata_type *buffer_rec = D.buffer_rec;
+  void *buffer_rec = D.buffer_rec;
+  const snd_pcm_channel_area_t *record_areas = D.record_areas;
+  snd_pcm_format_t format = D.format;
   int frames = D.frames;
-  int channels = D.channels;
-  adata_type *ptr;
-  int err, cptr;
-  
-  ptr = buffer_rec;
-  cptr = frames;
-  while (cptr > 0) {
-    err = snd_pcm_readi(handle_rec, ptr, cptr);
+  int framesize = D.framesize;
 
-    if (err == -EAGAIN)
-      continue;
-    
-    if (err < 0) {
-      if (xrun_recovery(handle_rec, err) < 0) {
-	error("Write error: %s\n", snd_strerror(err));
-	return(NULL);
-      }
-      break;	/* skip one period */
-    }
-    ptr += err * channels;
-    cptr -= err;
+  read_and_poll_loop(handle_rec,record_areas,format,buffer_rec,frames,framesize);
 
-    if (running==FALSE) {
-      printf("Read thread bailing bailing out!\n");
-      break;
-    }
-  }
-
-  return(NULL);
+  return NULL;
 }
 
 /***
@@ -155,7 +136,7 @@ void* smp_process(void *arg)
 
 void sighandler(int signum) {
   //printf("Caught signal SIGTERM.\n");
-  running = FALSE;
+  clear_running_flag();
 }
 
 void sig_abrt_handler(int signum) {
@@ -188,7 +169,6 @@ Input parameters:\n\
   double *A,*Y; 
   int A_M,A_N;
   int err;
-  int channels,fs;
   octave_idx_type i,m,n;
   snd_pcm_t *handle_play,*handle_rec;
   snd_pcm_sframes_t frames;
@@ -207,6 +187,9 @@ Input parameters:\n\
   float *fbuffer_rec;
   int *ibuffer_rec;
   short *sbuffer_rec;
+
+  const snd_pcm_channel_area_t *record_areas;
+  const snd_pcm_channel_area_t *play_areas;
   
   char device[50];
   int  buflen;
@@ -221,20 +204,23 @@ Input parameters:\n\
   unsigned int play_channels, rec_channels, wanted_play_channels, wanted_rec_channels;
   snd_pcm_uframes_t period_size;
   unsigned int num_periods;
-  snd_pcm_uframes_t buffer_size;
+  snd_pcm_uframes_t play_buffer_size;
+  snd_pcm_uframes_t rec_buffer_size;
   
   // SW parameters.
   snd_pcm_uframes_t avail_min;
   snd_pcm_uframes_t start_threshold;
   snd_pcm_uframes_t stop_threshold;
 
+  double *hw_sw_par;
+
   octave_value_list oct_retval; 
 
   int nrhs = args.length ();
 
-  running = FALSE;
-
-  // Check for proper input and output  arguments.
+  //
+  // Check for proper number input and output arguments.
+  //
 
   if ((nrhs < 1) || (nrhs > 4)) {
     error("aplayrec requires 1 to 4 input arguments!");
@@ -260,8 +246,8 @@ Input parameters:\n\
     return oct_retval;
   }
   
-  if (channels < 0) {
-    error("The number of channels (columns in arg 1) must > 0!");
+  if (play_channels < 0) {
+    error("The number of playback channels (columns in arg 1) must > 0!");
     return oct_retval;
   }
 
@@ -284,7 +270,7 @@ Input parameters:\n\
       return oct_retval;
     }
   } else
-    channels = 2; // Default to two capture channels.
+    rec_channels = 2; // Default to two capture channels.
 
   //
   // Sampling frequency.
@@ -341,7 +327,7 @@ Input parameters:\n\
     }
     
     const Matrix tmp5 = args(5).matrix_value();
-    hw_sw_par = (double*) tmp3.fortran_vec();
+    hw_sw_par = (double*) tmp5.fortran_vec();
     
     // hw parameters.
     period_size = (int) hw_sw_par[0];
@@ -389,7 +375,8 @@ Input parameters:\n\
     //num_periods = 2;
   }
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
-  if (set_hwparams(handle_play,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
+  wanted_play_channels = play_channels;
+  if (set_hwparams(handle_play,&format,&fs,&play_channels,&period_size,&num_periods,&play_buffer_size) < 0) {
     error("Unable to set audio playback hardware parameters. Bailing out!");
     snd_pcm_close(handle_play);
     return oct_retval;
@@ -399,8 +386,8 @@ Input parameters:\n\
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
   // copy data to the interleaved buffer. Another solution is just to print an error message and bail
   // out. 
-  if (wanted_channels < channels) {
-    error("You must have (at least) %d output channels for the used hardware!\n", channels);
+  if (wanted_play_channels < play_channels) {
+    error("You must have (at least) %d output channels for the used hardware!\n", play_channels);
     snd_pcm_close(handle_play);
     return oct_retval;
   }
@@ -409,19 +396,19 @@ Input parameters:\n\
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    fbuffer_play = (float*) malloc(frames*channels*sizeof(float));
+    fbuffer_play = (float*) malloc(frames*play_channels*sizeof(float));
     break;    
     
   case SND_PCM_FORMAT_S32:
-    ibuffer_play = (int*) malloc(frames*channels*sizeof(int));
+    ibuffer_play = (int*) malloc(frames*play_channels*sizeof(int));
     break;
 
   case SND_PCM_FORMAT_S16:
-    sbuffer_play = (short*) malloc(frames*channels*sizeof(short));
+    sbuffer_play = (short*) malloc(frames*play_channels*sizeof(short));
     break;
 
   default:
-    sbuffer_play = (short*) malloc(frames*channels*sizeof(short));
+    sbuffer_play = (short*) malloc(frames*play_channels*sizeof(short));
   }
 
   if (nrhs <= 4) {
@@ -446,6 +433,7 @@ Input parameters:\n\
   }
 
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
+  wanted_rec_channels = rec_channels;
   if (set_hwparams(handle_rec,&format,&fs,&rec_channels,&period_size,&num_periods,&rec_buffer_size) < 0) {
     error("Unable to set audio capture hardware parameters. Bailing out!");
     snd_pcm_close(handle_rec);
@@ -466,19 +454,19 @@ Input parameters:\n\
   switch(format) {
   
   case SND_PCM_FORMAT_FLOAT:
-    fbuffer_rec = (float*) malloc(frames*channels*sizeof(float));
+    fbuffer_rec = (float*) malloc(frames*rec_channels*sizeof(float));
     break;    
     
   case SND_PCM_FORMAT_S32:
-    ibuffer_rec = (int*) malloc(frames*channels*sizeof(int));
+    ibuffer_rec = (int*) malloc(frames*rec_channels*sizeof(int));
     break;
 
   case SND_PCM_FORMAT_S16:
-    sbuffer_rec = (short*) malloc(frames*channels*sizeof(short));
+    sbuffer_rec = (short*) malloc(frames*rec_channels*sizeof(short));
     break;
     
   default:
-    sbuffer_rec = (short*) malloc(frames*channels*sizeof(short));
+    sbuffer_rec = (short*) malloc(frames*rec_channels*sizeof(short));
   }
   
   if (nrhs <= 4) {
@@ -487,13 +475,15 @@ Input parameters:\n\
     stop_threshold = 16*period_size;
   }
   
-  if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
+  if (set_swparams(handle_rec,avail_min,start_threshold,stop_threshold) < 0) {
     error("Unable to set audio capture sofware parameters. Bailing out!");
-    snd_pcm_close(handle);
+    snd_pcm_close(handle_rec);
     return oct_retval;
   }
 
-
+  //
+  // Initialize and start the capture  thread.
+  //
 
   // Allocate memory for the capture (record) thread.
   threads = (pthread_t*) malloc(sizeof(pthread_t));
@@ -501,75 +491,69 @@ Input parameters:\n\
     error("Failed to allocate memory for threads!");
     return oct_retval;
   }
-  
-
-
-
-
-
-  // Note done here!!!!
-
-
-
-  //
-  // Initialize and start the capture  thread.
-  //
 
   D = (DATA*) malloc(sizeof(DATA));
   if (!D) {
     error("Failed to allocate memory for thread data!");
     return oct_retval;
   }
-
-
- //
-  // Read the audio data from the PCM device.
-  //
-
-  switch(format) {
+  
+  // Init tread data parameters.
+  D[0].handle_rec = handle_rec; 
+  D[0].record_areas = record_areas;
+  D[0].format = format;
+ switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize);
+    D[0].buffer_rec = fbuffer_rec; 
     break;    
     
   case SND_PCM_FORMAT_S32:
-    read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize);
+    D[0].buffer_rec = ibuffer_rec; 
     break;
     
   case SND_PCM_FORMAT_S16:
-    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize);
+    D[0].buffer_rec = sbuffer_rec; 
     break;
     
   default:
-    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize);
+    D[0].buffer_rec = sbuffer_rec; 
   }
-  
-
-  
-  // Init local data.
-  D[0].handle_rec = handle_rec; 
-  D[0].buffer_rec = buffer_rec;
   D[0].frames = frames;
-  D[0].channels = rec_channels;
+  D[0].framesize = framesize;
 
-  running = TRUE;
+  // Set status to running (CTRL-C will clear the flag and stop play/capure).
+  set_running_flag(); 
 
   // Start the read thread.
   err = pthread_create(&threads[0], NULL, smp_process, &D[0]);
   if (err != 0)
     error("Error when creating a new thread!\n");
-
-  //
-  // Play audio data.
-  //
-  
-  //oframes_play = snd_pcm_writei(handle_play, buffer_play, frames);
-  err = write_loop(handle_play,buffer_play,frames,channels);
-  if (err < 0)
-    printf("snd_pcm_writei failed: %s\n", snd_strerror(err));
   
   //
-  // Finnish the read thread..
+  // Write the audio data to the PCM device.
+  //
+  
+  switch(format) {
+    
+  case SND_PCM_FORMAT_FLOAT:
+    write_and_poll_loop(handle_play,play_areas,format,fbuffer_play,frames,framesize);
+    break;    
+    
+  case SND_PCM_FORMAT_S32:
+    write_and_poll_loop(handle_play,play_areas,format,ibuffer_play,frames,framesize);
+    break;
+    
+  case SND_PCM_FORMAT_S16:
+    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,framesize);
+    break;
+    
+  default:
+    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,framesize);
+  }
+  
+  //
+  // Wait for the read thread to finnish.
   //
 
   // Wait for the read thread to finnish.
@@ -583,23 +567,6 @@ Input parameters:\n\
   if (D) {
     free((void*) D);
   }
-
-  //err = read_loop(handle_rec,buffer_rec,frames,channels);
-  //if (err < 0)
-  //  printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
-
-  /*
-  oframes_rec = snd_pcm_readi(handle_rec, buffer_rec, frames);
-
-  if (oframes_rec < 0)
-    oframes_rec = snd_pcm_recover(handle_rec, oframes_rec, 0);
-  
-  if (oframes_rec < 0)
-    printf("snd_pcm_readi failed: %s\n", snd_strerror(err));
-  
-  if (oframes_rec > 0 && oframes_rec < frames)
-    printf("Short read (expected %li, read %li)\n", frames, oframes_rec);
-  */
 
   //
   // Restore old signal handlers.
@@ -617,33 +584,71 @@ Input parameters:\n\
     printf("Couldn't register signal handler.\n");
   }
   
-  if (!running) {
-    error("CTRL-C pressed!\n"); // Bail out.
-
+  if (!is_running()) { 
+    error("CTRL-C pressed - playback and capture interrupted!\n"); // Bail out.
+    
   } else {
     
     // Allocate space for output data.
-    Matrix Ymat(frames,channels);
+    Matrix Ymat(frames,rec_channels);
     Y = Ymat.fortran_vec();
     
+
     // Convert from interleaved audio data.
-    for (n = 0; n < channels; n++) {
-      for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-#ifdef USE_ALSA_FLOAT
-	Y[m] = (double) buffer_rec[i];
-#else
-	Y[m] = ((double) buffer_rec[i]) / 32768.0; // Normalize audio data.
-#endif
+    for (n = 0; n < rec_channels; n++) {
+      for (i = n,m = n*frames; m < (n+1)*frames; i+=rec_channels,m++) {// n:th channel.
+      
+	switch(format) {
+	  
+	case SND_PCM_FORMAT_FLOAT:
+	  Y[m] = (double) fbuffer_rec[i];  
+	  break;    
+	  
+	case SND_PCM_FORMAT_S32:
+	  Y[m] = ((double) ibuffer_rec[i]) / 214748364.0; // Normalize audio data.
+	  break;
+	  
+	case SND_PCM_FORMAT_S16:
+	  Y[m] = ((double) sbuffer_rec[i]) / 32768.0; // Normalize audio data.
+	  break;
+	  
+	default:
+	  Y[m] = ((double) sbuffer_rec[i]) / 32768.0; // Normalize audio data.
+	}
       }
     }
     
     oct_retval.append(Ymat);
   }
+
+  //
+  // Cleanup.
+  //
   
+  switch (format) {
+    
+  case SND_PCM_FORMAT_FLOAT:
+    free(fbuffer_play);    
+    free(fbuffer_rec);    
+    break;    
+    
+  case SND_PCM_FORMAT_S32:
+    free(ibuffer_play);
+    free(ibuffer_rec);
+    break;
+    
+  case SND_PCM_FORMAT_S16:
+    free(sbuffer_play);
+    free(sbuffer_rec);
+    break;
+    
+  default:
+    free(sbuffer_play);
+    free(sbuffer_rec);
+    
+  }  
   snd_pcm_close(handle_play);
   snd_pcm_close(handle_rec);
-  free(buffer_play);
-  free(buffer_rec);
   
   return oct_retval;
 }
