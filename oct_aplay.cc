@@ -368,8 +368,6 @@ Input parameters:\n\
     }
   }
   
-  printf("fs = %d period_size = %d num_periods = %d\n",fs,period_size,num_periods);
-
   if (nrhs <= 3) {
     // swparams: (handle, min_avail, start_thres, stop_thres)
     //avail_min = 512; // Play this many frames before interrupt.
