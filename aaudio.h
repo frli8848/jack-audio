@@ -3,6 +3,11 @@
 #include <poll.h>
 
 
+int is_running(void);
+void set_running_flag(void);
+void clear_running_flag(void);
+
+
 int set_hwparams(snd_pcm_t *handle,
 		 snd_pcm_format_t *format,
 		 unsigned int *fs,

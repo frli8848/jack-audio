@@ -14,10 +14,46 @@
 #endif
 #define MIN(a, b) (a) < (b) ? (a) : (b)
 
+//
+// Globals.
+//
+
+volatile int running;
+
+//
+// Function prototypes.
+//
+
 int wait_for_poll_out(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
 int wait_for_poll_in(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
 
+
 //*********************************************************************************************
+
+int is_running(void)
+{
+
+  return running;
+}
+
+
+void set_running_flag(void)
+{
+  running = 1;
+  
+  return;
+}
+
+void clear_running_flag(void)
+{
+  running = 0;
+  
+  return;
+}
+
+
+
+
 
 /***
  *
@@ -684,8 +720,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
 
   frames_played = 0;
   init = 1;
-  //while (1) {
-  while((frames - frames_played) > 0) { // Loop until all frames are played.
+  while((frames - frames_played) > 0 && running) { // Loop until all frames are played.
 
     if (!init) {
 
@@ -850,7 +885,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
   frames_recorded = 0;
   init = 1;
   //while (1) {
-  while((frames - frames_recorded) > 0) { // Loop until all frames are recorded.
+  while((frames - frames_recorded) > 0 && running) { // Loop until all frames are recorded.
 
     if (!init) {
 
