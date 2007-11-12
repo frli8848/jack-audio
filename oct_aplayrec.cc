@@ -84,9 +84,9 @@ using namespace std;
 
 typedef struct
 {
-  snd_pcm_t *handle_rec;
-  void *buffer_rec;
-  const snd_pcm_channel_area_t *record_areas;
+  snd_pcm_t *handle;
+  void *buffer;
+  const snd_pcm_channel_area_t *areas;
   snd_pcm_format_t format;
   unsigned int frames;
   unsigned int framesize;
@@ -116,9 +116,9 @@ void sig_keyint_handler(int signum);
 void* smp_process(void *arg)
 {
   DATA D = *(DATA *)arg;
-  snd_pcm_t *handle_rec = D.handle_rec;
-  void *buffer_rec = D.buffer_rec;
-  const snd_pcm_channel_area_t *record_areas = D.record_areas;
+  snd_pcm_t *handle_rec = D.handle;
+  void *buffer_rec = D.buffer;
+  const snd_pcm_channel_area_t *record_areas = D.areas;
   snd_pcm_format_t format = D.format;
   int frames = D.frames;
   int framesize = D.framesize;
@@ -172,9 +172,8 @@ Input parameters:\n\
   octave_idx_type i,m,n;
   snd_pcm_t *handle_play,*handle_rec;
   snd_pcm_sframes_t frames;
-  unsigned int framesize;
-  unsigned int sample_bytes_play;
-  unsigned int sample_bytes_rec;
+  unsigned int play_framesize, rec_framesize;
+  unsigned int sample_bytes;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   pthread_t *threads;
   DATA   *D;
@@ -239,6 +238,8 @@ Input parameters:\n\
   const Matrix tmp0 = args(0).matrix_value();
   frames = tmp0.rows();		// Audio data length for each channel.
   play_channels = tmp0.cols();	// Number of channels.
+  wanted_play_channels = play_channels;
+
   A = (double*) tmp0.fortran_vec();
     
   if (frames < 0) {
@@ -258,7 +259,7 @@ Input parameters:\n\
   if (nrhs > 1) {
     
     if (mxGetM(1)*mxGetN(1) != 1) {
-      error("2nd arg (number of channels) must be a scalar !");
+      error("2nd arg (number of capure channels) must be a scalar !");
       return oct_retval;
     }
     
@@ -266,7 +267,7 @@ Input parameters:\n\
     rec_channels = (int) tmp1.fortran_vec()[0];
     
     if (rec_channels < 0) {
-      error("Error in 1st arg. The number of channels must > 0!");
+      error("Error in 2nd arg. The number of capture channels must > 0!");
       return oct_retval;
     }
   } else
@@ -375,7 +376,6 @@ Input parameters:\n\
     //num_periods = 2;
   }
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
-  wanted_play_channels = play_channels;
   if (set_hwparams(handle_play,&format,&fs,&play_channels,&period_size,&num_periods,&play_buffer_size) < 0) {
     error("Unable to set audio playback hardware parameters. Bailing out!");
     snd_pcm_close(handle_play);
@@ -480,9 +480,23 @@ Input parameters:\n\
     snd_pcm_close(handle_rec);
     return oct_retval;
   }
+  
+  //
+  // Get the framesize from PCM device.
+  //
+
+  sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
+
+  // Check if the hardware are using less then 32 bits.
+  if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
+    sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
+  
+  play_framesize = play_channels * sample_bytes; // Compute the framesize;
+  rec_framesize = rec_channels * sample_bytes; // Compute the framesize;
+  
 
   //
-  // Initialize and start the capture  thread.
+  // Initialize and start the capture thread.
   //
 
   // Allocate memory for the capture (record) thread.
@@ -499,28 +513,28 @@ Input parameters:\n\
   }
   
   // Init tread data parameters.
-  D[0].handle_rec = handle_rec; 
-  D[0].record_areas = record_areas;
+  D[0].handle = handle_rec; 
+  D[0].areas = record_areas;
   D[0].format = format;
  switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    D[0].buffer_rec = fbuffer_rec; 
+    D[0].buffer = fbuffer_rec; 
     break;    
     
   case SND_PCM_FORMAT_S32:
-    D[0].buffer_rec = ibuffer_rec; 
+    D[0].buffer = ibuffer_rec; 
     break;
     
   case SND_PCM_FORMAT_S16:
-    D[0].buffer_rec = sbuffer_rec; 
+    D[0].buffer = sbuffer_rec; 
     break;
     
   default:
-    D[0].buffer_rec = sbuffer_rec; 
+    D[0].buffer = sbuffer_rec; 
   }
   D[0].frames = frames;
-  D[0].framesize = framesize;
+  D[0].framesize = rec_framesize;
 
   // Set status to running (CTRL-C will clear the flag and stop play/capure).
   set_running_flag(); 
@@ -537,19 +551,19 @@ Input parameters:\n\
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    write_and_poll_loop(handle_play,play_areas,format,fbuffer_play,frames,framesize);
+    write_and_poll_loop(handle_play,play_areas,format,fbuffer_play,frames,play_framesize);
     break;    
     
   case SND_PCM_FORMAT_S32:
-    write_and_poll_loop(handle_play,play_areas,format,ibuffer_play,frames,framesize);
+    write_and_poll_loop(handle_play,play_areas,format,ibuffer_play,frames,play_framesize);
     break;
     
   case SND_PCM_FORMAT_S16:
-    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,framesize);
+    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,play_framesize);
     break;
     
   default:
-    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,framesize);
+    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,play_framesize);
   }
   
   //
