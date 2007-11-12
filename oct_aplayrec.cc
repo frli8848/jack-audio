@@ -452,7 +452,7 @@ Input parameters:\n\
   // Open and configure the PCM capture device. 
   //
 
-  if ((err = snd_pcm_open(&handle_rec, device, SND_PCM_STREAM_CAPTURE, 0)) < 0) {
+  if ((err = snd_pcm_open(&handle_rec, device, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
     error("Capture open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
