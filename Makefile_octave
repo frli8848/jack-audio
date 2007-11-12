@@ -83,7 +83,7 @@ aplay.oct : oct_aplay.o aaudio.o
 arecord.oct : oct_arecord.o aaudio.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
 
-aplayrec.oct : oct_aplayrec.o
+aplayrec.oct : oct_aplayrec.o aaudio.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) -lpthread $^ -o $@ 
 
 
