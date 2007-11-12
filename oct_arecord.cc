@@ -301,7 +301,7 @@ Input parameters:\n\
   // Open the PCM device for capture.
   //
 
-  if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0) {
+  if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
     error("Capture open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
@@ -382,7 +382,7 @@ Input parameters:\n\
 
 #if 0
   // Infoutskrifter. 
-    snd_output_t *snderr;
+  snd_output_t *snderr;
   snd_output_stdio_attach(&snderr ,stderr, 0);
   
   fprintf(stderr, "Record state:%d\n", snd_pcm_state(handle));
