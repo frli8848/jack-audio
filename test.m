@@ -8,9 +8,28 @@ if nargin < 2
   device = 'hw:0,0';
 end
 
-
+fs = 44100;
 
 x = randn(10*44100,1);
 u = sin((1:128*1024)/(16*1024)*400*pi);
 
-aplay(repmat(u(:),1,channels),48000,device);
+figure(1);
+clf
+plot(u);
+
+disp('Testing aplay');
+aplay(repmat(u(:),2,channels),fs,device);
+
+figure(2);
+clf
+disp('Testing arecord');
+Y = arecord(10000,2,fs,device);
+plot(Y);
+
+
+figure(3);
+clf
+disp('Testing aplayrec');
+rec_channels = 2;
+Y2 = aplayrec(repmat(u(:),1,channels),rec_channels,fs,device);
+plot(Y2)
