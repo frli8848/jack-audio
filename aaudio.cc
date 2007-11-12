@@ -95,7 +95,7 @@ int set_hwparams(snd_pcm_t *handle,
     return err;
   }
   
-  check_hw(hwparams);
+  //check_hw(hwparams);
 
   // Test if the audio hardwear supports the chosen audio sample format otherwise try S32,
   // or fallback to S16.

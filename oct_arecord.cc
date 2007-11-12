@@ -336,9 +336,9 @@ Input parameters:\n\
   
   framesize = channels * sample_bytes; // Compute the framesize;
 
-#if 1
+#if 0
   // Infoutskrifter. 
-  snd_output_t *snderr;
+    snd_output_t *snderr;
   snd_output_stdio_attach(&snderr ,stderr, 0);
   
   fprintf(stderr, "Record state:%d\n", snd_pcm_state(handle));
