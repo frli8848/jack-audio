@@ -270,6 +270,7 @@ Input parameters:\n\
     //num_periods = 2;
   }
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
+  wanted_channels = channels;
   if (set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
     error("Unable to set hardware parameters. Bailing out!");
     snd_pcm_close(handle);
