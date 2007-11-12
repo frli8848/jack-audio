@@ -81,6 +81,30 @@ using namespace std;
 // Function prototypes.
 //
 
+void sighandler(int signum);
+void sighandler(int signum);
+void sig_abrt_handler(int signum);
+void sig_keyint_handler(int signum);
+
+/***
+ *
+ * Signal handlers.
+ *
+ ***/
+
+void sighandler(int signum) {
+  //printf("Caught signal SIGTERM.\n");
+  clear_running_flag();
+}
+
+void sig_abrt_handler(int signum) {
+  //printf("Caught signal SIGABRT.\n");
+}
+
+void sig_keyint_handler(int signum) {
+  //printf("Caught signal SIGINT.\n");
+}
+
 /***
  * 
  * Octave (oct) gateway function for ARECORD.
@@ -110,6 +134,7 @@ Input parameters:\n\
   float *fbuffer;
   int *ibuffer;
   short *sbuffer;
+  sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char device[50];
   int  buflen;
   //char *device = "plughw:1,0";
@@ -256,7 +281,26 @@ Input parameters:\n\
 
 //******************************************************************************************
 
+  //
+  // Register signal handlers.
+  //
+
+  if ((old_handler = signal(SIGTERM, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+
+  if ((old_handler_abrt=signal(SIGABRT, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if ((old_handler_keyint=signal(SIGINT, &sighandler)) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  //
   // Open the PCM device for capture.
+  //
+
   if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0) {
     error("Capture open error: %s\n", snd_strerror(err));
     return oct_retval;
@@ -345,6 +389,10 @@ Input parameters:\n\
   snd_pcm_dump_setup(handle, snderr);
 #endif
 
+
+  // Set status to running (CTRL-C will clear the flag and stop capture).
+  set_running_flag(); 
+
   //
   // Read the audio data from the PCM device.
   //
@@ -366,33 +414,56 @@ Input parameters:\n\
   default:
     read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize);
   }
+
+  //
+  // Restore old signal handlers.
+  //
   
-  // Allocate space for output data.
-  Matrix Ymat(frames,channels);
-  Y = Ymat.fortran_vec();
+  if (signal(SIGTERM, old_handler) == SIG_ERR) {
+    printf("Couldn't register old signal handler.\n");
+  }
   
-  // Convert from interleaved audio data.
-  for (n = 0; n < channels; n++) {
-    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+  if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
+    printf("Couldn't register signal handler.\n");
+  }
+  
+  if (!is_running()) {
+    error("CTRL-C pressed - audio capture interrupted!\n"); // Bail out.
+  } else {
+    
+    // Allocate space for output data.
+    Matrix Ymat(frames,channels);
+    Y = Ymat.fortran_vec();
+    
+    // Convert from interleaved audio data.
+    for (n = 0; n < channels; n++) {
+      for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
       
-      switch(format) {
-	
-      case SND_PCM_FORMAT_FLOAT:
-	Y[m] = (double) fbuffer[i];  
-	break;    
-	
-      case SND_PCM_FORMAT_S32:
-	Y[m] = ((double) ibuffer[i]) / 214748364.0; // Normalize audio data.
-	break;
-	
-      case SND_PCM_FORMAT_S16:
-	Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
-	break;
-	
-      default:
-	Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	switch(format) {
+	  
+	case SND_PCM_FORMAT_FLOAT:
+	  Y[m] = (double) fbuffer[i];  
+	  break;    
+	  
+	case SND_PCM_FORMAT_S32:
+	  Y[m] = ((double) ibuffer[i]) / 214748364.0; // Normalize audio data.
+	  break;
+	  
+	case SND_PCM_FORMAT_S16:
+	  Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	  break;
+	  
+	default:
+	  Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	}
       }
     }
+
+    oct_retval.append(Ymat);
   }
 
   //
@@ -419,8 +490,6 @@ Input parameters:\n\
     free(sbuffer);
     
   }
-
-  oct_retval.append(Ymat);
   
   return oct_retval;
 }
