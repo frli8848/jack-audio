@@ -1,4 +1,5 @@
 * Reduce HW parameter to just period_size and num_periods.
 
 * Check how to use realtime mode.
-   
+
+* Remove unsed code from aaudio.cc   
