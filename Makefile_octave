@@ -75,7 +75,8 @@ LIBDIRS		= $(OCT_LIBS) -lasound
 all: \
 	aplay.oct \
 	arecord.oct \
-	aplayrec.oct
+	aplayrec.oct \
+	ainfo.oct \
 
 aplay.oct : oct_aplay.o aaudio.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
@@ -85,6 +86,9 @@ arecord.oct : oct_arecord.o aaudio.o
 
 aplayrec.oct : oct_aplayrec.o aaudio.o
 	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) -lpthread $^ -o $@ 
+
+ainfo.oct : oct_ainfo.o
+	$(DLDCC) $(DLD_FLAGS) $(LIBDIRS) $^ -o $@ 
 
 
 .PHONY : clean
