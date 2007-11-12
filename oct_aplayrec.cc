@@ -411,8 +411,33 @@ Input parameters:\n\
     sbuffer_play = (short*) malloc(frames*play_channels*sizeof(short));
   }
 
+  // Convert to interleaved playback audio data.
+  for (n = 0; n < play_channels; n++) {
+    for (i = n,m = n*frames; m < (n+1)*frames; i+=play_channels,m++) {// n:th channel.
+      
+      switch(format) {
+	
+      case SND_PCM_FORMAT_FLOAT:
+	fbuffer_play[i] =  (float) CLAMP(A[m], -1.0,1.0);
+	break;    
+	
+      case SND_PCM_FORMAT_S32:
+	ibuffer_play[i] =  (int) CLAMP(214748364.0*A[m], -2147483648.0, 2147483647.0);
+	break;
+	
+      case SND_PCM_FORMAT_S16:
+	sbuffer_play[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
+	break;
+	
+      default:
+	sbuffer_play[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
+      }
+    }
+  }
+  
+
   if (nrhs <= 4) {
-    avail_min = period_size; // aplay uses this setting. 
+    avail_min = period_size; // The aplay app uses this setting. 
     start_threshold = (play_buffer_size/avail_min) * avail_min;
     stop_threshold = 16*period_size; // Not sure what to use here.
   }
@@ -440,14 +465,10 @@ Input parameters:\n\
     return oct_retval;
   }
 
-  // If the number of wanted_channels < channels (which depends on hardwear)
-  // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
-  // copy data to the interleaved buffer. Another solution is just to print an error message and bail
-  // out. 
   if (wanted_rec_channels < rec_channels) {
-    error("You must have (at least) %d input channels for the used hardware!\n", rec_channels);
-    snd_pcm_close(handle_rec);
-    return oct_retval;
+    printf("Warning: You must have (at least) %d input channels for the used hardware!\n", rec_channels);
+    printf("Warning: %d input channels is now used!\n", rec_channels);
+
   }
 
   // Allocate buffer space.
@@ -470,9 +491,9 @@ Input parameters:\n\
   }
   
   if (nrhs <= 4) {
-    avail_min = period_size; // aplay uses this setting. 
+    avail_min = period_size; // Tha aplay app uses this setting. 
     start_threshold = (rec_buffer_size/avail_min) * avail_min;
-    stop_threshold = 16*period_size;
+    stop_threshold = 16*period_size; // Perhaps use default here instead!
   }
   
   if (set_swparams(handle_rec,avail_min,start_threshold,stop_threshold) < 0) {
