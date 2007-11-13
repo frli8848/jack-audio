@@ -450,19 +450,19 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    write_and_poll_loop(handle,play_areas,format,fbuffer,frames,framesize);
+    write_and_poll_loop(handle,play_areas,format,fbuffer,frames,framesize,channels);
     break;    
     
   case SND_PCM_FORMAT_S32:
-    write_and_poll_loop(handle,play_areas,format,ibuffer,frames,framesize);
+    write_and_poll_loop(handle,play_areas,format,ibuffer,frames,framesize,channels);
     break;
     
   case SND_PCM_FORMAT_S16:
-    write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize);
+    write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize,channels);
     break;
     
   default:
-    write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize);
+    write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize,channels);
   }
 
 

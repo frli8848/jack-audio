@@ -773,7 +773,8 @@ int write_and_poll_loop(snd_pcm_t *handle,
 			snd_pcm_format_t format, 
 			void *buffer,
 			snd_pcm_sframes_t frames,
-			snd_pcm_sframes_t framesize)
+			snd_pcm_sframes_t framesize,
+			unsigned int channels)
 {
   struct pollfd *ufds;
   int err, count, init;
@@ -784,6 +785,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_played;
   snd_pcm_sframes_t commit_res;
   int first = 0;
+  unsigned int n;
 
   count = snd_pcm_poll_descriptors_count(handle);
   if (count <= 0) {
@@ -839,48 +841,59 @@ int write_and_poll_loop(snd_pcm_t *handle,
     if (frames_to_write >  (frames - frames_played) )
       frames_to_write = frames - frames_played; 
     
-    //nwritten = 0;
-	
-    // ønsket sammenhengende område. 
-    contiguous = frames_to_write; 
-    
-    if ((err = snd_pcm_mmap_begin(handle,&play_areas,&offset,&frames_to_write)) < 0) {
-      if ((err = xrun_recovery(handle, err)) < 0) {
-	printf("MMAP begin avail error: %s\n", snd_strerror(err));
-	//return EXIT_FAILURE;
+    nwritten = 0;
+    while (frames_to_write > 0) {
+      // ønsket sammenhengende område. 
+      contiguous = frames_to_write; 
+      
+      if ((err = snd_pcm_mmap_begin(handle,&play_areas,&offset,&frames_to_write)) < 0) {
+	if ((err = xrun_recovery(handle, err)) < 0) {
+	  printf("MMAP begin avail error: %s\n", snd_strerror(err));
+	  //return EXIT_FAILURE;
+	}
       }
-    }
-    
-    // Test if the number if available frames exceeds the remaining
-    // number of frames to write.
-    if (contiguous > frames_to_write)
-      contiguous = frames_to_write;
-    
-    //memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-    //	    (((unsigned char*) buffer) + (frames_played+nwritten) * framesize),
-    //	    (contiguous * framesize));
+      
+      // Test if the number if available frames exceeds the remaining
+      // number of frames to write.
+      if (contiguous > frames_to_write)
+	contiguous = frames_to_write;
+      
+      //memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+      //	    (((unsigned char*) buffer) + (frames_played+nwritten) * framesize),
+      //	    (contiguous * framesize));
+      
+      if (interleaved) {
+	memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
+		(((unsigned char*) buffer) + frames_played * framesize),
+		(contiguous * framesize));
+      } else { // Non-interleaved
 
-    memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-	    (((unsigned char*) buffer) + frames_played * framesize),
-	    (contiguous * framesize));
-    
-    commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
-    if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
-      if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
-	printf("MMAP commit error: %s\n", snd_strerror(err));
-	return EXIT_FAILURE;
+	// A separate ring buffer for each channel!?
+	for (n=0; n<channels; n++) {
+	  memcpy(  (((unsigned char*) play_areas->addr) + n),
+		   (((unsigned char*) buffer) + frames_played * framesize/channels),
+		   (contiguous * framesize/channels));
+	  
+	}
       }
-      //first = 1;
+
+      commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
+      if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
+	if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
+	  printf("MMAP commit error: %s\n", snd_strerror(err));
+	  return EXIT_FAILURE;
+	}
+	//first = 1;
+      }
+      
+      if (contiguous > 0) {
+	frames_to_write -= contiguous;
+	nwritten += contiguous;
+	//frames_played += contiguous;
+      } else
+	printf("Warning: Negative byte count\n"); // This should never happend. 
     }
-    
-    if (contiguous > 0) {
-      frames_to_write -= contiguous;
-      //nwritten += contiguous;
-      frames_played += contiguous;
-    } else
-      printf("Warning: Negative byte count\n"); // This should never happend. 
-    
-    //frames_played += nwritten;
+    frames_played += nwritten;
     
     if (snd_pcm_state(handle) < 3) {
       snd_pcm_start(handle);
@@ -933,11 +946,12 @@ int wait_for_poll_in(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count)
 }
 
 int read_and_poll_loop(snd_pcm_t *handle,
-			const snd_pcm_channel_area_t *record_areas,
-			snd_pcm_format_t format, 
-			void *buffer,
-			snd_pcm_sframes_t frames,
-			snd_pcm_sframes_t framesize)
+		       const snd_pcm_channel_area_t *record_areas,
+		       snd_pcm_format_t format, 
+		       void *buffer,
+		       snd_pcm_sframes_t frames,
+		       snd_pcm_sframes_t framesize,
+		       unsigned int channels)
 {
   struct pollfd *ufds;
   int err, count, init;
@@ -948,6 +962,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_recorded;
   snd_pcm_sframes_t commit_res;
   int first = 0;
+  unsigned int n;
 
   count = snd_pcm_poll_descriptors_count(handle);
   if (count <= 0) {
@@ -1008,53 +1023,50 @@ int read_and_poll_loop(snd_pcm_t *handle,
     if (frames_to_read >  (frames - frames_recorded) )
       frames_to_read = frames - frames_recorded; 
     
-    //if (frames_to_read >= 0){
+    nwritten = 0;
+    while(frames_to_read > 0){
       
-    //nwritten = 0;
-    //while(frames_to_read > 0){
-    
-    // ønsket sammenhengende område. 
-    contiguous = frames_to_read; 
-    
-    if ((err = snd_pcm_mmap_begin(handle,&record_areas,&offset,&frames_to_read)) < 0) {
-      if ((err = xrun_recovery(handle, err)) < 0) {
-	printf("MMAP begin avail error: %s\n", snd_strerror(err));
-	//return EXIT_FAILURE;
+      // ønsket sammenhengende område. 
+      contiguous = frames_to_read; 
+      
+      if ((err = snd_pcm_mmap_begin(handle,&record_areas,&offset,&frames_to_read)) < 0) {
+	if ((err = xrun_recovery(handle, err)) < 0) {
+	  printf("MMAP begin avail error: %s\n", snd_strerror(err));
+	  //return EXIT_FAILURE;
+	}
       }
-    }
-    
-    // Test if the number of available frames exceeds the remaining
-    // number of frames to read.
-    if (contiguous > frames_to_read)
-      contiguous = frames_to_read;
-    
-    //memcpy( (((unsigned char*) buffer) + (frames_recorded+nwritten) * framesize),
-    //	(((unsigned char*) record_areas->addr) + offset * framesize),
-    //	(contiguous * framesize));
-    
-    memcpy( (((unsigned char*) buffer) + frames_recorded * framesize),
-	    (((unsigned char*) record_areas->addr) + offset * framesize),
-	    (contiguous * framesize));
-    
-    commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
-    if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
-      if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
-	printf("MMAP commit error: %s\n", snd_strerror(err));
-	return EXIT_FAILURE;
+      
+      // Test if the number of available frames exceeds the remaining
+      // number of frames to read.
+      if (contiguous > frames_to_read)
+	contiguous = frames_to_read;
+      
+      //memcpy( (((unsigned char*) buffer) + (frames_recorded+nwritten) * framesize),
+      //	(((unsigned char*) record_areas->addr) + offset * framesize),
+      //	(contiguous * framesize));
+      
+      memcpy( (((unsigned char*) buffer) + frames_recorded * framesize),
+	      (((unsigned char*) record_areas->addr) + offset * framesize),
+	      (contiguous * framesize));
+      
+      commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
+      if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
+	if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
+	  printf("MMAP commit error: %s\n", snd_strerror(err));
+	  return EXIT_FAILURE;
+	}
+	//first = 1;
       }
-      //first = 1;
-    }
+      
+      if (contiguous >= 0) {
+	frames_to_read -= contiguous;
+	nwritten += contiguous;
+	//frames_recorded += contiguous;
+      } else
+	printf("Warning: Zero or negative byte count\n"); // This should never happend. 
     
-    if (contiguous >= 0) {
-      frames_to_read -= contiguous;
-      //nwritten += contiguous;
-      frames_recorded += contiguous;
-    } else
-      printf("Warning: Zero or negative byte count\n"); // This should never happend. 
-    
-    //} // while (frames_to_read > 0)
-    //}
-    //frames_recorded += nwritten;
+    } // while (frames_to_read > 0)
+    frames_recorded += nwritten;
     
     if (snd_pcm_state(handle) < 3) {
       snd_pcm_start(handle);

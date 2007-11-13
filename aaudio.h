@@ -38,7 +38,8 @@ int write_and_poll_loop(snd_pcm_t *handle,
 			snd_pcm_format_t format, 
 			void *buffer,
 			snd_pcm_sframes_t frames,
-			snd_pcm_sframes_t framesize);
+			snd_pcm_sframes_t framesize,
+			unsigned int channels);
 
 
 int read_and_poll_loop(snd_pcm_t *handle,
@@ -46,7 +47,8 @@ int read_and_poll_loop(snd_pcm_t *handle,
 		       snd_pcm_format_t format, 
 		       void *buffer,
 		       snd_pcm_sframes_t frames,
-		       snd_pcm_sframes_t framesize);
+		       snd_pcm_sframes_t framesize,
+		       unsigned int channels);
 
 void pcm_list(void);
 void device_list(void);
