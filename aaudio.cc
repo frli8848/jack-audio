@@ -870,9 +870,9 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	// A separate ring buffer for each channel!?
 	for (n=0; n<channels; n++) {
 	  printf(" channel %d : %p\n",n, play_areas[n].addr);
-	  //memcpy(  (((unsigned char*) play_areas[n].addr) + offset * framessize/channels),
-	  //   (((unsigned char*) buffer) + frames_played * n*framesize/channels),
-	  //	   (contiguous * framesize/channels));
+	  memcpy(  (((unsigned char*) play_areas[n].addr) + offset * framesize/channels),
+		   (((unsigned char*) buffer) + frames_played * framesize + n*framesize/channels),
+	  	   (contiguous * framesize/channels));
 	}
       }
 
