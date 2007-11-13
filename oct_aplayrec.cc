@@ -49,13 +49,6 @@ using namespace std;
 #include <octave/symtab.h>
 #include <octave/variables.h>
 
-#define TRUE 1
-#define FALSE 0
-
-#define LATENCY 0
-#define ALLOW_ALSA_RESAMPLE TRUE
-#define USE_ALSA_FLOAT
-
 //
 // Macros.
 //
@@ -74,9 +67,9 @@ using namespace std;
  * 
  * Fredrik Lingvall 2007-11-02 : File created.
  * Fredrik Lingvall 2007-11-09 : Switched to polling the audio devices.
+ * Fredrik Lingvall 2007-11-12 : Added CTRL-C support.
  *
  ***/
-
 
 //
 // typedef:s
@@ -156,14 +149,37 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (aplayrec, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  [Y] = aplayrec(A,fs,device).\n\
+@deftypefn {Loadable Function} {}  [Y] = aplayrec(A,rec_channels,fs,dev_name).\n\
 \n\
-APLAYREC Computes one dimensional convolutions of the columns in the matrix A and the matrix (or vector) B.\n\
+APLAYREC Plays audio data from the input matrix A, on the PCM device given by dev_name, and \n\
+records audio data to the output matrix Y using the Advanced Linux Sound Architecture (ALSA)\n\
+audio library API.\n\
 \n\
 Input parameters:\n\
 \n\
-@copyright{2007 Fredrik Lingvall}.\n\
-@seealso {aplay, arecord, play, record}\n\
+@table @samp\n\
+@item A\n\
+A frames x number of playback channels matrix.\n\
+\n\
+@item rec_channel\n\
+The number of capture channels (default is 2).\n\
+\n\
+@item fs\n\
+The sampling frequency in Hz (default is 44100 [Hz]).\n\
+\n\
+@item dev_name\n\
+The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'default').\n\
+@end table\n\
+\n\
+Output parameters:\n\
+\n\
+@table @samp\n\
+@item Y\n\
+A frames x rec_channels matrix containing the captured audio data.\n\
+@end table\n\
+\n\
+@copyright{ 2007 Fredrik Lingvall}.\n\
+@seealso {aplay, arecord}\n\
 @end deftypefn")
 {
   double *A,*Y; 
