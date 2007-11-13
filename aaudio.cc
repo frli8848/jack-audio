@@ -1,5 +1,54 @@
 #include "aaudio.h"
 
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+#include <pthread.h>
+#include <signal.h>
+
+#include <alsa/asoundlib.h>
+#include <poll.h>
+
+//
+// Octave headers.
+//
+
+#include <octave/oct.h>
+
+#include <octave/config.h>
+
+#include <iostream>
+using namespace std;
+
+#include <octave/defun-dld.h>
+#include <octave/error.h>
+#include <octave/oct-obj.h>
+#include <octave/pager.h>
+#include <octave/symtab.h>
+#include <octave/variables.h>
+
+/***
+ *
+ *  Copyright (c) by Fredrik Lingvall
+ *  Parts of this code is based on the aplay program by Jaroslav Kysela and
+ *  the pcm.c example from the alsa-lib.
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+ *
+ ***/
+
 //
 // Macros.
 //
@@ -1013,3 +1062,124 @@ int read_and_poll_loop(snd_pcm_t *handle,
   return 0;
 }
 
+/***
+ *
+ * List audio devices and PCMs.
+ *
+ *
+ * Code from the alsa-utils application aplay (by Jaroslav Kysel and Michael Beck).
+ *
+ ***/
+
+
+void device_list(void)
+{
+  snd_ctl_t *handle;
+  int card, err, dev, idx;
+  snd_ctl_card_info_t *info;
+  snd_pcm_info_t *pcminfo;
+  snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
+  snd_ctl_card_info_alloca(&info);
+  snd_pcm_info_alloca(&pcminfo);
+
+  card = -1;
+  if (snd_card_next(&card) < 0 || card < 0) {
+    error("no soundcards found...");
+    return;
+  }
+  printf("**** List of %s Hardware Devices ****\n",
+	 snd_pcm_stream_name(stream));
+  while (card >= 0) {
+    char name[32];
+    sprintf(name, "hw:%d", card);
+    if ((err = snd_ctl_open(&handle, name, 0)) < 0) {
+      error("control open (%i): %s", card, snd_strerror(err));
+      goto next_card;
+    }
+    if ((err = snd_ctl_card_info(handle, info)) < 0) {
+      error("control hardware info (%i): %s", card, snd_strerror(err));
+      snd_ctl_close(handle);
+      goto next_card;
+    }
+    dev = -1;
+    while (1) {
+      unsigned int count;
+      if (snd_ctl_pcm_next_device(handle, &dev)<0)
+	error("snd_ctl_pcm_next_device");
+      if (dev < 0)
+	break;
+      snd_pcm_info_set_device(pcminfo, dev);
+      snd_pcm_info_set_subdevice(pcminfo, 0);
+      snd_pcm_info_set_stream(pcminfo, stream);
+      if ((err = snd_ctl_pcm_info(handle, pcminfo)) < 0) {
+	if (err != -ENOENT)
+	  error("control digital audio info (%i): %s", card, snd_strerror(err));
+	continue;
+      }
+      printf("card %i: %s [%s], device %i: %s [%s]\n",
+	     card, snd_ctl_card_info_get_id(info), snd_ctl_card_info_get_name(info),
+	     dev,
+	     snd_pcm_info_get_id(pcminfo),
+	     snd_pcm_info_get_name(pcminfo));
+      count = snd_pcm_info_get_subdevices_count(pcminfo);
+      printf("  Subdevices: %i/%i\n",
+	      snd_pcm_info_get_subdevices_avail(pcminfo), count);
+      for (idx = 0; idx < (int)count; idx++) {
+	snd_pcm_info_set_subdevice(pcminfo, idx);
+	if ((err = snd_ctl_pcm_info(handle, pcminfo)) < 0) {
+	  error("control digital audio playback info (%i): %s", card, snd_strerror(err));
+	} else {
+	  printf("  Subdevice #%i: %s\n",
+		 idx, snd_pcm_info_get_subdevice_name(pcminfo));
+	}
+      }
+    }
+    snd_ctl_close(handle);
+  next_card:
+    if (snd_card_next(&card) < 0) {
+      error("snd_card_next");
+      break;
+    }
+  }
+}
+
+void pcm_list(void)
+{
+  void **hints, **n;
+  char *name, *descr, *descr1, *io;
+  const char *filter;
+  snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
+
+  if (snd_device_name_hint(-1, "pcm", &hints) < 0)
+    return;
+  n = hints;
+  filter = stream == SND_PCM_STREAM_CAPTURE ? "Input" : "Output";
+  while (*n != NULL) {
+    name = snd_device_name_get_hint(*n, "NAME");
+    descr = snd_device_name_get_hint(*n, "DESC");
+    io = snd_device_name_get_hint(*n, "IOID");
+    if (io != NULL && strcmp(io, filter) == 0)
+      goto __end;
+    printf("%s\n", name);
+    if ((descr1 = descr) != NULL) {
+      printf("    ");
+      while (*descr1) {
+	if (*descr1 == '\n')
+	  printf("\n    ");
+	else
+	  putchar(*descr1);
+	descr1++;
+      }
+      putchar('\n');
+    }
+  __end:
+    if (name != NULL)
+      free(name);
+    if (descr != NULL)
+      free(descr);
+    if (io != NULL)
+      free(io);
+    n++;
+  }
+  snd_device_name_free_hint(hints);
+}

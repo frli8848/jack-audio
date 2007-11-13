@@ -47,3 +47,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
 		       void *buffer,
 		       snd_pcm_sframes_t frames,
 		       snd_pcm_sframes_t framesize);
+
+void pcm_list(void);
+void device_list(void);

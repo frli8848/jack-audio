@@ -211,8 +211,11 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   // List all devices if no input arg is given.
   //
   
-  if (nhrs < 1)
+  if (nrhs < 1) {
+    printf("No ALSA device was given. Listing the devices:\n\n");
     device_list();
+    return oct_retval;
+  }
   
   //
   // Open the PCM playback and capture devices. 
