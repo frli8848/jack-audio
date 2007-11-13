@@ -3,3 +3,33 @@
 * Check how to use realtime mode.
 
 * Remove unsed code from aaudio.cc   
+
+
+
+
+
+
+\n\
+@table @inpars\n\
+@item A\n\
+A frames x number of playback channels matrix.\n\
+\n\
+@item rec_channel\n\
+The number of capture channels (and columns in Y).\n\
+\n\
+@item fs\n\
+The sampling frequency in Hz.\n\
+\n\
+@item dev_name\n\
+The ALSA device name (i.e., 'hw:0,0', 'plughw:0,0', or 'default').\n\
+@end table\n\
+
+
+
+\n\
+Output parameters:\n\
+\n\
+@table @outpars\n\
+@item Y\n\
+A frames x rec_channels matrix containing the captured audio data.\n\
+@end table\n\
