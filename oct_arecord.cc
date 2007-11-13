@@ -421,19 +421,19 @@ A frames x channels matrix containing the captured audio data.\n\
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize);
+    read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize,channels);
     break;    
     
   case SND_PCM_FORMAT_S32:
-    read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize);
+    read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize,channels);
     break;
     
   case SND_PCM_FORMAT_S16:
-    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize);
+    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels);
     break;
     
   default:
-    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize);
+    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels);
   }
 
   //

@@ -83,6 +83,7 @@ typedef struct
   snd_pcm_format_t format;
   unsigned int frames;
   unsigned int framesize;
+  unsigned int channels;
 } DATA;
 
 //
@@ -115,8 +116,9 @@ void* smp_process(void *arg)
   snd_pcm_format_t format = D.format;
   int frames = D.frames;
   int framesize = D.framesize;
+  int channels = D.channels;
 
-  read_and_poll_loop(handle_rec,record_areas,format,buffer_rec,frames,framesize);
+  read_and_poll_loop(handle_rec,record_areas,format,buffer_rec,frames,framesize,channels);
 
   return NULL;
 }
@@ -606,6 +608,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   }
   D[0].frames = frames;
   D[0].framesize = rec_framesize;
+  D[0].channels = rec_channels;
 
   // Set status to running (CTRL-C will clear the flag and stop play/capure).
   set_running_flag(); 
@@ -622,19 +625,19 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    write_and_poll_loop(handle_play,play_areas,format,fbuffer_play,frames,play_framesize);
+    write_and_poll_loop(handle_play,play_areas,format,fbuffer_play,frames,play_framesize,play_channels);
     break;    
     
   case SND_PCM_FORMAT_S32:
-    write_and_poll_loop(handle_play,play_areas,format,ibuffer_play,frames,play_framesize);
+    write_and_poll_loop(handle_play,play_areas,format,ibuffer_play,frames,play_framesize,play_channels);
     break;
     
   case SND_PCM_FORMAT_S16:
-    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,play_framesize);
+    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,play_framesize,play_channels);
     break;
     
   default:
-    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,play_framesize);
+    write_and_poll_loop(handle_play,play_areas,format,sbuffer_play,frames,play_framesize,play_channels);
   }
   
   //

@@ -867,7 +867,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
 		(((unsigned char*) buffer) + frames_played * framesize),
 		(contiguous * framesize));
       } else { // Non-interleaved
-	// A separate ring buffer for each channel!?
+	// A separate ring buffer for each channel.
 	for (n=0; n<channels; n++) {
 	  //printf(" channel %d : %p\n",n, play_areas[n].addr);
 	  memcpy(  (((unsigned char*) play_areas[n].addr) + offset * framesize/channels),
@@ -1045,10 +1045,21 @@ int read_and_poll_loop(snd_pcm_t *handle,
       //memcpy( (((unsigned char*) buffer) + (frames_recorded+nwritten) * framesize),
       //	(((unsigned char*) record_areas->addr) + offset * framesize),
       //	(contiguous * framesize));
-      
-      memcpy( (((unsigned char*) buffer) + frames_recorded * framesize),
+
+      if (interleaved) {
+	memcpy( (((unsigned char*) buffer) + frames_recorded * framesize),
 	      (((unsigned char*) record_areas->addr) + offset * framesize),
 	      (contiguous * framesize));
+      } else { // Non-interleaved
+	// A separate ring buffer for each channel.
+	for (n=0; n<channels; n++) {
+	  memcpy( (((unsigned char*) buffer) 
+		   + frames_recorded * framesize/channels 
+		   + n*frames*(framesize/channels)),
+		  (((unsigned char*) record_areas[n].addr) + offset * framesize/channels),
+		  (contiguous * framesize/channels));
+	}
+      }
       
       commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
       if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
