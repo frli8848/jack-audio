@@ -345,27 +345,52 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
     sbuffer = (short*) malloc(frames*channels*sizeof(short));
   }
 
-  // Convert to interleaved audio data.
-  for (n = 0; n < channels; n++) {
-    for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-      
+  if (is_interleaved()) {
+    
+    // Convert to interleaved audio data.
+    for (n = 0; n < channels; n++) {
+      for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+	
+	switch(format) {
+	  
+	case SND_PCM_FORMAT_FLOAT:
+	  fbuffer[i] =  (float) CLAMP(A[m], -1.0,1.0);
+	  break;    
+	  
+	case SND_PCM_FORMAT_S32:
+	  ibuffer[i] =  (int) CLAMP(214748364.0*A[m], -2147483648.0, 2147483647.0);
+	  break;
+	  
+	case SND_PCM_FORMAT_S16:
+	  sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
+	  break;
+	  
+	default:
+	  sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
+	}
+      }
+    }
+  } else { // Non-interleaved
+    for (n = 0; n < frames*channels; n++) {
+
       switch(format) {
 	
       case SND_PCM_FORMAT_FLOAT:
-	fbuffer[i] =  (float) CLAMP(A[m], -1.0,1.0);
+	fbuffer[n] =  (float) CLAMP(A[n], -1.0,1.0);
 	break;    
 	
       case SND_PCM_FORMAT_S32:
-	ibuffer[i] =  (int) CLAMP(214748364.0*A[m], -2147483648.0, 2147483647.0);
+	ibuffer[n] =  (int) CLAMP(214748364.0*A[n], -2147483648.0, 2147483647.0);
 	break;
 	
       case SND_PCM_FORMAT_S16:
-	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
+	sbuffer[n] =  (short) CLAMP(32768.0*A[n], -32768.0, 32767.0);
 	break;
 	
       default:
-	sbuffer[i] =  (short) CLAMP(32768.0*A[m], -32768.0, 32767.0);
+	sbuffer[n] =  (short) CLAMP(32768.0*A[n], -32768.0, 32767.0);
       }
+
     }
   }
   

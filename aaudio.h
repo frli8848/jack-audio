@@ -50,3 +50,5 @@ int read_and_poll_loop(snd_pcm_t *handle,
 
 void pcm_list(void);
 void device_list(void);
+
+int is_interleaved(void);

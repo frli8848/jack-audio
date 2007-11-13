@@ -460,34 +460,59 @@ A frames x channels matrix containing the captured audio data.\n\
     Matrix Ymat(frames,channels);
     Y = Ymat.fortran_vec();
     
-    // Convert from interleaved audio data.
-    for (n = 0; n < channels; n++) {
-      for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+    if (is_interleaved()) {
       
+      // Convert from interleaved audio data.
+      for (n = 0; n < channels; n++) {
+	for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+	  
+	  switch(format) {
+	    
+	  case SND_PCM_FORMAT_FLOAT:
+	    Y[m] = (double) fbuffer[i];  
+	    break;    
+	    
+	  case SND_PCM_FORMAT_S32:
+	    Y[m] = ((double) ibuffer[i]) / 214748364.0; // Normalize audio data.
+	    break;
+	    
+	  case SND_PCM_FORMAT_S16:
+	    Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	    break;
+	    
+	  default:
+	    Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	  }
+	}
+      }
+    } else { // Non-interleaved
+      for (n = 0; n < frames*channels; n++) {
+	
 	switch(format) {
 	  
 	case SND_PCM_FORMAT_FLOAT:
-	  Y[m] = (double) fbuffer[i];  
+	  Y[n] = (double) fbuffer[n];  
 	  break;    
 	  
 	case SND_PCM_FORMAT_S32:
-	  Y[m] = ((double) ibuffer[i]) / 214748364.0; // Normalize audio data.
+	  Y[n] = ((double) ibuffer[n]) / 214748364.0; // Normalize audio data.
 	  break;
 	  
 	case SND_PCM_FORMAT_S16:
-	  Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	  Y[n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
 	  break;
 	  
 	default:
-	  Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+	  Y[n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
 	}
       }
-    }
-
+    } 
+    
     oct_retval.append(Ymat);
-  }
-
-  //
+  
+  } // is_running.
+    
+    //
   // Cleanup.
   //
 

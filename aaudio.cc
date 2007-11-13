@@ -68,6 +68,7 @@ using namespace std;
 //
 
 volatile int running;
+volatile int interleaved;
 
 //
 // Function prototypes.
@@ -107,6 +108,21 @@ void clear_running_flag(void)
   return;
 }
 
+
+/***
+ *
+ * Return the data access mathod. 
+ *
+ *
+ ***/
+
+int is_interleaved(void)
+{
+
+  return interleaved;
+}
+
+
 /***
  *
  * Setup the hardware parameters.
@@ -137,15 +153,23 @@ int set_hwparams(snd_pcm_t *handle,
     return err;
   }
   
-  // Set read/write format to MMPAP:ed interleaved .
+  //
+  // Set read/write format.
+  //
+
+  // Try interleaved first (RME cards don't seem to support this).
+  interleaved = 1;
   if((err = snd_pcm_hw_params_set_access(handle,hwparams,SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0){
-    fprintf(stderr, "Unable to set the PCM access type: %s\n",
-	    snd_strerror(err));
-    return err;
+    
+    // Interleaved MMAP failed. Try non-interleaved MMAP.
+    interleaved = 0;
+    if((err = snd_pcm_hw_params_set_access(handle,hwparams,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) < 0){
+      fprintf(stderr, "Unable to set the PCM access type: %s\n",
+	      snd_strerror(err));
+      return err;
+    }
   }
   
-  //check_hw(hwparams);
-
   // Test if the audio hardwear supports the chosen audio sample format otherwise try S32,
   // or fallback to S16.
   if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
