@@ -64,6 +64,7 @@ using namespace std;
  * Fredrik Lingvall 2007-11-01 : Added input arg checks.
  * Fredrik Lingvall 2007-11-02 : Added ALSA floating point support.
  * Fredrik Lingvall 2007-11-12 : Added CTRL-C support.
+ * Fredrik Lingvall 2007-11-13 : Added non-interleaved support.
  *
  ***/
 

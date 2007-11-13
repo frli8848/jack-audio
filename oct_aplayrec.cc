@@ -68,6 +68,7 @@ using namespace std;
  * Fredrik Lingvall 2007-11-02 : File created.
  * Fredrik Lingvall 2007-11-09 : Switched to polling the audio devices.
  * Fredrik Lingvall 2007-11-12 : Added CTRL-C support.
+ * Fredrik Lingvall 2007-11-13 : Added non-interleaved support.
  *
  ***/
 
