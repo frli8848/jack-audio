@@ -254,34 +254,24 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
     return oct_retval;
   }
   
-  //
-  // Set read/write format to MMPAP:ed interleaved .
-  //
-
-  //if ((err = snd_pcm_hw_params_set_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0){
-  //  fprintf(stderr, "Unable to set the PCM access type: %s\n",
-  //    snd_strerror(err));
-
-  if ((err = snd_pcm_hw_params_set_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) < 0){
-    fprintf(stderr, "Unable to set the PCM access type: %s\n",
-	    snd_strerror(err));
-    snd_pcm_close(handle_play);
-    snd_pcm_close(handle_rec);
-    return oct_retval;
-  }
-
-  if((err = snd_pcm_hw_params_set_access(handle_rec,hwparams_play,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) < 0){
-    fprintf(stderr, "Unable to set the PCM access type: %s\n",
-	    snd_strerror(err));
-    snd_pcm_close(handle_play);
-    snd_pcm_close(handle_rec);
-    return oct_retval;
-  }
-
   printf("|---------------------------------|--------------------\n");
   printf("|         Parameter               | Playback / Capture \n");
   printf("|---------------------------------|--------------------\n");
   
+  //
+  // Test if interleaved data is supported.
+  //
+  
+  if ((err = snd_pcm_hw_params_set_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_INTERLEAVED)) >= 0)
+    printf("| Support for interleaved data    | Yes");
+  else
+    printf("| Support for interleaved data    | No");
+
+  if ((err = snd_pcm_hw_params_set_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_MMAP_INTERLEAVED)) >= 0)
+    printf(" / Yes\n");
+  else
+    printf(" / No\n");
+
   //
   // Test Double buffering.
   //
