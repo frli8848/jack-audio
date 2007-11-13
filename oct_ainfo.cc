@@ -119,14 +119,21 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (ainfo, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  [Y] = ainfo(A).\n\
+@deftypefn {Loadable Function} {}  ainfo(dev_name).\n\
 \n\
-AINFO Computes one dimensional convolutions of the columns in the matrix A and the matrix (or vector) B.\n\
+AINFO Prints various hardware info of the PCM device given by dev_name\n\
+using the Advanced Linux Sound Architecture (ALSA) audio library API.\n\
 \n\
 Input parameters:\n\
 \n\
-@copyright{2007-10-31 Fredrik Lingvall}.\n\
-@seealso {play, record}\n\
+@table @samp\n\
+\n\
+@item dev_name\n\
+The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'default').\n\
+@end table\n\
+\n\
+@copyright{ 2007 Fredrik Lingvall}.\n\
+@seealso {aplay, arecord, aplayrec, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
   snd_pcm_t *handle_play;
@@ -197,10 +204,16 @@ Input parameters:\n\
   } else
     strcpy(device,"default"); 
   
-
-//******************************************************************************************
-
-
+  
+  //******************************************************************************************
+  
+  //
+  // List all devices if no input arg is given.
+  //
+  
+  if (nhrs < 1)
+    device_list();
+  
   //
   // Open the PCM playback and capture devices. 
   //

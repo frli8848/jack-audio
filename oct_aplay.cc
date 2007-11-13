@@ -15,7 +15,7 @@
 * for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with the DREAM Toolbox; see the file COPYING.  If not, write to the 
+* along with the ....; see the file COPYING.  If not, write to the 
 * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 * 02110-1301, USA.
 *
@@ -117,14 +117,26 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (aplay, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  [Y] = aplay(A).\n\
+@deftypefn {Loadable Function} {}  aplay(A,fs,dev_name).\n\
 \n\
-APLAY Computes one dimensional convolutions of the columns in the matrix A and the matrix (or vector) B.\n\
+APLAY Plays audio data from the input matrix A, on the PCM device given by dev_name,\n\
+using the Advanced Linux Sound Architecture (ALSA) audio library API.\n\
 \n\
 Input parameters:\n\
 \n\
-@copyright{2007-10-31 Fredrik Lingvall}.\n\
-@seealso {play, record}\n\
+@table @samp\n\
+@item A\n\
+A frames x number of playback channels matrix.\n\
+\n\
+@item fs\n\
+The sampling frequency in Hz (default is 44100 [Hz]).\n\
+\n\
+@item dev_name\n\
+The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'default').\n\
+@end table\n\
+\n\
+@copyright{ 2007 Fredrik Lingvall}.\n\
+@seealso {arecord, aplayrec, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
   double *A; 
