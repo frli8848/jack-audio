@@ -257,7 +257,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   //
   // Set read/write format to MMPAP:ed interleaved .
   //
-
+  /*
   if ((err = snd_pcm_hw_params_set_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0){
     fprintf(stderr, "Unable to set the PCM access type: %s\n",
 	    snd_strerror(err));
@@ -273,7 +273,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
     snd_pcm_close(handle_rec);
     return oct_retval;
   }
-
+  */
   printf("|---------------------------------|--------------------\n");
   printf("|         Parameter               | Playback / Capture \n");
   printf("|---------------------------------|--------------------\n");
