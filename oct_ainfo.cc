@@ -273,6 +273,20 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
     printf(" / No\n");
 
   //
+  // Test if non-interleaved data is supported.
+  //
+  
+  if ((err = snd_pcm_hw_params_set_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) >= 0)
+    printf("| Support for noninterleaved data | Yes");
+  else
+    printf("| Support for noninterleaved data | No");
+
+  if ((err = snd_pcm_hw_params_set_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) >= 0)
+    printf(" / Yes\n");
+  else
+    printf(" / No\n");
+
+  //
   // Test Double buffering.
   //
 
