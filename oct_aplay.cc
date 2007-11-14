@@ -147,8 +147,8 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   snd_pcm_format_t format;
   unsigned int fs;
   unsigned int channels, wanted_channels;
-  snd_pcm_uframes_t period_size;
-  unsigned int num_periods;
+  snd_pcm_uframes_t period_size, r_period_size;
+  unsigned int num_periods,r_num_periods;
   snd_pcm_uframes_t buffer_size;
   // SW parameters.
   snd_pcm_uframes_t avail_min;
@@ -177,7 +177,6 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   const Matrix tmp0 = args(0).matrix_value();
   frames = tmp0.rows();		// Audio data length for each channel.
   channels = tmp0.cols();	// Number of channels.
-  wanted_channels = channels;
 
   A = (double*) tmp0.fortran_vec();
     
@@ -288,14 +287,24 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     period_size = 512;
     num_periods = 2;
   }
-
+  
+  r_period_size = period_size;
+  r_num_periods = num_periods;
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
+  wanted_channels = channels;
   if (set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
     error("Unable to set hardware parameters. Bailing out!");
     snd_pcm_close(handle);
     return oct_retval;
   }
+
+  if (r_period_size != period_size)
+    printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
   
+  if (r_num_periods != num_periods)
+    printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
+
+
   // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
   // copy data to the interleaved buffer. Another solution is just to print an error message and bail
