@@ -254,34 +254,66 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
     return oct_retval;
   }
   
-  printf("|---------------------------------|--------------------\n");
-  printf("|         Parameter               | Playback / Capture \n");
-  printf("|---------------------------------|--------------------\n");
+  printf("|----------------------------------|--------------------\n");
+  printf("|         Parameter                | Playback / Capture \n");
+  printf("|----------------------------------|--------------------\n");
   
-  //
-  // Test if interleaved data is supported.
-  //
-  
-  if ((err = snd_pcm_hw_params_set_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_INTERLEAVED)) >= 0)
-    printf("| Support for interleaved data    | Yes");
-  else
-    printf("| Support for interleaved data    | No");
 
-  if ((err = snd_pcm_hw_params_set_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_MMAP_INTERLEAVED)) >= 0)
+  //
+  // Test Access Types.
+  //
+  
+  // SND_PCM_ACCESS_MMAP_INTERLEAVED
+  if ((err = snd_pcm_hw_params_test_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_INTERLEAVED)) >= 0)
+    printf("| Support MMAP interleaved data    | Yes");
+  else
+    printf("| Support MMAP interleaved data    | No");
+  
+  if ((err = snd_pcm_hw_params_test_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_MMAP_INTERLEAVED)) >= 0)
     printf(" / Yes\n");
   else
     printf(" / No\n");
-
-  //
-  // Test if non-interleaved data is supported.
-  //
   
-  if ((err = snd_pcm_hw_params_set_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) >= 0)
-    printf("| Support for noninterleaved data | Yes");
+  // SND_PCM_ACCESS_MMAP_NONINTERLEAVED 
+  if ((err = snd_pcm_hw_params_test_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) >= 0)
+    printf("| Support MMAP noninterleaved data | Yes");
   else
-    printf("| Support for noninterleaved data | No");
-
-  if ((err = snd_pcm_hw_params_set_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) >= 0)
+    printf("| Support MMAP noninterleaved data | No");
+  
+  if ((err = snd_pcm_hw_params_test_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) >= 0)
+    printf(" / Yes\n");
+  else
+    printf(" / No\n");
+  
+  // SND_PCM_ACCESS_MMAP_COMPLEX 
+  if ((err = snd_pcm_hw_params_test_access(handle_play,hwparams_play,SND_PCM_ACCESS_MMAP_COMPLEX)) >= 0)
+    printf("| Support MMAP complex data        | Yes");
+  else
+    printf("| Support MMAP complex data        | No");
+  
+  if ((err = snd_pcm_hw_params_test_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_MMAP_COMPLEX)) >= 0)
+    printf(" / Yes\n");
+  else
+    printf(" / No\n");
+  
+  // SND_PCM_ACCESS_RW_INTERLEAVED
+  if ((err = snd_pcm_hw_params_test_access(handle_play,hwparams_play,SND_PCM_ACCESS_RW_INTERLEAVED)) >= 0)
+    printf("| Support RW interleaved data      | Yes");
+  else
+    printf("| Support RW interleaved data      | No");
+  
+  if ((err = snd_pcm_hw_params_test_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_RW_INTERLEAVED)) >= 0)
+    printf(" / Yes\n");
+  else
+    printf(" / No\n");
+  
+  // SND_PCM_ACCESS_RW_NONINTERLEAVED 
+  if ((err = snd_pcm_hw_params_test_access(handle_play,hwparams_play,SND_PCM_ACCESS_RW_NONINTERLEAVED)) >= 0)
+    printf("| Support RW noninterleaved data   | Yes");
+  else
+    printf("| Support RW noninterleaved data   | No");
+  
+  if ((err = snd_pcm_hw_params_test_access(handle_rec,hwparams_rec,SND_PCM_ACCESS_RW_NONINTERLEAVED)) >= 0)
     printf(" / Yes\n");
   else
     printf(" / No\n");
@@ -291,9 +323,9 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   //
 
   if (snd_pcm_hw_params_is_batch(hwparams_play))
-    printf("| Double buffering data transfers | Yes");
+    printf("| Double buffering data transfers  | Yes");
   else
-    printf("| Double buffering data transfers | No");
+    printf("| Double buffering data transfers  | No");
 
   if (snd_pcm_hw_params_is_batch(hwparams_rec))
     printf(" / Yes \n");
@@ -305,9 +337,9 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   //
 
   if (snd_pcm_hw_params_is_block_transfer(hwparams_play))
-    printf("| Block transfers of samples      | Yes");
+    printf("| Block transfers of samples       | Yes");
   else
-    printf("| Block transfers of samples      | No");
+    printf("| Block transfers of samples       | No");
 
   if (snd_pcm_hw_params_is_block_transfer(hwparams_rec))
     printf(" / Yes\n");
@@ -319,9 +351,9 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   //
 
   if (snd_pcm_hw_params_is_half_duplex(hwparams_play))
-    printf("| Half-duplex capable             | Yes");
+    printf("| Half-duplex capable              | Yes");
   else
-    printf("| Half-duplex capable             | No");
+    printf("| Half-duplex capable              | No");
 
   if (snd_pcm_hw_params_is_half_duplex(hwparams_rec))
     printf(" / Yes\n");
@@ -333,9 +365,9 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   //
 
   if (snd_pcm_hw_params_is_joint_duplex(hwparams_play))
-    printf("| Joint-duplex capable            | Yes");
+    printf("| Joint-duplex capable             | Yes");
   else
-    printf("| Joint-duplex capable            | No");
+    printf("| Joint-duplex capable             | No");
 
   if (snd_pcm_hw_params_is_joint_duplex(hwparams_rec))
     printf(" / Yes\n");
@@ -349,7 +381,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   if ((err=snd_pcm_hw_params_get_channels_max(hwparams_play,&val)) < 0)
     fprintf(stderr,"Unable to get max number of playback channels: %s\n", snd_strerror(err));
   else
-    printf("| Max number of channels          | %d",val);
+    printf("| Max number of channels           | %d",val);
   
   if ((err=snd_pcm_hw_params_get_channels_max(hwparams_rec,&val)) < 0)
     fprintf(stderr,"Unable to get max number of capture channels: %s\n", snd_strerror(err));
@@ -360,7 +392,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   if ((err=snd_pcm_hw_params_get_channels_min(hwparams_play,&val)) < 0)
     fprintf(stderr,"Unable to get min number of playback channels: %s\n", snd_strerror(err));
   else
-    printf("| Min number of channels          | %d",val);
+    printf("| Min number of channels           | %d",val);
 
   if ((err=snd_pcm_hw_params_get_channels_min(hwparams_rec,&val)) < 0)
     fprintf(stderr,"Unable to get min number of capture channels: %s\n", snd_strerror(err));
@@ -375,7 +407,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams_play,&val2)) < 0)
     fprintf(stderr,"Unable get max buffer size: %s\n", snd_strerror(err));
   else
-    printf("| Max buffer size                 | %u",val2);
+    printf("| Max buffer size                  | %u",val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams_rec,&val2)) < 0)
@@ -387,7 +419,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   if ((err=snd_pcm_hw_params_get_buffer_size_min(hwparams_play,&val2)) < 0)
     fprintf(stderr,"Unable to get min buffer size: %s\n", snd_strerror(err));
   else
-    printf("| Min buffer size                 | %u",val2);
+    printf("| Min buffer size                  | %u",val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_min(hwparams_rec,&val2)) < 0)
@@ -396,7 +428,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
     printf(" / %u\n",val2);
 
   //
-  // Max/min buffer size.
+  // Max/min buffer time.
   //
 
   dir = 0;
@@ -404,7 +436,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   if ((err=snd_pcm_hw_params_get_buffer_time_max(hwparams_play,&val,&dir)) < 0)
     fprintf(stderr,"Unable to get max buffer time: %s\n", snd_strerror(err));
   else
-    printf("| Max buffer time                 | %d",val);
+    printf("| Max buffer time                  | %d",val);
 
   dir = 0;
   val = 0;
@@ -418,7 +450,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   if ((err=snd_pcm_hw_params_get_buffer_time_min(hwparams_play,&val,&dir)) < 0)
     fprintf(stderr,"Unable to get min buffer time: %s\n", snd_strerror(err));
   else
-    printf("| Min buffer time                 | %d",val);
+    printf("| Min buffer time                  | %d",val);
 
   dir = 0;
   val = 0;
@@ -428,13 +460,13 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
     printf(" / %d [us]\n",val);
 
   //
-  // Hardware FIFO size.
+  // Hardware FIFO size (not supported by ALSA yet?).
   //
 
   if ((val = snd_pcm_hw_params_get_fifo_size(hwparams_play)) < 0)
     fprintf(stderr,"Unable to get hardware FIFO size: %s\n", snd_strerror(val));
   else
-    printf("| Hardware FIFO size              | %d",val);
+    printf("| Hardware FIFO size               | %d",val);
   
   if ((val = snd_pcm_hw_params_get_fifo_size(hwparams_rec)) < 0)
     fprintf(stderr,"Unable to get hardware FIFO size: %s\n", snd_strerror(val));
@@ -448,9 +480,9 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_min_align(hwparams_play,&val2)) < 0) {
     //fprintf(stderr,"Unable to get min align value: %s\n", snd_strerror(err));
-    printf("| Min align value                 | na",val2);
+    printf("| Min align value                  | na",val2);
   }  else
-    printf("| Min align value                 | %u",val2);
+    printf("| Min align value                  | %u",val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_min_align(hwparams_rec,&val2)) < 0) {
@@ -468,7 +500,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams_play,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
  else
-   printf("| Max period size                 | %d",val2);
+   printf("| Max period size                  | %d",val2);
 
  dir = 0;
  val2 = 0;
@@ -483,7 +515,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams_play,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
  else
-   printf("| Min period size                 | %d",val2);
+   printf("| Min period size                  | %d",val2);
 
  dir = 0;
  val2 = 0;
@@ -502,7 +534,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_period_time_max(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Unable to get max period time: %s\n", snd_strerror(err));
  else
-   printf("| Max period time                 | %d",val);
+   printf("| Max period time                  | %d",val);
 
  dir = 0;
  val2 = 0;
@@ -516,7 +548,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_period_time_min(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Unable to get min period time: %s\n", snd_strerror(err));
  else
-   printf("| Min period time                 | %d",val);
+   printf("| Min period time                  | %d",val);
 
  dir = 0;
  val2 = 0;
@@ -533,7 +565,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_periods_max(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Can't get max periods: %s\n", snd_strerror(err));
  else
-   printf("| Max periods                     | %d",val);
+   printf("| Max periods                      | %d",val);
 
  dir = 0;
  val2 = 0;
@@ -547,7 +579,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_periods_min(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Can't get min periods: %s\n", snd_strerror(err));
  else
-   printf("| Min periods                     | %d",val);
+   printf("| Min periods                      | %d",val);
  
  dir = 0;
  val2 = 0;
@@ -566,7 +598,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_rate_max(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Can't get max rate: %s\n", snd_strerror(err));
  else
-   printf("| Max rate                        | %d",val);
+   printf("| Max rate                         | %d",val);
 
  dir = 0;
  val2 = 0;
@@ -580,7 +612,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_rate_min(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Can't get min rate: %s\n", snd_strerror(err));
  else
-   printf("| Min rate                        | %d",val);
+   printf("| Min rate                         | %d",val);
 
  dir = 0;
  val2 = 0;
@@ -598,7 +630,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_tick_time_max(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Can't get max tick time: %s\n", snd_strerror(err));
  else
-   printf("| Max tick time                   | %d",val);
+   printf("| Max tick time                    | %d",val);
 
  dir = 0;
  val2 = 0;
@@ -612,7 +644,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  if ((err=snd_pcm_hw_params_get_tick_time_min(hwparams_play,&val,&dir)) < 0)
    fprintf(stderr,"Can't get min tick time: %s\n", snd_strerror(err));
  else
-   printf("| Min tick time                   | %d",val);
+   printf("| Min tick time                    | %d",val);
 
  dir = 0;
  val2 = 0;
@@ -621,7 +653,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
  else
    printf(" / %d [us]\n",val);
 
-  printf("|---------------------------------|--------------------\n");
+  printf("|----------------------------------|--------------------\n");
 
   snd_pcm_close(handle_play);
   snd_pcm_close(handle_rec);
