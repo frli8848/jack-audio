@@ -198,7 +198,6 @@ int set_hwparams(snd_pcm_t *handle,
   if((err = snd_pcm_hw_params_set_format(handle,hwparams,*format)) < 0){
     fprintf(stderr, "Unable to set the sample format: %s\n",
 	    snd_strerror(err));
-    //exit(-1);
   }
 
   //
@@ -265,24 +264,8 @@ int set_hwparams(snd_pcm_t *handle,
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
     fprintf(stderr, "Warning: Unable to set the number of channels: %s\n",
 	    snd_strerror(err));
-    //exit(-1);
   }
   
-  //if (val > max1 || val < min1)
-  //  printf("Warning: Using %d channels.\n",*channels);
-    
-  /* From aplay.
-  unsigned int buffer_time = 0, period_time = 0;
-  if ((err = snd_pcm_hw_params_get_buffer_time_max(hwparams,&buffer_time, 0)) < 0) {
-    fprintf(stderr, "Cannot get max buffer time: %s\n",
-	    snd_strerror(err));
-  }
-  printf("buffer_time %d\n", buffer_time);
-  period_time = buffer_time / 4;
-
-  err = snd_pcm_hw_params_set_period_time_near(handle,hwparams,&period_time, 0);
-  */
-
   //
   // Set approximate target period size in frames (Frames/Period). The chosen approximate target period 
   // size is returned.
@@ -590,6 +573,7 @@ int set_swparams(snd_pcm_t *handle,
   return 0;
 }
 
+//*********************************************************************************************
 
 /***
  *
@@ -622,132 +606,6 @@ int xrun_recovery(snd_pcm_t *handle, int err)
 
 
 //*********************************************************************************************
-
-/***
- *
- * Write (play) poll loop
- * 
- * 
- *
- * JACK is free software; you can redistribute it and/or modify it 
- * under the terms of the GNU GPL and LGPL licenses as published by 
- * the Free Software Foundation, <http://www.gnu.org> 
- *
- ***/
-
-snd_pcm_sframes_t play_poll_loop(snd_pcm_t *handle,
-			    unsigned int nfds, 
-			    unsigned int poll_timeout,
-			    pollfd *pfd,
-			    snd_pcm_uframes_t period_size)
-{
-  snd_pcm_sframes_t avail = 0;
-  snd_pcm_sframes_t play_avail = 0;
-  int need_play = 1, err;
-  unsigned int tmp_nfds; 
-  unsigned int i; // teller. 
-  int xrun_true = 0;
-  unsigned short revents;
-
-
-  //if ((err = snd_pcm_prepare(handle)) < 0) {
-  //  fprintf(stderr, "Cannot prepare audio device:%s\n",snd_strerror(err));
-  //} 
-
-  // Poll-loop
-  while (need_play) { 
-    
-    int p_timeout; 
-    
-    // finne riktig antall poll descriptors. Dette kan variere med
-    // pcm-type
-    // ALSA fikser dette. Setter også riktige events. 
-    tmp_nfds = 0;
-    if (need_play){
-      snd_pcm_poll_descriptors(handle,&(pfd[tmp_nfds]),nfds);
-      tmp_nfds += nfds;
-    }
-    
-
-
-    // Legge til pollevent err. // This is useless according to poll man page.
-    //    for (i = 0; i < tmp_nfds; i++)
-    //      pfd[i].events |= POLLERR;
-    
-
-    //if ((err = snd_pcm_wait(handle, 1000)) < 0) {
-    //  fprintf (stderr, "poll failed (%s)\n", snd_strerror (err));
-    //  break;
-    //}
-    
-    if (poll (pfd, tmp_nfds,poll_timeout) < 0) {
-      // poll error. 
-      perror("poll error");
-      //return -1;
-    }
-		
-    p_timeout = 0;
-    if (need_play) {
-
-      snd_pcm_poll_descriptors_revents(handle,&(pfd[0]),nfds,&revents);
-      if(revents & POLLERR){
-	xrun_true = 1;
-      }
-
-
-      //printf("nfds=%d, pfd: fd=%d revents=%d tmp_nfds=%d\n",nfds,pfd[0].fd,revents,tmp_nfds);
-      
-      
-      //if (revents & POLLOUT)
-      //printf("Got a POLLOUT event!\n");
-      
-      if(revents == 0) {
-	// Timeout. Ingen events. 
-	p_timeout++;
-      }
-    }
-    
-    if (p_timeout == 0){
-      // play har event. Trenger ikke mer poll.
-      need_play = 0;
-    }
-    
-    if (p_timeout && (p_timeout == nfds)) {
-      fprintf(stderr, "poll timeout.\n");
-      //return 0;
-    }
-    
-  } // while (need_play).
-  
-
-
-  if ((play_avail = snd_pcm_avail_update(handle)) < 0) {
-    if(play_avail == -EPIPE){
-      xrun_true = 1;
-    } else {
-      fprintf(stderr, "Feil i avail_update(play)\n");
-      //return -1;
-    }
-  }
-
-  if(xrun_true) {
-    printf("XRUN\n");
-    xrun_recovery(handle,play_avail);
-    //printf("XRUN\n");
-    //snd_pcm_drop(handle);
-    //snd_pcm_prepare(handle);
-    //xrun_recovery();
-    //return 0;
-  }
-  
-  avail = play_avail;
-  
-#ifdef DEBUG
-  fprintf(stderr, "poll loop, avail = %lu, playavail = %lu\n", MIN(avail, period_size), play_avail);
-#endif
-  
-  return MIN(avail, period_size);
-}
 
 
 /***
@@ -829,6 +687,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
       }
     }
 
+    // Get the number of available frames.
     frames_to_write = snd_pcm_avail_update(handle); 
     if (frames_to_write < 0) {
       err = xrun_recovery(handle, frames_to_write);
@@ -836,8 +695,6 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	printf("avail update failed: %s\n", snd_strerror(err));
 	//return EXIT_FAILURE;
       }
-      first = 1;
-      continue;
     }
 
     if (frames_to_write >  (frames - frames_played) )
@@ -845,7 +702,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
     
     nwritten = 0;
     while (frames_to_write > 0) {
-      // ønsket sammenhengende område. 
+
       contiguous = frames_to_write; 
       
       if ((err = snd_pcm_mmap_begin(handle,&play_areas,&offset,&frames_to_write)) < 0) {
@@ -859,10 +716,6 @@ int write_and_poll_loop(snd_pcm_t *handle,
       // number of frames to write.
       if (contiguous > frames_to_write)
 	contiguous = frames_to_write;
-      
-      //memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
-      //	    (((unsigned char*) buffer) + (frames_played+nwritten) * framesize),
-      //	    (contiguous * framesize));
       
       if (interleaved) {
 	memcpy( (((unsigned char*) play_areas->addr) + offset * framesize),
@@ -886,7 +739,6 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	  printf("MMAP commit error: %s\n", snd_strerror(err));
 	  return EXIT_FAILURE;
 	}
-	//first = 1;
       }
       
       if (contiguous > 0) {
@@ -919,8 +771,6 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	  return err;
 	}
       }
-      
-      
   } // while((frames - frames_played) > 0)
   
   free(ufds);
@@ -986,7 +836,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
 
   frames_recorded = 0;
   init = 1;
-  //while (1) {
   while((frames - frames_recorded) > 0 && running) { // Loop until all frames are recorded.
 
     if (!init) {
@@ -1008,10 +857,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
       }
     }
 
-
-    // TODO this should be inside the while loop below,
-    // above snd_pcm_mmap_begin, accoring to also documantation.
-    // Fix also this for play.
+    // Get the number of available frames.
     frames_to_read = snd_pcm_avail_update(handle); 
     if (frames_to_read < 0) {
       err = xrun_recovery(handle, frames_to_read);
@@ -1019,8 +865,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
 	printf("avail update failed: %s\n", snd_strerror(err));
 	//return EXIT_FAILURE;
       }
-      //first = 1;
-      //continue;
     }
 
     if (frames_to_read >  (frames - frames_recorded) )
@@ -1029,7 +873,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
     nwritten = 0;
     while(frames_to_read > 0){
       
-      // ønsket sammenhengende område. 
       contiguous = frames_to_read; 
       
       if ((err = snd_pcm_mmap_begin(handle,&record_areas,&offset,&frames_to_read)) < 0) {
@@ -1044,10 +887,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
       if (contiguous > frames_to_read)
 	contiguous = frames_to_read;
       
-      //memcpy( (((unsigned char*) buffer) + (frames_recorded+nwritten) * framesize),
-      //	(((unsigned char*) record_areas->addr) + offset * framesize),
-      //	(contiguous * framesize));
-
       if (interleaved) {
 	memcpy( (((unsigned char*) buffer) + frames_recorded * framesize),
 	      (((unsigned char*) record_areas->addr) + offset * framesize),
@@ -1069,7 +908,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
 	  printf("MMAP commit error: %s\n", snd_strerror(err));
 	  return EXIT_FAILURE;
 	}
-	//first = 1;
       }
       
       if (contiguous >= 0) {
@@ -1128,7 +966,7 @@ void device_list(int play_or_rec)
   int card, err, dev, idx;
   snd_ctl_card_info_t *info;
   snd_pcm_info_t *pcminfo;
-  snd_pcm_stream_t stream; //= SND_PCM_STREAM_PLAYBACK;
+  snd_pcm_stream_t stream;
   snd_ctl_card_info_alloca(&info);
   snd_pcm_info_alloca(&pcminfo);
 
