@@ -51,7 +51,6 @@ using namespace std;
 #include <octave/symtab.h>
 #include <octave/variables.h>
 
-
 //
 // Macros.
 //
@@ -251,8 +250,8 @@ int set_hwparams(snd_pcm_t *handle,
   
   val = *channels;
   if (*channels > max1 || *channels < min1) {
-    printf("Warning: The number of channels (%d) is outside the min (%d) and max (%d) supported by the device.\n",
-	   *channels,min1,max1);
+    //printf("Warning: The number of channels (%d) is outside the min (%d) and max (%d) supported by the device.\n",
+    //	   *channels,min1,max1);
     
     if (*channels > max1)
       *channels = max1;
@@ -260,7 +259,7 @@ int set_hwparams(snd_pcm_t *handle,
     if (*channels < min1)
       *channels = min1;
 
-    printf("Warning: Trying to use %d channels.\n",*channels);
+    //printf("Warning: Trying to use %d channels.\n",*channels);
   }
   
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
@@ -269,8 +268,8 @@ int set_hwparams(snd_pcm_t *handle,
     //exit(-1);
   }
   
-  if (val > max1 || val < min1)
-    printf("Warning: Using %d channels.\n",*channels);
+  //if (val > max1 || val < min1)
+  //  printf("Warning: Using %d channels.\n",*channels);
     
   /* From aplay.
   unsigned int buffer_time = 0, period_time = 0;
