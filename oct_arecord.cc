@@ -452,7 +452,7 @@ A frames x channels matrix containing the captured audio data.\n\
 	    break;    
 	    
 	  case SND_PCM_FORMAT_S32:
-	    Y[m] = ((double) ibuffer[i]) / 214748364.0; // Normalize audio data.
+	    Y[m] = ((double) ibuffer[i]) / 2147483648.0; // Normalize audio data.
 	    break;
 	    
 	  case SND_PCM_FORMAT_S16:
@@ -474,7 +474,7 @@ A frames x channels matrix containing the captured audio data.\n\
 	  break;    
 	  
 	case SND_PCM_FORMAT_S32:
-	  Y[n] = ((double) ibuffer[n]) / 214748364.0; // Normalize audio data.
+	  Y[n] = ((double) ibuffer[n]) / 2147483648.0; // Normalize audio data.
 	  break;
 	  
 	case SND_PCM_FORMAT_S16:

@@ -347,7 +347,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
 	  break;    
 	  
 	case SND_PCM_FORMAT_S32:
-	  ibuffer[i] =  (int) CLAMP(214748364.0*A[m], -2147483648.0, 2147483647.0);
+	  ibuffer[i] =  (int) CLAMP(2147483648.0*A[m], -2147483648.0, 2147483647.0);
 	  break;
 	  
 	case SND_PCM_FORMAT_S16:
@@ -369,7 +369,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
 	break;    
 	
       case SND_PCM_FORMAT_S32:
-	ibuffer[n] =  (int) CLAMP(214748364.0*A[n], -2147483648.0, 2147483647.0);
+	ibuffer[n] =  (int) CLAMP(2147483648.0*A[n], -2147483648.0, 2147483647.0);
 	break;
 	
       case SND_PCM_FORMAT_S16:

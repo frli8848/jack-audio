@@ -428,7 +428,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
 	  break;    
 	  
 	case SND_PCM_FORMAT_S32:
-	  ibuffer_play[i] =  (int) CLAMP(214748364.0*A[m], -2147483648.0, 2147483647.0);
+	  ibuffer_play[i] =  (int) CLAMP(2147483648.0*A[m], -2147483648.0, 2147483647.0);
 	  break;
 	  
 	case SND_PCM_FORMAT_S16:
@@ -450,7 +450,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
 	break;    
 	
       case SND_PCM_FORMAT_S32:
-	ibuffer_play[n] =  (int) CLAMP(214748364.0*A[n], -2147483648.0, 2147483647.0);
+	ibuffer_play[n] =  (int) CLAMP(2147483648.0*A[n], -2147483648.0, 2147483647.0);
 	break;
 	
       case SND_PCM_FORMAT_S16:
@@ -684,7 +684,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
 	    break;    
 	    
 	  case SND_PCM_FORMAT_S32:
-	    Y[m] = ((double) ibuffer_rec[i]) / 214748364.0; // Normalize audio data.
+	    Y[m] = ((double) ibuffer_rec[i]) / 2147483648.0; // Normalize audio data.
 	    break;
 	    
 	  case SND_PCM_FORMAT_S16:
@@ -706,7 +706,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
 	  break;    
 	  
 	case SND_PCM_FORMAT_S32:
-	  Y[n] = ((double) ibuffer_rec[n]) / 214748364.0; // Normalize audio data.
+	  Y[n] = ((double) ibuffer_rec[n]) / 2147483648.0; // Normalize audio data.
 	  break;
 	  
 	case SND_PCM_FORMAT_S16:
