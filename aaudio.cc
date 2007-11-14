@@ -1120,25 +1120,31 @@ int read_and_poll_loop(snd_pcm_t *handle,
  ***/
 
 
-void device_list(void)
+void device_list(int play_or_rec)
 {
   snd_ctl_t *handle;
   int card, err, dev, idx;
   snd_ctl_card_info_t *info;
   snd_pcm_info_t *pcminfo;
-  snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
+  snd_pcm_stream_t stream; //= SND_PCM_STREAM_PLAYBACK;
   snd_ctl_card_info_alloca(&info);
   snd_pcm_info_alloca(&pcminfo);
+
+
+  if (play_or_rec > 0)
+    stream = SND_PCM_STREAM_PLAYBACK;
+  else
+    stream = SND_PCM_STREAM_CAPTURE;
 
   card = -1;
   if (snd_card_next(&card) < 0 || card < 0) {
     error("no soundcards found...");
     return;
   }
-  printf("**** List of %s Hardware Devices ****\n",
-	 snd_pcm_stream_name(stream));
+  printf("**** List of %s Hardware Devices ****\n",snd_pcm_stream_name(stream));
   while (card >= 0) {
     char name[32];
+    //printf("ALSA device: hw:%d\n", card);
     sprintf(name, "hw:%d", card);
     if ((err = snd_ctl_open(&handle, name, 0)) < 0) {
       error("control open (%i): %s", card, snd_strerror(err));

@@ -51,6 +51,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
 		       unsigned int channels);
 
 void pcm_list(void);
-void device_list(void);
+void device_list(int play_or_rec);
 
 int is_interleaved(void);

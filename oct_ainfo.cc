@@ -213,7 +213,9 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   
   if (nrhs < 1) {
     printf("No ALSA device was given. Listing the devices:\n\n");
-    device_list();
+    device_list(1); // Playback.
+    printf("\n");
+    device_list(0); // Capture.
     return oct_retval;
   }
   
