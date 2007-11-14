@@ -60,16 +60,6 @@ using namespace std;
 #define mxGetN(N)   args(N).matrix_value().cols()
 #define mxIsChar(N) args(N).is_string()
 
-/***
- * Name and date (of revisions):
- * 
- * Fredrik Lingvall 2007-11-02 : File created.
- * Fredrik Lingvall 2007-11-09 : Switched to polling the audio devices.
- * Fredrik Lingvall 2007-11-12 : Added CTRL-C support.
- * Fredrik Lingvall 2007-11-13 : Added non-interleaved support.
- *
- ***/
-
 //
 // typedef:s
 //
@@ -84,11 +74,6 @@ typedef struct
   unsigned int framesize;
   unsigned int channels;
 } DATA;
-
-//
-// Globals
-//
-
 
 //
 // Function prototypes.
@@ -353,7 +338,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   } 
 
 
-//******************************************************************************************
+  //******************************************************************************************
 
   //
   // Register signal handlers.

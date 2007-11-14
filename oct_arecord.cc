@@ -55,21 +55,6 @@ using namespace std;
 #define mxGetN(N)   args(N).matrix_value().cols()
 #define mxIsChar(N) args(N).is_string()
 
-/***
- * Name and date (of revisions):
- * 
- * Fredrik Lingvall 2007-10-31 : File created.
- * Fredrik Lingvall 2007-11-01 : Added input arg checks.
- * Fredrik Lingvall 2007-11-02 : Added ALSA floating point support.
- * Fredrik Lingvall 2007-11-12 : Added CTRL-C support.
- * Fredrik Lingvall 2007-11-13 : Added non-interleaved support.
- *
- ***/
-
-//
-// typedef:s
-//
-
 //
 // Function prototypes.
 //
@@ -295,7 +280,7 @@ A frames x channels matrix containing the captured audio data.\n\
   } 
 
 
-//******************************************************************************************
+  //******************************************************************************************
 
   //
   // Register signal handlers.
@@ -509,13 +494,13 @@ A frames x channels matrix containing the captured audio data.\n\
     } 
     
     oct_retval.append(Ymat);
-  
-  } // is_running.
     
-    //
+  } // is_running.
+  
+  //
   // Cleanup.
   //
-
+  
   snd_pcm_close(handle);
 
   switch (format) {

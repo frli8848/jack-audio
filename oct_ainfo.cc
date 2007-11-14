@@ -67,19 +67,6 @@ using namespace std;
 #define mxGetN(N)   args(N).matrix_value().cols()
 #define mxIsChar(N) args(N).is_string()
 
-/***
- * Name and date (of revisions):
- * 
- * Fredrik Lingvall 2007-11-12 : File created.
- *
- ***/
-
-
-//
-// typedef:s
-//
-
-
 //
 // Function prototypes.
 //
@@ -661,9 +648,7 @@ If no device is given then AINFO lists all PCM devices.\n\
   //
   
   snd_pcm_subformat_mask_t *mask;
-  // snd_pcm_subformat_t sub_val;
   int sub_val;
-  //int err;
   
   if ((err = snd_pcm_subformat_mask_malloc(&mask)) < 0 ) { 
     fprintf(stderr,"snd_pcm_subformat_mask_malloc: %s\n", snd_strerror(err));
