@@ -396,6 +396,15 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
+  // Its safe to use more input channels the the hardware supports. That is, since Octave stores data 
+  // column vise only the first input channels (columns in A) will be played on the hardware and hence
+  // unallocated memory will never be accessed. Print a note that some channels are ignored.
+
+  if (wanted_play_channels > play_channels) {
+    printf("Note: Requested number of playback channels %d adjusted to %d.\n",wanted_play_channels,play_channels);
+    printf("      Channel %d to %d is ignored.\n",play_channels+1,wanted_play_channels);
+  }
+
   // Allocate playback buffer space.
   switch(format) {
     

@@ -315,6 +315,15 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     return oct_retval;
   }
 
+  // Its safe to use more input channels the the hardware supports. That is, since Octave stores data 
+  // column vise only the first input channels (columns in A) will be played on the hardware and hence
+  // unallocated memory will never be accessed. Print a note that some channels are ignored.
+
+  if (wanted_channels > channels) {
+    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
+    printf("      Channel %d to %d is ignored.\n",channels+1,wanted_channels);
+  }
+
   // Allocate buffer space.
   switch(format) {
   

@@ -328,14 +328,8 @@ A frames x channels matrix containing the captured audio data.\n\
   if (r_num_periods != num_periods)
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
   
-  // If the number of wanted_channels < channels (which depends on hardwear)
-  // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
-  // copy data to the interleaved buffer. Another solution is just to print an error message and bail
-  // out. 
-  if (wanted_channels < channels) {
-    error("You must have (at least) %d input channels for the used hardware!\n", channels);
-    snd_pcm_close(handle);
-    return oct_retval;
+  if (wanted_channels != channels) {
+    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
   }
 
   // Allocate buffer space.
