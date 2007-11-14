@@ -152,8 +152,8 @@ A frames x channels matrix containing the captured audio data.\n\
   snd_pcm_format_t format;
   unsigned int fs;
   unsigned int channels, wanted_channels;
-  snd_pcm_uframes_t period_size;
-  unsigned int num_periods;
+  snd_pcm_uframes_t period_size, r_period_size;
+  unsigned int num_periods,r_num_periods;
   snd_pcm_uframes_t buffer_size;
   
   // SW parameters.
@@ -169,8 +169,8 @@ A frames x channels matrix containing the captured audio data.\n\
 
   // Check for proper input and output  arguments.
 
-  if ((nrhs < 1) || (nrhs > 4)) {
-    error("arecord requires 1 to 4 input arguments!");
+  if ((nrhs < 1) || (nrhs > 5)) {
+    error("arecord requires 1 to 5 input arguments!");
     return oct_retval;
   }
 
@@ -312,6 +312,8 @@ A frames x channels matrix containing the captured audio data.\n\
     num_periods = 2;
   }
 
+  r_period_size = period_size;
+  r_num_periods = num_periods;
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   wanted_channels = channels;
   if (set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
@@ -320,6 +322,12 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
+  if (r_period_size != period_size)
+    printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
+  
+  if (r_num_periods != num_periods)
+    printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
+  
   // If the number of wanted_channels < channels (which depends on hardwear)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
   // copy data to the interleaved buffer. Another solution is just to print an error message and bail
