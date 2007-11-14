@@ -655,6 +655,34 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
 
   printf("|----------------------------------|--------------------\n");
 
+  //
+  // Subformats
+  //
+  
+  snd_pcm_subformat_mask_t *mask;
+  // snd_pcm_subformat_t sub_val;
+  int sub_val;
+  //int err;
+  
+  if ((err = snd_pcm_subformat_mask_malloc(&mask)) < 0 ) { 
+    fprintf(stderr,"snd_pcm_subformat_mask_malloc: %s\n", snd_strerror(err));
+  }
+
+  printf("| supported subformats             |");
+  snd_pcm_hw_params_get_subformat_mask(hwparams_play, mask);
+  for (sub_val = 0; sub_val <= SND_PCM_SUBFORMAT_LAST; sub_val++)
+    if (snd_pcm_subformat_mask_test(mask, (snd_pcm_subformat_t) sub_val))
+      printf(" %s", snd_pcm_subformat_name( (snd_pcm_subformat_t) sub_val));
+  printf("\n");
+  snd_pcm_subformat_mask_free(mask);
+  
+  printf("|----------------------------------|--------------------\n");
+
+
+  //
+  // Clean up.
+  //  
+
   snd_pcm_close(handle_play);
   snd_pcm_close(handle_rec);
   
