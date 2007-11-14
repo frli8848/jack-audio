@@ -330,11 +330,6 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     // hw parameters.
     period_size = (int) hw_sw_par[0];
     num_periods = (int) hw_sw_par[1];
-    
-    // sw parameters.
-    avail_min = (int) hw_sw_par[2];
-    start_threshold = (int) hw_sw_par[3];
-    stop_threshold = (int) hw_sw_par[4];
   } 
 
 
@@ -368,10 +363,9 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   // Setup the hardwear parameters for the playback device.
   if (nrhs <= 4) {
     period_size = 512;
-    num_periods = 1;
-    //period_size = 16;
-    //num_periods = 2;
+    num_periods = 2;
   }
+
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   if (set_hwparams(handle_play,&format,&fs,&play_channels,&period_size,&num_periods,&play_buffer_size) < 0) {
     error("Unable to set audio playback hardware parameters. Bailing out!");
@@ -456,12 +450,10 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     }
   }
 
-  if (nrhs <= 4) {
-    avail_min = period_size; // The aplay app uses this setting. 
-    start_threshold = (play_buffer_size/avail_min) * avail_min;
-    stop_threshold = 16*period_size; // Not sure what to use here.
-  }
-
+  avail_min = period_size; // The aplay app uses this setting. 
+  start_threshold = (play_buffer_size/avail_min) * avail_min;
+  stop_threshold = 16*period_size; // Not sure what to use here.
+  
   if (set_swparams(handle_play,avail_min,start_threshold,stop_threshold) < 0) {
     error("Unable to set audio playback sofware parameters. Bailing out!");
     snd_pcm_close(handle_play);

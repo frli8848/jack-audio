@@ -235,8 +235,8 @@ The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', 
   
   if (nrhs > 3) {    
     
-    if (mxGetM(3)*mxGetN(3) != 5) {
-      error("4th arg must be a 5 element vector !");
+    if (mxGetM(3)*mxGetN(3) != 2) {
+      error("4th arg must be a 2 element vector !");
       return oct_retval;
     }
     
@@ -246,11 +246,6 @@ The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', 
     // hw parameters.
     period_size = (int) hw_sw_par[0];
     num_periods = (int) hw_sw_par[1];
-    
-    // sw parameters.
-    avail_min = (int) hw_sw_par[2];
-    start_threshold = (int) hw_sw_par[3];
-    stop_threshold = (int) hw_sw_par[4];
   } 
 
 
@@ -287,10 +282,9 @@ The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', 
 
   if (nrhs <= 3) {
     period_size = 512;
-    num_periods = 1;
-    //period_size = 16;
-    //num_periods = 2;
+    num_periods = 2;
   }
+
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   if (set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
     error("Unable to set hardware parameters. Bailing out!");
@@ -376,21 +370,10 @@ The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', 
     }
   }
   
-  if (nrhs <= 3) {
-    // swparams: (handle, min_avail, start_thres, stop_thres)
-    //avail_min = 512; // Play this many frames before interrupt.
-    //start_threshold = 0;
-    //stop_threshold = 1024;
-    //avail_min = period_size/4; 
-    //avail_min = 8; 
-    avail_min = period_size; // aplay uses this setting. 
-    //start_threshold = avail_min/4;
-    //start_threshold = 0;
-    start_threshold = (buffer_size/avail_min) * avail_min;
-    //start_threshold = avail_min;
-    stop_threshold = 16*period_size;
-  }
-
+  avail_min = period_size; // aplay uses this setting. 
+  start_threshold = (buffer_size/avail_min) * avail_min;
+  stop_threshold = 16*period_size; // No idea what to use here.
+  
   if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
     error("Unable to set sofware parameters. Bailing out!");
     snd_pcm_close(handle);

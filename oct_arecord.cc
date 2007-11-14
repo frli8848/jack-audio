@@ -261,8 +261,8 @@ A frames x channels matrix containing the captured audio data.\n\
   
   if (nrhs > 4) {    
     
-    if (mxGetM(4)*mxGetN(4) != 5) {
-      error("5th arg must be a 5 element vector !");
+    if (mxGetM(4)*mxGetN(4) != 2) {
+      error("5th arg must be a 2 element vector !");
       return oct_retval;
     }
     
@@ -272,11 +272,6 @@ A frames x channels matrix containing the captured audio data.\n\
     // hw parameters.
     period_size = (int) hw_sw_par[0];
     num_periods = (int) hw_sw_par[1];
-    
-    // sw parameters.
-    avail_min = (int) hw_sw_par[2];
-    start_threshold = (int) hw_sw_par[3];
-    stop_threshold = (int) hw_sw_par[4];
   } 
 
 
@@ -310,10 +305,9 @@ A frames x channels matrix containing the captured audio data.\n\
   // Setup the hardwear parameters for the playback device.
   if (nrhs <= 4) {
     period_size = 512;
-    num_periods = 1;
-    //period_size = 16;
-    //num_periods = 2;
+    num_periods = 2;
   }
+
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
   wanted_channels = channels;
   if (set_hwparams(handle,&format,&fs,&channels,&period_size,&num_periods,&buffer_size) < 0) {
@@ -351,21 +345,9 @@ A frames x channels matrix containing the captured audio data.\n\
     sbuffer = (short*) malloc(frames*channels*sizeof(short));
   }
 
-  if (nrhs <= 4) {
-    // swparams: (handle, min_avail, start_thres, stop_thres)
-    //avail_min = 512; // Play this many frames before interrupt.
-    //start_threshold = 0;
-    //stop_threshold = 1024;
-    //avail_min = period_size/4; 
-    //avail_min = 8; 
-    avail_min = period_size; // aplay uses this setting. 
-    //start_threshold = avail_min/4;
-    //start_threshold = 0;
-    start_threshold = (buffer_size/avail_min) * avail_min;
-
-    //start_threshold = avail_min;
-    stop_threshold = 16*period_size;
-  }
+  avail_min = period_size; // aplay uses this setting. 
+  start_threshold = (buffer_size/avail_min) * avail_min;
+  stop_threshold = 16*period_size; // No idea what to set here.
 
   if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
     error("Unable to set sofware parameters. Bailing out!");
