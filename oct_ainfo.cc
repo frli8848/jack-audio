@@ -351,7 +351,7 @@ The ALSA device name, i.e., 'hw:0,0', 'plughw:0,0', or 'default' (defaults to 'd
   else
     printf("| Max number of channels          | %d",val);
   
-  if ((err=snd_pcm_hw_params_get_channels_max(hwparams_play,&val)) < 0)
+  if ((err=snd_pcm_hw_params_get_channels_max(hwparams_rec,&val)) < 0)
     fprintf(stderr,"Unable to get max number of capture channels: %s\n", snd_strerror(err));
   else
     printf(" / %d\n",val);
