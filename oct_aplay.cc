@@ -98,7 +98,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (aplay, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  aplay(A,fs,dev_name).\n\
+@deftypefn {Loadable Function} {} aplay(A,fs,dev_name,hw_pars).\n\
 \n\
 APLAY Plays audio data from the input matrix A, on the PCM device given by dev_name,\n\
 using the Advanced Linux Sound Architecture (ALSA) audio library API.\n\
@@ -115,6 +115,10 @@ The sampling frequency in Hz (default is 44100 [Hz]).\n\
 @item dev_name\n\
 The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', etc.\n\
 (defaults to 'default').\n\
+\n\
+@item hw_pars\n\
+hw_pars = [period_size num_periods]. Note these parameters may be changed to allowed \n\
+values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
 @end table\n\
 \n\
 @copyright{ 2007 Fredrik Lingvall}.\n\

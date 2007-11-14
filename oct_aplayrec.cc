@@ -135,7 +135,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (aplayrec, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  [Y] = aplayrec(A,rec_channels,fs,dev_name).\n\
+@deftypefn {Loadable Function} {}  [Y] = aplayrec(A,rec_channels,fs,dev_name,hw_pars).\n\
 \n\
 APLAYREC Plays audio data from the input matrix A, on the PCM device given by dev_name, and \n\
 records audio data to the output matrix Y using the Advanced Linux Sound Architecture (ALSA)\n\
@@ -156,6 +156,10 @@ The sampling frequency in Hz (default is 44100 [Hz]).\n\
 @item dev_name\n\
 The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', etc.\n\
 (defaults to 'default').\n\
+\n\
+@item hw_pars\n\
+hw_pars = [period_size num_periods]. Note these parameters may be changed to allowed \n\
+values for the particular PCM device. Defaults to hw_pars = [512 2].\n\
 @end table\n\
 \n\
 Output parameters:\n\
