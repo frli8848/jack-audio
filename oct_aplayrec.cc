@@ -203,8 +203,8 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   snd_pcm_format_t format;
   unsigned int fs;
   unsigned int play_channels, rec_channels, wanted_play_channels, wanted_rec_channels;
-  snd_pcm_uframes_t period_size;
-  unsigned int num_periods;
+  snd_pcm_uframes_t period_size, r_period_size;
+  unsigned int num_periods,r_num_periods;
   snd_pcm_uframes_t play_buffer_size;
   snd_pcm_uframes_t rec_buffer_size;
   // SW parameters.
@@ -222,8 +222,8 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   // Check for proper number input and output arguments.
   //
 
-  if ((nrhs < 1) || (nrhs > 4)) {
-    error("aplayrec requires 1 to 4 input arguments!");
+  if ((nrhs < 1) || (nrhs > 5)) {
+    error("aplayrec requires 1 to 5 input arguments!");
     return oct_retval;
   }
 
@@ -239,7 +239,6 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   const Matrix tmp0 = args(0).matrix_value();
   frames = tmp0.rows();		// Audio data length for each channel.
   play_channels = tmp0.cols();	// Number of channels.
-  wanted_play_channels = play_channels;
 
   A = (double*) tmp0.fortran_vec();
     
@@ -321,15 +320,15 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   // HW/SW parameters
   //
   
-  if (nrhs > 5) {    
+  if (nrhs > 4) {    
     
-    if (mxGetM(5)*mxGetN(5) != 5) {
-      error("5th arg must be a 5 element vector !");
+    if (mxGetM(4)*mxGetN(4) != 2) {
+      error("5th arg must be a 2 element vector !");
       return oct_retval;
     }
     
-    const Matrix tmp5 = args(5).matrix_value();
-    hw_sw_par = (double*) tmp5.fortran_vec();
+    const Matrix tmp4 = args(4).matrix_value();
+    hw_sw_par = (double*) tmp4.fortran_vec();
     
     // hw parameters.
     period_size = (int) hw_sw_par[0];
@@ -370,13 +369,23 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     num_periods = 2;
   }
 
+  r_period_size = period_size;
+  r_num_periods = num_periods;
   format = SND_PCM_FORMAT_FLOAT; // Try to use floating point format.
+  wanted_play_channels = play_channels;
   if (set_hwparams(handle_play,&format,&fs,&play_channels,&period_size,&num_periods,&play_buffer_size) < 0) {
     error("Unable to set audio playback hardware parameters. Bailing out!");
     snd_pcm_close(handle_play);
     return oct_retval;
   }
+
+  if (r_period_size != period_size)
+    printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
   
+  if (r_num_periods != num_periods)
+    printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
+
+
   // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
   // copy data to the interleaved buffer. Another solution is just to print an error message and bail
