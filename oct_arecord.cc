@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2007 Fredrik Lingvall
+ * Copyright (C) 2007,2008 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -124,7 +124,7 @@ Output parameters:\n\
 A frames x channels matrix containing the captured audio data.\n\
 @end table\n\
 \n\
-@copyright{ 2007 Fredrik Lingvall}.\n\
+@copyright{} 2008 Fredrik Lingvall.\n\
 @seealso {aplay, aplayrec, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
@@ -145,9 +145,7 @@ A frames x channels matrix containing the captured audio data.\n\
   //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
   //char *device = "default";
-
   double *hw_sw_par;
-
   // HW parameters
   snd_pcm_format_t format;
   unsigned int fs;
@@ -155,7 +153,6 @@ A frames x channels matrix containing the captured audio data.\n\
   snd_pcm_uframes_t period_size, r_period_size;
   unsigned int num_periods,r_num_periods;
   snd_pcm_uframes_t buffer_size;
-  
   // SW parameters.
   snd_pcm_uframes_t avail_min;
   snd_pcm_uframes_t start_threshold;
@@ -277,9 +274,6 @@ A frames x channels matrix containing the captured audio data.\n\
     period_size = (int) hw_sw_par[0];
     num_periods = (int) hw_sw_par[1];
   } 
-
-
-  //******************************************************************************************
 
   //
   // Register signal handlers.

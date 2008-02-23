@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2007 Fredrik Lingvall
+ * Copyright (C) 2007,2008 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -121,7 +121,7 @@ hw_pars = [period_size num_periods]. Note these parameters may be changed to all
 values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
 @end table\n\
 \n\
-@copyright{ 2007 Fredrik Lingvall}.\n\
+@copyright{} 2008 Fredrik Lingvall.\n\
 @seealso {arecord, aplayrec, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
@@ -251,9 +251,6 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     num_periods = (int) hw_sw_par[1];
   } 
 
-
-//******************************************************************************************
-
   //
   // Register signal handlers.
   //
@@ -307,17 +304,19 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
 
   // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
-  // copy data to the interleaved buffer. Another solution is just to print an error message and bail
-  // out. 
+  // copy data to the interleaved buffer. Another solution is just to print an error message 
+  // and bail out. 
+
   if (wanted_channels < channels) {
     error("You must have (at least) %d input channels for the used hardware!\n", channels);
     snd_pcm_close(handle);
     return oct_retval;
   }
 
-  // Its safe to use more input channels the the hardware supports. That is, since Octave stores data 
-  // column vise only the first input channels (columns in A) will be played on the hardware and hence
-  // unallocated memory will never be accessed. Print a note that some channels are ignored.
+  // Its safe to use more input channels the the hardware supports. That is, since Octave stores 
+  // data column vise only the first input channels (columns in A) will be played on the hardware 
+  // and hence  unallocated memory will never be accessed. Print a note that some channels are 
+  // ignored.
 
   if (wanted_channels > channels) {
     printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
@@ -392,7 +391,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     }
   }
   
-  avail_min = period_size; // aplay uses this setting. 
+  avail_min = period_size; // The aplay app uses this setting. 
   start_threshold = (buffer_size/avail_min) * avail_min;
   stop_threshold = 16*period_size; // No idea what to use here.
   
@@ -425,7 +424,6 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     fprintf(stderr, "play_state:%d\n", snd_pcm_state(handle));
     snd_pcm_dump_setup(handle, snderr);
   }
-  
 
   // Set status to running (CTRL-C will clear the flag and stop playback).
   set_running_flag(); 
@@ -451,7 +449,6 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   default:
     write_and_poll_loop(handle,play_areas,format,sbuffer,frames,framesize,channels);
   }
-
 
   //
   // Restore old signal handlers.

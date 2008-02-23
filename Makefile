@@ -34,7 +34,6 @@ all: \
 .cc.o:
 	$(CXX) -c $<
 
-
 aplay.oct : oct_aplay.o aaudio.o
 	$(DLDCC) $(LIBDIRS) $^ -o $@ 
 
@@ -47,9 +46,8 @@ aplayrec.oct : oct_aplayrec.o aaudio.o
 ainfo.oct : oct_ainfo.o aaudio.o
 	$(DLDCC) $(LIBDIRS) $^ -o $@
 
-
 clean:
-	rm -f *.o *~ *.obj *.rsp
+	rm -f *.o *~ 
 
 distclean:
-	rm -f *.o *~ *.obj *.rsp *.oct
+	rm -f *.o *~ *.oct

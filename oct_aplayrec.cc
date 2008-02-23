@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2007 Fredrik Lingvall
+ * Copyright (C) 2007,2008 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -315,7 +315,6 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   } else
       strcpy(device,"default"); 
 
-
   //
   // HW/SW parameters
   //
@@ -334,9 +333,6 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     period_size = (int) hw_sw_par[0];
     num_periods = (int) hw_sw_par[1];
   } 
-
-
-  //******************************************************************************************
 
   //
   // Register signal handlers.
@@ -388,17 +384,19 @@ A frames x rec_channels matrix containing the captured audio data.\n\
 
   // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
-  // copy data to the interleaved buffer. Another solution is just to print an error message and bail
-  // out. 
+  // copy data to the interleaved buffer. Another solution is just to print an error message and 
+  // bail out. 
+
   if (wanted_play_channels < play_channels) {
     error("You must have (at least) %d output channels for the used hardware!\n", play_channels);
     snd_pcm_close(handle_play);
     return oct_retval;
   }
 
-  // Its safe to use more input channels the the hardware supports. That is, since Octave stores data 
-  // column vise only the first input channels (columns in A) will be played on the hardware and hence
-  // unallocated memory will never be accessed. Print a note that some channels are ignored.
+  // Its safe to use more input channels the the hardware supports. That is, since Octave 
+  // stores data column vise only the first input channels (columns in A) will be played on
+  // the hardware and hence unallocated memory will never be accessed. Print a note that 
+  // some channels are ignored.
 
   if (wanted_play_channels > play_channels) {
     printf("Note: Requested number of playback channels %d adjusted to %d.\n",wanted_play_channels,play_channels);

@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2007 Fredrik Lingvall
+ * Copyright (C) 2007,2008 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -118,7 +118,7 @@ The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', 
 If no device is given then AINFO lists all PCM devices.\n\
 @end table\n\
 \n\
-@copyright{ 2007 Fredrik Lingvall}.\n\
+@copyright{} 2000 Fredrik Lingvall.\n\
 @seealso {aplay, arecord, aplayrec, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
@@ -138,7 +138,6 @@ If no device is given then AINFO lists all PCM devices.\n\
   //char *device = "hw:1,0";
   //char *device = "default";
   double *hw_sw_par;
-
   // HW parameters
   snd_pcm_format_t format;
   unsigned int fs;
@@ -146,12 +145,10 @@ If no device is given then AINFO lists all PCM devices.\n\
   snd_pcm_uframes_t period_size;
   unsigned int num_periods;
   snd_pcm_uframes_t buffer_size;
-
   // SW parameters.
   snd_pcm_uframes_t avail_min;
   snd_pcm_uframes_t start_threshold;
   snd_pcm_uframes_t stop_threshold;
-
 
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -189,9 +186,6 @@ If no device is given then AINFO lists all PCM devices.\n\
     
   } else
     strcpy(device,"default"); 
-  
-  
-  //******************************************************************************************
   
   //
   // List all devices if no input arg is given.
@@ -548,6 +542,7 @@ If no device is given then AINFO lists all PCM devices.\n\
  //
  // Max/min periods.
  //
+
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_periods_max(hwparams_play,&val,&dir)) < 0)
@@ -663,7 +658,6 @@ If no device is given then AINFO lists all PCM devices.\n\
   snd_pcm_subformat_mask_free(mask);
   
   printf("|----------------------------------|--------------------\n");
-
 
   //
   // Clean up.
