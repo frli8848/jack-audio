@@ -169,7 +169,7 @@ Output parameters:\n\
 A frames x rec_channels matrix containing the captured audio data.\n\
 @end table\n\
 \n\
-@copyright{ 2007 Fredrik Lingvall}.\n\
+@copyright{ 2008 Fredrik Lingvall}.\n\
 @seealso {aplay, arecord, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {

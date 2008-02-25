@@ -118,7 +118,7 @@ The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', 
 If no device is given then AINFO lists all PCM devices.\n\
 @end table\n\
 \n\
-@copyright{} 2000 Fredrik Lingvall.\n\
+@copyright{} 2008 Fredrik Lingvall.\n\
 @seealso {aplay, arecord, aplayrec, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
