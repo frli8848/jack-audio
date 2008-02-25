@@ -2,6 +2,8 @@
 
 VERSION=0.1.0
 
+echo "Note add version number $VERSION to the DESCRIPTION file."
+
 rm -fR aaudio-$VERSION
 mkdir -p aaudio-$VERSION
 mkdir -p aaudio-$VERSION/inst
