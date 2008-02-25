@@ -1,6 +1,7 @@
 /***
  *
- *  Copyright (c) by Fredrik Lingvall
+ *  Copyright (C) 2008 by Fredrik Lingvall
+ *
  *  Parts of this code is based on the aplay program by Jaroslav Kysela and
  *  the pcm.c example from the alsa-lib.
  *
@@ -78,9 +79,6 @@ volatile int interleaved;
 
 int wait_for_poll_out(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
 int wait_for_poll_in(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
-
-
-//*********************************************************************************************
 
 
 /***
@@ -204,7 +202,7 @@ int set_hwparams(snd_pcm_t *handle,
   // Set the sampling frequency.
   //
 
- // First get max and min values supporded by the device.
+  // First get max and min values supporded by the device.
   direction = 0;
   tmp_fs = *fs;
   if ((err=snd_pcm_hw_params_get_rate_max(hwparams,&max1,&direction)) < 0)
@@ -249,8 +247,6 @@ int set_hwparams(snd_pcm_t *handle,
   
   val = *channels;
   if (*channels > max1 || *channels < min1) {
-    //printf("Warning: The number of channels (%d) is outside the min (%d) and max (%d) supported by the device.\n",
-    //	   *channels,min1,max1);
     
     if (*channels > max1)
       *channels = max1;
@@ -258,7 +254,6 @@ int set_hwparams(snd_pcm_t *handle,
     if (*channels < min1)
       *channels = min1;
 
-    //printf("Warning: Trying to use %d channels.\n",*channels);
   }
   
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
@@ -296,6 +291,7 @@ int set_hwparams(snd_pcm_t *handle,
   // Set approximate number of periods in the buffer (Periods/Buffer). The chosen approximate number of
   // periods per buffer is returned.
   //
+
   direction = 0;
   if((err = snd_pcm_hw_params_set_periods_near(handle, hwparams,num_periods, &direction)) < 0){
     fprintf(stderr, "Unable to set the number of periods: %s\n",snd_strerror(err));
@@ -313,10 +309,6 @@ int set_hwparams(snd_pcm_t *handle,
     fprintf(stderr,"Unable to get the buffer size: %s\n",snd_strerror(err));
     return err;
   }
-  
-  //printf("chunk_size = %d buffer_size = %d\n",chunk_size,*buffer_size);
-
-  //  check_hw(handle,hwparams);
   
   return 0;
 }
@@ -363,6 +355,7 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   //
   // Max/min number of channels.
   //
+
   if ((err=snd_pcm_hw_params_get_channels_max(hwparams,&val)) < 0)
     fprintf(stderr,"Unable to get max number of channels: %s\n", snd_strerror(err));
   else
@@ -376,6 +369,7 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   //
   // Max/min buffer size.
   //
+
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams,&val2)) < 0)
     fprintf(stderr,"Unable get max buffer size: %s\n", snd_strerror(err));
@@ -391,6 +385,7 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   //
   // Max/min buffer size.
   //
+
   dir = 0;
   val = 0;
   if ((err=snd_pcm_hw_params_get_buffer_time_max(hwparams,&val,&dir)) < 0)
@@ -421,6 +416,7 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  //
  // Max/min period size.
  //
+
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&val2,&dir)) < 0)
@@ -439,6 +435,7 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  //
  // Max/min period time.
  //
+
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_time_max(hwparams,&val,&dir)) < 0)
@@ -456,6 +453,7 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  //
  // Max/min periods.
  //
+
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_periods_max(hwparams,&val,&dir)) < 0)
@@ -474,6 +472,7 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  //
  // Max/min rate.
  //
+
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_rate_max(hwparams,&val,&dir)) < 0)
@@ -488,9 +487,10 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  else
    printf("Min rate = %d [Hz]\n",val);
 
-//
+ //
  // Max/min tick time.
  //
+ 
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_tick_time_max(hwparams,&val,&dir)) < 0)
@@ -573,8 +573,6 @@ int set_swparams(snd_pcm_t *handle,
   return 0;
 }
 
-//*********************************************************************************************
-
 /***
  *
  *   Underrun and suspend recovery.
@@ -603,10 +601,6 @@ int xrun_recovery(snd_pcm_t *handle, int err)
   
   return err;
 }
-
-
-//*********************************************************************************************
-
 
 /***
  *
