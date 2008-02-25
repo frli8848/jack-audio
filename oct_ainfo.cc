@@ -239,7 +239,6 @@ If no device is given then AINFO lists all PCM devices.\n\
   printf("|----------------------------------|--------------------\n");
   printf("|         Parameter                | Playback / Capture \n");
   printf("|----------------------------------|--------------------\n");
-  
 
   //
   // Test Access Types.
@@ -301,9 +300,10 @@ If no device is given then AINFO lists all PCM devices.\n\
     printf(" / No\n");
 
   //
-  // Test Double buffering.
+  // Test Double buffering - this is never used [1].
   //
 
+  /*
   if (snd_pcm_hw_params_is_batch(hwparams_play))
     printf("| Double buffering data transfers  | Yes");
   else
@@ -313,11 +313,13 @@ If no device is given then AINFO lists all PCM devices.\n\
     printf(" / Yes \n");
   else
     printf(" / No  \n");
+  */
 
   //
-  // Test Block transfers.
+  // Test Block transfers - this is never used [1].
   //
 
+  /*
   if (snd_pcm_hw_params_is_block_transfer(hwparams_play))
     printf("| Block transfers of samples       | Yes");
   else
@@ -327,6 +329,7 @@ If no device is given then AINFO lists all PCM devices.\n\
     printf(" / Yes\n");
   else
     printf(" / No \n");
+  */
 
   //
   // Half-duplex.
@@ -442,9 +445,10 @@ If no device is given then AINFO lists all PCM devices.\n\
     printf(" / %d [us]\n",val);
 
   //
-  // Hardware FIFO size (not supported by ALSA yet?).
+  // Hardware FIFO size - this is never used [1].
   //
 
+  /*
   if ((val = snd_pcm_hw_params_get_fifo_size(hwparams_play)) < 0)
     fprintf(stderr,"Unable to get hardware FIFO size: %s\n", snd_strerror(val));
   else
@@ -454,11 +458,13 @@ If no device is given then AINFO lists all PCM devices.\n\
     fprintf(stderr,"Unable to get hardware FIFO size: %s\n", snd_strerror(val));
   else
     printf(" / %d\n",val);
+  */
 
   //
-  // Minimum transfer align value.
+  // Minimum transfer align value - this is never used [1].
   //
 
+  /*
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_min_align(hwparams_play,&val2)) < 0) {
     //fprintf(stderr,"Unable to get min align value: %s\n", snd_strerror(err));
@@ -472,7 +478,7 @@ If no device is given then AINFO lists all PCM devices.\n\
     printf(" / na\n",val2);
   } else
    printf(" / %u\n",val2);
-
+  */
 
  //
  // Max/min period size.
@@ -605,9 +611,10 @@ If no device is given then AINFO lists all PCM devices.\n\
    printf(" / %d [Hz]\n",val);
 
  //
- // Max/min tick time.
+ // Max/min tick time  - this is never used [1].
  //
 
+ /*
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_tick_time_max(hwparams_play,&val,&dir)) < 0)
@@ -635,13 +642,15 @@ If no device is given then AINFO lists all PCM devices.\n\
    fprintf(stderr,"Can't get min tick time: %s\n", snd_strerror(err));
  else
    printf(" / %d [us]\n",val);
-
+ */
+ 
   printf("|----------------------------------|--------------------\n");
 
   //
-  // Subformats
+  // Subformats - this is never used [1].
   //
-  
+
+  /*
   snd_pcm_subformat_mask_t *mask;
   int sub_val;
   
@@ -658,6 +667,7 @@ If no device is given then AINFO lists all PCM devices.\n\
   snd_pcm_subformat_mask_free(mask);
   
   printf("|----------------------------------|--------------------\n");
+  */
 
   //
   // Clean up.
@@ -668,3 +678,9 @@ If no device is given then AINFO lists all PCM devices.\n\
   
   return oct_retval;
 }
+
+// References:
+//
+// [1] http://mailman.alsa-project.org/pipermail/alsa-devel/2007-November/004425.html
+//
+//

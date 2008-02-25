@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+#
+#
+#
+#
+# Copyright (C) 2008 Fredrik Lingvall.
 
 VERSION=0.1.0
 
