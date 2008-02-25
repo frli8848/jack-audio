@@ -34,4 +34,6 @@ cp oct_ainfo.cc aaudio-$VERSION/src/
 #
 
 cp COPYING aaudio-$VERSION/
-cp DESCRIPTION aaudio-$VERSION/
+cp DESCRIPTION aaudio-$VERSION/ 
+
+tar cvzf aaudio-$VERSION.tar.gz aaudio-$VERSION/ 
