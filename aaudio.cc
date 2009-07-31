@@ -1149,7 +1149,9 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 int get_ring_buffer_data(void* buffer, snd_pcm_sframes_t n_frames, snd_pcm_sframes_t frames)
 {
 
-
+  // If the buffer is large then it will take time to copy data which will be
+  // a problem since the ring buffer is continously updating. Should one use two 
+  // ring buffers and switch to the other one while copying data?
 
   return 0;
 }
