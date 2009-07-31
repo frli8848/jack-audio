@@ -80,7 +80,6 @@ volatile int interleaved;
 int wait_for_poll_out(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
 int wait_for_poll_in(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count);
 
-
 /***
  *
  * Functions for CTRL-C support.
@@ -828,6 +827,10 @@ int read_and_poll_loop(snd_pcm_t *handle,
     return err;
   }
 
+  //
+  // Main read loop.
+  //
+
   frames_recorded = 0;
   init = 1;
   while((frames - frames_recorded) > 0 && running) { // Loop until all frames are recorded.
@@ -943,6 +946,214 @@ int read_and_poll_loop(snd_pcm_t *handle,
   
   return 0;
 }
+
+/***
+ *
+ * read_and_poll_loop_ringbuffer
+ *
+ * Function that continously read the audio stream and 
+ * saves that data in a ring buffer.
+ *
+ *
+ ***/
+
+// Flag used to stop the data aquisition for 
+// the  read_and_poll_loop_ringbuffer function.
+int ringbuffer_read_running = TRUE;
+
+// The current position in the ring buffer.
+int ringbuffer_position = 0;
+
+// Function to exit the read loop in
+// read_and_poll_loop_ringbuffer.
+int stop_read_and_poll_loop_ringbuffer(void)
+{
+  ringbuffer_read_running = FALSE;
+  
+  return ringbuffer_read_running;
+}
+
+int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
+				  const snd_pcm_channel_area_t *record_areas,
+				  snd_pcm_format_t format, 
+				  void *ringbuffer,
+				  snd_pcm_sframes_t frames,
+				  snd_pcm_sframes_t framesize,
+				  unsigned int channels)
+{
+  struct pollfd *ufds;
+  int err, count, init;
+  snd_pcm_uframes_t frames_to_read;
+  snd_pcm_sframes_t contiguous; 
+  snd_pcm_uframes_t nwritten;
+  snd_pcm_uframes_t offset;
+  snd_pcm_sframes_t frames_recorded;
+  snd_pcm_sframes_t commit_res;
+  int first = 0;
+  unsigned int n;
+
+  ringbuffer_position = 0;
+
+  count = snd_pcm_poll_descriptors_count(handle);
+  if (count <= 0) {
+    printf("Invalid poll descriptors count\n");
+    return count;
+  }
+
+  ufds = (struct pollfd*) malloc(sizeof(struct pollfd) * count);
+  if (ufds == NULL) {
+    printf("No enough memory\n");
+    return -ENOMEM;
+  }
+
+  if ((err = snd_pcm_poll_descriptors(handle, ufds, count)) < 0) {
+    printf("Unable to obtain poll descriptors for capture: %s\n", snd_strerror(err));
+    return err;
+  }
+
+  //
+  // Main read loop.
+  //
+
+  frames_recorded = 0;
+  init = 1;
+  while(running &&  ringbuffer_read_running) { // Loop until reading flag is cleared (or CTRL-C).
+    
+    if (!init) {
+
+      err = wait_for_poll_in(handle, ufds, count);
+      if (err < 0) {
+	if (snd_pcm_state(handle) == SND_PCM_STATE_XRUN || 
+	    snd_pcm_state(handle) == SND_PCM_STATE_SUSPENDED) {
+	  err = snd_pcm_state(handle) == SND_PCM_STATE_XRUN ? -EPIPE : -ESTRPIPE;
+	  if (xrun_recovery(handle, err) < 0) {
+	    printf("Read error: %s\n",snd_strerror(err));
+	    return EXIT_FAILURE;
+	  }
+	  init = 1;
+	} else {
+	  printf("Wait for poll failed\n");
+	  return err;
+	}
+      }
+    }
+
+    // Get the number of available frames.
+    frames_to_read = snd_pcm_avail_update(handle); 
+    if (frames_to_read < 0) {
+      err = xrun_recovery(handle, frames_to_read);
+      if (err < 0) {
+	printf("avail update failed: %s\n", snd_strerror(err));
+	//return EXIT_FAILURE;
+      }
+    }
+
+    if (frames_to_read >  (frames - frames_recorded) )
+      frames_to_read = frames - frames_recorded; 
+    
+    nwritten = 0;
+    while(frames_to_read > 0){
+      
+      contiguous = frames_to_read; 
+      
+      if ((err = snd_pcm_mmap_begin(handle,&record_areas,&offset,&frames_to_read)) < 0) {
+	if ((err = xrun_recovery(handle, err)) < 0) {
+	  printf("MMAP begin avail error: %s\n", snd_strerror(err));
+	  //return EXIT_FAILURE;
+	}
+      }
+      
+      // Test if the number of available frames exceeds the remaining
+      // number of frames to read.
+      if (contiguous > frames_to_read)
+      	contiguous = frames_to_read;
+      
+      if (interleaved) {
+	
+	memcpy( (((unsigned char*) ringbuffer) + frames_recorded * framesize),
+		(((unsigned char*) record_areas->addr) + offset * framesize),
+		(contiguous * framesize));
+	
+      } else { // Non-interleaved
+	
+	// A separate ring buffer for each channel.
+	for (n=0; n<channels; n++) {
+	  memcpy( (((unsigned char*) ringbuffer) 
+		   + frames_recorded * framesize/channels 
+		   + n*frames*(framesize/channels)),
+		  (((unsigned char*) record_areas[n].addr) + offset * framesize/channels),
+		  (contiguous * framesize/channels));
+	}
+      }
+      
+      commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
+      if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
+	if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
+	  printf("MMAP commit error: %s\n", snd_strerror(err));
+	  return EXIT_FAILURE;
+	}
+      }
+      
+      if (contiguous >= 0) {
+	frames_to_read -= contiguous;
+	nwritten += contiguous;
+	//frames_recorded += contiguous;
+      } else
+	printf("Warning: Zero or negative byte count\n"); // This should never happend. 
+
+      // The current position of the ring buffer.
+      ringbuffer_position += (frames_recorded + contiguous) * framesize;
+    
+    } // while (frames_to_read > 0)
+    frames_recorded += nwritten;
+    
+    if (snd_pcm_state(handle) < 3) {
+      snd_pcm_start(handle);
+    }
+    
+    // It is possible, that the initial buffer cannot store
+    // all data from the last period, so wait awhile.
+    err = wait_for_poll_in(handle, ufds, count);
+    if (err < 0) {
+      if (snd_pcm_state(handle) == SND_PCM_STATE_XRUN ||
+	  snd_pcm_state(handle) == SND_PCM_STATE_SUSPENDED) {
+	err = snd_pcm_state(handle) == SND_PCM_STATE_XRUN ? -EPIPE : -ESTRPIPE;
+	if (xrun_recovery(handle, err) < 0) {
+	  printf("Read error: %s\n", snd_strerror(err));
+	  //return EXIT_FAILURE;
+	}
+	init = 1;
+      } else {
+	printf("Wait for poll failed\n");
+	return err;
+      }
+    }
+
+    // If we have reached the end of the ring buffer then 
+    // start from the beginning again.
+    if ( (frames - frames_recorded) == 0) {
+      frames_recorded = 0;
+      ringbuffer_position = 0;
+    }
+    
+  } // while(running && ringbuffer_read_running) 
+  
+  free(ufds);
+  
+  return 0;
+}
+
+// buffer   : output audio data. 
+// n_frames : size of the audio data to get from the ring buffer.
+// frames   : size of the ring buffer.
+int get_ring_buffer_data(void* buffer, snd_pcm_sframes_t n_frames, snd_pcm_sframes_t frames)
+{
+
+
+
+  return 0;
+}
+
 
 /***
  *
