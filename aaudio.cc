@@ -172,8 +172,8 @@ int set_hwparams(snd_pcm_t *handle,
     }
   }
   
-  // Test if the audio hardwear supports the chosen audio sample format otherwise try S32,
-  // or fallback to S16.
+  // Test if the audio hardwear supports the chosen audio sample format, otherwise, first try S32
+  // and, if that fails too, fallback to S16.
   if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
 
     if (verbose)
@@ -271,18 +271,24 @@ int set_hwparams(snd_pcm_t *handle,
   // First get max and min values supporded by the device.
   direction = 0;
   max2 = 0;
-  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&max2,&direction)) < 0)
-    fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
-  
+  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&max2,&direction)) < 0) {
+    if (verbose)
+      fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
+  }
+
   direction = 0;
   min2 = 0;
-  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams,&min2,&direction)) < 0)
-    fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
+  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams,&min2,&direction)) < 0) {
+    if (verbose)
+      fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
+  }
 
-  if (*period_size > max2 || *period_size < min2)  
-    printf("Warning: The period size (%d) is outside the min (%d) and max (%d) supported by the device.\n",
-	   *period_size,min2,max2);
-  
+  if (*period_size > max2 || *period_size < min2) {
+    if (verbose)
+      printf("Warning: The period size (%d) is outside the min (%d) and max (%d) supported by the device.\n",
+	     *period_size,min2,max2);
+  }
+
   direction = 0;
   if((err = snd_pcm_hw_params_set_period_size_near(handle, hwparams,period_size, &direction)) < 0){
     fprintf(stderr, "Unable to set the period size: %s\n",snd_strerror(err));
