@@ -66,6 +66,9 @@ using namespace std;
 #endif
 #define MIN(a, b) (a) < (b) ? (a) : (b)
 
+#define TRUE  1
+#define FALSE 0
+
 //
 // Globals.
 //
@@ -489,20 +492,23 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  //
  // Max/min tick time.
  //
+
+
+ // These are deprecated (in pcm.h now).
  
- dir = 0;
- val2 = 0;
- if ((err=snd_pcm_hw_params_get_tick_time_max(hwparams,&val,&dir)) < 0)
-   fprintf(stderr,"Can't get max tick time: %s\n", snd_strerror(err));
- else
-   printf("Max tick time = %d [us]\n",val);
+ //dir = 0;
+ //val2 = 0;
+ //if ((err=snd_pcm_hw_params_get_tick_time_max(hwparams,&val,&dir)) < 0)
+ //  fprintf(stderr,"Can't get max tick time: %s\n", snd_strerror(err));
+ //else
+ //  printf("Max tick time = %d [us]\n",val);
  
- dir = 0;
- val2 = 0;
- if ((err=snd_pcm_hw_params_get_tick_time_min(hwparams,&val,&dir)) < 0)
-   fprintf(stderr,"Can't get min tick time: %s\n", snd_strerror(err));
- else
-   printf("Min tick time = %d [us]\n",val);
+ //dir = 0;
+ //val2 = 0;
+ //if ((err=snd_pcm_hw_params_get_tick_time_min(hwparams,&val,&dir)) < 0)
+ //  fprintf(stderr,"Can't get min tick time: %s\n", snd_strerror(err));
+ //else
+ //  printf("Min tick time = %d [us]\n",val);
  
  
  return;
@@ -556,13 +562,15 @@ int set_swparams(snd_pcm_t *handle,
     fprintf(stderr, "Cannot set stop mode (threshold) : %s\n",snd_strerror(err));
     return err;
   }
-  
+
+  // This one is deprecated (in pcm.h now).
+  //
   // Align all transfers to 1 sample.
-  err = snd_pcm_sw_params_set_xfer_align(handle, swparams, 1);
-  if (err < 0) {
-    fprintf(stderr,"Unable to set transfer align for playback: %s\n", snd_strerror(err));
-    return err;
-  }
+  //err = snd_pcm_sw_params_set_xfer_align(handle, swparams, 1);
+  //if (err < 0) {
+  //  fprintf(stderr,"Unable to set transfer align for playback: %s\n", snd_strerror(err));
+  //  return err;
+  //}
   
   if((err = snd_pcm_sw_params(handle, swparams)) < 0){
     fprintf(stderr, "Cannot set the software parameters: %s\n",snd_strerror(err));
