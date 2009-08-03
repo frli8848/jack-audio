@@ -1006,7 +1006,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_recorded;
   snd_pcm_sframes_t commit_res;
   int first = 0;
-  size_t n, trigger_position;
+  size_t n, n2, trigger_position;
   double *triggerbuffer = NULL, trigger = 0;
   int trigger_active = FALSE;
   float *fbuffer = NULL;
@@ -1129,63 +1129,104 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 
       if (!trigger_active) {
 
-	if (trigger_position + contiguous < trigger_frames)  { // The trigger (ring) buffer is not full.
+	// Currently we use the first channel only. TODO: Add a parameter to chose which channel to 
+	// use for triggering.
+	
+	// 1) "Forget" the old data which is now shifted out of the trigger buffer.
+	// We have got 'contiguous' new frames so forget the 'contiguous' oldest ones. 
+	
+	for (n=0; n<contiguous; n++) {
 
-	  // Currently we use the first channel only. TODO: Add a parameter to chose which channel to 
-	  // use for triggering.
+	  // Check if we reached the end of the trigger ring buffer.
+	  if (trigger_position+n < trigger_frames)
+	    n2 = trigger_position + n;
+	  else
+	    n2 = trigger_position + n - trigger_frames;
 	  
-	  // 1) "Forget" the old data which is now shifted out of the trigger buffer.
-	  // We have got 'contiguous' new frames so forget the 'contiguous' oldest ones. 
-
-	  for (n=0; n<contiguous; n++) {
-	    trigger -= triggerbuffer[trigger_position+n]*triggerbuffer[trigger_position+n];
-	  }
-
-	  // 2) Add the new data to the ring buffer.
-
-	  switch(format) {
-	    
-	  case SND_PCM_FORMAT_FLOAT:
-	    fbuffer = ((float*) ringbuffer) + frames_recorded * framesize;
-	    // Copy and convert data to doubles.
-	    for (n=0; n<contiguous; n++) {
-	      triggerbuffer[trigger_position+n] = (double) fbuffer[n];  
-	    }
-	    break;    
-	    
-	  case SND_PCM_FORMAT_S32:
-	    ibuffer = ((int*) ringbuffer) + frames_recorded * framesize;
-	    // Copy, convert to doubles, and normalize data.
-	    for (n=0; n<contiguous; n++) {
-	      triggerbuffer[trigger_position+n] = ((double) ibuffer[n]) / 2147483648.0; // Normalize audio data.
-	    }
-	    break;
-	    
-	  case SND_PCM_FORMAT_S16:
-	    sbuffer = ((short*) ringbuffer) + frames_recorded * framesize;
-	    // Copy, convert to doubles, and normalize data.
-	    for (n=0; n<contiguous; n++) {
-	      triggerbuffer[trigger_position+n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
-	    }
-	    break;
-	    
-	default: // SND_PCM_FORMAT_S16 
-	    sbuffer =  ((short*) ringbuffer) + frames_recorded * framesize;
-	    // Copy, convert to doubles, and normalize data.
-	    for (n=0; n<contiguous; n++) {
-	      triggerbuffer[trigger_position+n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
-	    }
-	  }
-	  
-	  // 3) Update the trigger value.
-
-	  for (n=0; n<contiguous; n++) {
-	    trigger += triggerbuffer[trigger_position+n]*triggerbuffer[trigger_position+n];
-	  }
-
-	} else { // The trigger (ring) buffer don't have room for all new data.
-	  
+	  trigger -= triggerbuffer[n2]*triggerbuffer[trigger_position+n];
 	}
+	
+	// 2) Add the new data to the ring buffer.
+	
+	switch(format) {
+	  
+	case SND_PCM_FORMAT_FLOAT:
+	  fbuffer = ((float*) ringbuffer) + frames_recorded * framesize;
+	  // Copy and convert data to doubles.
+	  for (n=0; n<contiguous; n++) {
+	    
+	    // Check if we reached the end of the trigger ring buffer.
+	    if (trigger_position+n < trigger_frames)
+	      n2 = trigger_position + n;
+	    else
+	      n2 = trigger_position + n - trigger_frames;
+
+	    triggerbuffer[n2] = (double) fbuffer[n];  
+	  }
+	  break;    
+	  
+	case SND_PCM_FORMAT_S32:
+	  ibuffer = ((int*) ringbuffer) + frames_recorded * framesize;
+	  // Copy, convert to doubles, and normalize data.
+	  n2 = 0;
+	  for (n=0; n<contiguous; n++) {
+	    
+	    // Check if we reached the end of the trigger ring buffer.
+	    if (trigger_position+n < trigger_frames)
+	      n2 = trigger_position + n;
+	    else
+	      n2 = trigger_position + n - trigger_frames;
+	    
+	    triggerbuffer[n2] = ((double) ibuffer[n]) / 2147483648.0; // Normalize audio data.
+	  }
+	  break;
+	  
+	case SND_PCM_FORMAT_S16:
+	  sbuffer = ((short*) ringbuffer) + frames_recorded * framesize;
+	  // Copy, convert to doubles, and normalize data.
+	  for (n=0; n<contiguous; n++) {
+	    
+	    // Check if we reached the end of the trigger ring buffer.
+	    if (trigger_position+n < trigger_frames)
+	      n2 = trigger_position + n;
+	    else
+	      n2 = trigger_position + n - trigger_frames;
+	    
+	    triggerbuffer[n2] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
+	  }
+	  break;
+	  
+	default: // SND_PCM_FORMAT_S16 
+	  sbuffer =  ((short*) ringbuffer) + frames_recorded * framesize;
+	  // Copy, convert to doubles, and normalize data.
+	  for (n=0; n<contiguous; n++) {
+	    
+	    // Check if we reached the end of the trigger ring buffer.
+	    if (trigger_position+n < trigger_frames)
+	      n2 = trigger_position + n;
+	    else
+	      n2 = trigger_position + n - trigger_frames;
+	    
+	    triggerbuffer[n2] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
+	  }
+	}
+	
+	// 3) Update the trigger value.
+	
+	for (n=0; n<contiguous; n++) {
+
+	  // Check if we reached the end of the trigger ring buffer.
+	  if (trigger_position+n < trigger_frames)
+	    n2 = trigger_position + n;
+	  else
+	    n2 = trigger_position + n - trigger_frames;
+
+	  trigger += triggerbuffer[n2]*triggerbuffer[n2];
+	}
+
+	// 4) Set the new position in the trigger buffer.
+
+	trigger_position = n2;	
 
 	// Check if we are above the threshold.
 	if (trigger > trigger_level) {
