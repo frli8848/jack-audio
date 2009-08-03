@@ -259,11 +259,11 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     printf("Couldn't register signal handler.\n");
   }
 
-  if ((old_handler_abrt=signal(SIGABRT, &sighandler)) == SIG_ERR) {
+  if ((old_handler_abrt = signal(SIGABRT, &sighandler)) == SIG_ERR) {
     printf("Couldn't register signal handler.\n");
   }
   
-  if ((old_handler_keyint=signal(SIGINT, &sighandler)) == SIG_ERR) {
+  if ((old_handler_keyint = signal(SIGINT, &sighandler)) == SIG_ERR) {
     printf("Couldn't register signal handler.\n");
   }
   
@@ -295,10 +295,10 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     return oct_retval;
   }
 
-  if (r_period_size != period_size)
+  if ( (r_period_size != period_size) && (nrhs > 3) )
     printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
   
-  if (r_num_periods != num_periods)
+  if ( (r_num_periods != num_periods)  (nrhs > 3) )
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
 
 

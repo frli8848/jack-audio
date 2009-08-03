@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2007,2008 Fredrik Lingvall
+ * Copyright (C) 2007,2008,2009 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -124,13 +124,13 @@ Output parameters:\n\
 A frames x channels matrix containing the captured audio data.\n\
 @end table\n\
 \n\
-@copyright{} 2008 Fredrik Lingvall.\n\
+@copyright{} 2008, 2009 Fredrik Lingvall.\n\
 @seealso {aplay, aplayrec, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
   double *A,*Y; 
   int A_M,A_N;
-  int err, verbose = 0;;
+  int err, verbose = 0;
   octave_idx_type i,n,m;
   snd_pcm_t *handle;
   snd_pcm_sframes_t frames;
@@ -208,7 +208,7 @@ A frames x channels matrix containing the captured audio data.\n\
     channels = (int) tmp1.fortran_vec()[0];
     
     if (channels < 0) {
-      error("Error in 1st arg. The number of channels must > 0!");
+      error("Error in 2nd arg. The number of channels must > 0!");
       return oct_retval;
     }
   } else
@@ -316,13 +316,13 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-  if (r_period_size != period_size)
+  if ( (r_period_size != period_size) && (nrhs > 4) )
     printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
   
-  if (r_num_periods != num_periods)
+  if ( (r_num_periods != num_periods) && (nrhs > 4) )
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
   
-  if (wanted_channels != channels) {
+  if ( (wanted_channels != channels) (nrhs > 1) ) {
     printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
   }
 
