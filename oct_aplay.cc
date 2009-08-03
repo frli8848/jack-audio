@@ -298,7 +298,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   if ( (r_period_size != period_size) && (nrhs > 3) )
     printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
   
-  if ( (r_num_periods != num_periods)  (nrhs > 3) )
+  if ( (r_num_periods != num_periods) &&  (nrhs > 3) )
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
 
 

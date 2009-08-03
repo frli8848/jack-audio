@@ -322,7 +322,7 @@ A frames x channels matrix containing the captured audio data.\n\
   if ( (r_num_periods != num_periods) && (nrhs > 4) )
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
   
-  if ( (wanted_channels != channels) (nrhs > 1) ) {
+  if ( (wanted_channels != channels) && (nrhs > 1) ) {
     printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
   }
 
