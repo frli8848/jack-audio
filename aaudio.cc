@@ -286,7 +286,7 @@ int set_hwparams(snd_pcm_t *handle,
   if (*period_size > max2 || *period_size < min2) {
     if (verbose)
       printf("Warning: The period size (%d) is outside the min (%d) and max (%d) supported by the device.\n",
-	     *period_size,min2,max2);
+	     (int) *period_size, (int) min2, (int) max2);
   }
 
   direction = 0;
@@ -382,13 +382,13 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams,&val2)) < 0)
     fprintf(stderr,"Unable get max buffer size: %s\n", snd_strerror(err));
   else
-    printf("Max buffer size = %u\n",val2);
+    printf("Max buffer size = %u\n", (unsigned int) val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_min(hwparams,&val2)) < 0)
     fprintf(stderr,"Unable to get min buffer size: %s\n", snd_strerror(err));
   else
-    printf("Min buffer size = %u\n",val2);
+    printf("Min buffer size = %u\n", (unsigned int) val2);
 
   //
   // Max/min buffer size.
@@ -399,27 +399,27 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
   if ((err=snd_pcm_hw_params_get_buffer_time_max(hwparams,&val,&dir)) < 0)
     fprintf(stderr,"Unable to get max buffer time: %s\n", snd_strerror(err));
   else
-    printf("Max buffer time = %d [us]\n",val);
+    printf("Max buffer time = %d [us]\n", val);
 
   dir = 0;
   val = 0;
   if ((err=snd_pcm_hw_params_get_buffer_time_min(hwparams,&val,&dir)) < 0)
     fprintf(stderr,"Unable to get min buffer time: %s\n", snd_strerror(err));
   else
-    printf("Min buffer time = %d [us]\n",val);
+    printf("Min buffer time = %d [us]\n", val);
   
   // Hardware FIFO size.
   if ((val = snd_pcm_hw_params_get_fifo_size(hwparams)) < 0)
     fprintf(stderr,"Unable to get hardware FIFO size: %s\n", snd_strerror(val));
   else
-    printf("Hardware FIFO size = %d\n",val);
+    printf("Hardware FIFO size = %d\n", val);
 
  // Minimum transfer align value.
   val2 = 0;
  if ((err=snd_pcm_hw_params_get_min_align(hwparams,&val2)) < 0)
    fprintf(stderr,"Unable to get min align value: %s\n", snd_strerror(err));
  else
-   printf("Min align value = %u [samples]\n",val2);
+   printf("Min align value = %u [samples]\n", (unsigned int) val2);
 
  //
  // Max/min period size.
@@ -430,14 +430,14 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
  else
-   printf("Max period size = %d\n",val2);
+   printf("Max period size = %d\n", (int) val2);
  
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
  else
-   printf("Min period size = %d\n",val2);
+   printf("Min period size = %d\n",(int) val2);
 
 
  //
@@ -449,14 +449,14 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  if ((err=snd_pcm_hw_params_get_period_time_max(hwparams,&val,&dir)) < 0)
    fprintf(stderr,"Unable to get max period time: %s\n", snd_strerror(err));
  else
-   printf("Max period time = %d [us]\n",val);
+   printf("Max period time = %d [us]\n", val);
  
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_time_min(hwparams,&val,&dir)) < 0)
    fprintf(stderr,"Unable to get min period time: %s\n", snd_strerror(err));
  else
-   printf("Min period time = %d [us]\n",val);
+   printf("Min period time = %d [us]\n", val);
 
  //
  // Max/min periods.
@@ -467,14 +467,14 @@ void check_hw(snd_pcm_hw_params_t *hwparams)
  if ((err=snd_pcm_hw_params_get_periods_max(hwparams,&val,&dir)) < 0)
    fprintf(stderr,"Can't get max periods: %s\n", snd_strerror(err));
  else
-   printf("Max periods = %d\n",val);
+   printf("Max periods = %d\n", val);
  
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_periods_min(hwparams,&val,&dir)) < 0)
    fprintf(stderr,"Can't get min periods: %s\n", snd_strerror(err));
  else
-   printf("Min periods = %d\n",val);
+   printf("Min periods = %d\n", val);
 
 
  //
@@ -993,7 +993,9 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 				  void *ringbuffer,
 				  snd_pcm_sframes_t frames,
 				  snd_pcm_sframes_t framesize,
-				  unsigned int channels)
+				  unsigned int channels,
+				  double trigger_level,
+				  snd_pcm_sframes_t trigger_frames)
 {
   struct pollfd *ufds;
   int err, count, init;
@@ -1004,7 +1006,14 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_recorded;
   snd_pcm_sframes_t commit_res;
   int first = 0;
-  unsigned int n;
+  size_t n, trigger_position;
+  double *triggerbuffer = NULL, trigger = 0;
+  int trigger_active = FALSE;
+
+
+  // Allocate space and clear the trigger buffer.
+  triggerbuffer = (double*) malloc(trigger_frames*framesize*sizeof(double));
+  bzero(triggerbuffer, trigger_frames*framesize*sizeof(double));
 
   ringbuffer_position = 0;
 
@@ -1099,7 +1108,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 		  (contiguous * framesize/channels));
 	}
       }
-      
+     
       commit_res = snd_pcm_mmap_commit(handle,offset,contiguous);
       if ( (commit_res < 0) || ((snd_pcm_uframes_t) commit_res != contiguous) ) {
 	if ((err = xrun_recovery(handle, commit_res >= 0 ? -EPIPE : commit_res)) < 0) {
@@ -1107,7 +1116,52 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  return EXIT_FAILURE;
 	}
       }
-      
+     
+      printf("got %d number of frames\n", (int) contiguous);
+
+      // 
+      // Update the trigger buffer with the new audio data och check 
+      // if we are above the trigger threshold.
+      //
+
+      if (!trigger_active) {
+
+	if (trigger_position + contiguous < trigger_frames)  { // The trigger (ring) buffer is not full.
+	  
+	  // 1) "Forget" the old data which is now shifted out of the trigger buffer.
+	  // We have got 'contiguous' new frames so forget the 'contiguous' oldest ones. 
+	  
+	  // Use the first channel only. TODO: Add a parameter to chose which channel to 
+	  // use for triggering.
+	  for (n=0; n<contiguous; n++) {
+	    trigger -= triggerbuffer[trigger_position+n]*triggerbuffer[trigger_position+n];
+	  }
+
+	  // 2) Add the new data to the ring buffer.
+	  
+	  for (n=0; n<contiguous; n++) {
+	    triggerbuffer[trigger_position+n] = (double) ((((unsigned char*) ringbuffer) + frames_recorded * framesize)[n]);
+	  }
+	  
+	  // 3) Update the trigger value.
+
+	  for (n=0; n<contiguous; n++) {
+	    trigger += triggerbuffer[trigger_position+n]*triggerbuffer[trigger_position+n];
+	  }
+
+	} else { // The trigger (ring) buffer don't have room for all new data.
+	  
+	}
+
+	// Check if we are above the threshold.
+	if (trigger > trigger_level) 
+	  
+	}
+	
+      } else { // We have already detected a signal just wait until we have got all the requested data. 
+	
+      }
+
       if (contiguous >= 0) {
 	frames_to_read -= contiguous;
 	nwritten += contiguous;
@@ -1152,6 +1206,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
     
   } // while(running && ringbuffer_read_running) 
   
+  free(triggerbuffer);
   free(ufds);
   
   return 0;

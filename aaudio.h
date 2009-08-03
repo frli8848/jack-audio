@@ -77,7 +77,9 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 				  void *ringbuffer,
 				  snd_pcm_sframes_t frames,
 				  snd_pcm_sframes_t framesize,
-				  unsigned int channels);
+				  unsigned int channels,
+				  double trigger_level,
+				  snd_pcm_sframes_t trigger_frames);
 int get_ring_buffer_data(void* buffer, snd_pcm_sframes_t n_frames);
 
 void pcm_list(void);
