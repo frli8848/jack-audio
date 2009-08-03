@@ -1,12 +1,12 @@
 #!/bin/bash
 #
+# Scrip to build the aaudio octave package.
 #
 #
 #
-#
-# Copyright (C) 2008 Fredrik Lingvall.
+# Copyright (C) 2008, 2009 Fredrik Lingvall.
 
-VERSION=0.1.0
+VERSION=0.1.4
 
 echo "Note add version number $VERSION to the DESCRIPTION file."
 
@@ -26,6 +26,7 @@ cp aaudio.h aaudio-$VERSION/src/
 cp aaudio.cc aaudio-$VERSION/src/
 cp oct_aplay.cc aaudio-$VERSION/src/
 cp oct_arecord.cc aaudio-$VERSION/src/
+cp oct_atrecord.cc aaudio-$VERSION/src/
 cp oct_aplayrec.cc aaudio-$VERSION/src/
 cp oct_ainfo.cc aaudio-$VERSION/src/
 

@@ -1,6 +1,6 @@
 #!/usr/local/bin/make
 
-# Copyright (C) 2008 Fredrik Lingvall
+# Copyright (C) 2008, 2009 Fredrik Lingvall
 #
 # This program is free software; you can redistribute it and/or modify 
 # it under the terms of the GNU General Public License as published by the
@@ -28,6 +28,7 @@ all:
 all: \
 	aplay.oct \
 	arecord.oct \
+	atrecord.oct \
 	aplayrec.oct \
 	ainfo.oct
 
@@ -38,6 +39,9 @@ aplay.oct : oct_aplay.o aaudio.o
 	$(DLDCC) $(LIBDIRS) $^ -o $@ 
 
 arecord.oct : oct_arecord.o aaudio.o
+	$(DLDCC) $(LIBDIRS) $^ -o $@ 
+
+atrecord.oct : oct_atrecord.o aaudio.o
 	$(DLDCC) $(LIBDIRS) $^ -o $@ 
 
 aplayrec.oct : oct_aplayrec.o aaudio.o
