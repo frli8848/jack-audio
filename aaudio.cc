@@ -1143,7 +1143,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  else
 	    n2 = trigger_position + n - trigger_frames;
 	  
-	  trigger -= triggerbuffer[n2]*triggerbuffer[trigger_position+n];
+	  trigger -= fabs(triggerbuffer[n2]);
 	}
 	
 	// 2) Add the new data to the ring buffer.
@@ -1221,7 +1221,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  else
 	    n2 = trigger_position + n - trigger_frames;
 
-	  trigger += triggerbuffer[n2]*triggerbuffer[n2];
+	  trigger += fabs(triggerbuffer[n2]);
 	}
 
 	// 4) Set the new position in the trigger buffer.
@@ -1229,7 +1229,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	trigger_position = n2;	
 
 	// Check if we are above the threshold.
-	if (trigger > trigger_level) {
+	if ( (trigger / (double) trigger_frames) > trigger_level) {
 	  
 	}
 	
