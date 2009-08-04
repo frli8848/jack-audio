@@ -1018,6 +1018,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   triggerbuffer = (double*) malloc(trigger_frames*framesize*sizeof(double));
   bzero(triggerbuffer, trigger_frames*framesize*sizeof(double));
 
+  ringbuffer_read_running = TRUE;
   ringbuffer_position = 0;
 
   count = snd_pcm_poll_descriptors_count(handle);
@@ -1146,7 +1147,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  trigger -= fabs(triggerbuffer[n2]);
 	}
 	
-	// 2) Add the new data to the ring buffer.
+	// 2) Add the new data to the trigger ring buffer.
 	
 	switch(format) {
 	  
@@ -1161,7 +1162,10 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 
-	    triggerbuffer[n2] = (double) fbuffer[n];  
+	    if (interleaved) 
+	      triggerbuffer[n2] = (double) fbuffer[n];  
+	    else
+	      triggerbuffer[n2] = (double) fbuffer[n];  
 	  }
 	  break;    
 	  
@@ -1245,7 +1249,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	printf("Warning: Zero or negative byte count\n"); // This should never happend. 
 
       // The current position of the ring buffer.
-      ringbuffer_position += (frames_recorded + contiguous) * framesize;
+      ringbuffer_position += contiguous;
     
     } // while (frames_to_read > 0)
     frames_recorded += nwritten;
@@ -1283,8 +1287,6 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
     // we're done aquiring data.
     if (trigger_active && (post_trigger_frames >= frames/2) )
       ringbuffer_read_running = FALSE; // Exit the read loop.
-
-    printf("post_trigger_frames =  %d\n", post_trigger_frames);
     
   } // while(running && ringbuffer_read_running) 
 
@@ -1293,15 +1295,22 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   // and the oldest frame should be first.
 
   // Quick-n-dirty method. Uses a temporary (possibly large) buffer.
+
   unsigned char *tmp_data;
   tmp_data = (unsigned char*) malloc(ringbuffer_position*framesize);
+
   memcpy(tmp_data,(unsigned char*) ringbuffer, ringbuffer_position*framesize);
+
   memmove( (unsigned char*) ringbuffer, 
 	   ((unsigned char*) ringbuffer) + (ringbuffer_position + 1)*framesize,
-	   (frames - ringbuffer_position +1)*framesize);
+	   (frames - ringbuffer_position)*framesize);
+
   memcpy( ((unsigned char*) ringbuffer) + (ringbuffer_position + 1)*framesize,
 	  tmp_data, ringbuffer_position*framesize);
+
   free(tmp_data);
+
+
   // TODO: Alternative to the Quick-n-dirty method above. Use a loop and only 
   // copy one frame each time (which saves memory).
   /*
