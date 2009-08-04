@@ -1003,7 +1003,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   snd_pcm_sframes_t contiguous; 
   snd_pcm_uframes_t nwritten;
   snd_pcm_uframes_t offset;
-  snd_pcm_sframes_t frames_recorded;
+  snd_pcm_sframes_t frames_recorded, post_trigger_frames = 0;
   snd_pcm_sframes_t commit_res;
   int first = 0;
   size_t n, n2, trigger_position;
@@ -1028,7 +1028,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 
   ufds = (struct pollfd*) malloc(sizeof(struct pollfd) * count);
   if (ufds == NULL) {
-    printf("No enough memory\n");
+    printf("Not enough memory\n");
     return -ENOMEM;
   }
 
@@ -1120,7 +1120,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	}
       }
      
-      printf("got %d number of frames\n", (int) contiguous);
+      //printf("got %d number of frames\n", (int) contiguous);
 
       // 
       // Update the trigger buffer with the new audio data och check 
@@ -1151,7 +1151,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	switch(format) {
 	  
 	case SND_PCM_FORMAT_FLOAT:
-	  fbuffer = ((float*) ringbuffer) + frames_recorded * framesize;
+	  fbuffer = (float*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
 	  // Copy and convert data to doubles.
 	  for (n=0; n<contiguous; n++) {
 	    
@@ -1166,7 +1166,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  break;    
 	  
 	case SND_PCM_FORMAT_S32:
-	  ibuffer = ((int*) ringbuffer) + frames_recorded * framesize;
+	  ibuffer = (int*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  n2 = 0;
 	  for (n=0; n<contiguous; n++) {
@@ -1182,7 +1182,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  break;
 	  
 	case SND_PCM_FORMAT_S16:
-	  sbuffer = ((short*) ringbuffer) + frames_recorded * framesize;
+	  sbuffer = (short*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
 	    
@@ -1197,7 +1197,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  break;
 	  
 	default: // SND_PCM_FORMAT_S16 
-	  sbuffer =  ((short*) ringbuffer) + frames_recorded * framesize;
+	  sbuffer = (short*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
 	    
@@ -1230,11 +1230,11 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 
 	// Check if we are above the threshold.
 	if ( (trigger / (double) trigger_frames) > trigger_level) {
-	  
+	  trigger_active = TRUE;
 	}
 	
       } else { // We have already detected a signal just wait until we have got all the requested data. 
-	
+	post_trigger_frames += contiguous; // Add the number of aquired frames.
       }
 
       if (contiguous >= 0) {
@@ -1273,14 +1273,54 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
     }
 
     // If we have reached the end of the ring buffer then 
-    // start from the beginning again.
+    // start from the beginning. 
     if ( (frames - frames_recorded) == 0) {
-      frames_recorded = 0;
-      ringbuffer_position = 0;
+	frames_recorded = 0;
+	ringbuffer_position = 0;
     }
+
+    // We have got a trigger. Now wait for frames/2 more data and then
+    // we're done aquiring data.
+    if (trigger_active && (post_trigger_frames >= frames/2) )
+      ringbuffer_read_running = FALSE; // Exit the read loop.
+
+    printf("post_trigger_frames =  %d\n", post_trigger_frames);
     
   } // while(running && ringbuffer_read_running) 
-  
+
+  // Now shift the ring buffer so that the data is sequential in time.
+  // That is, the last aquired frame should be at the end of the buffer
+  // and the oldest frame should be first.
+
+  // Quick-n-dirty method. Uses a temporary (possibly large) buffer.
+  unsigned char *tmp_data;
+  tmp_data = (unsigned char*) malloc(ringbuffer_position*framesize);
+  memcpy(tmp_data,(unsigned char*) ringbuffer, ringbuffer_position*framesize);
+  memmove( (unsigned char*) ringbuffer, 
+	   ((unsigned char*) ringbuffer) + (ringbuffer_position + 1)*framesize,
+	   (frames - ringbuffer_position +1)*framesize);
+  memcpy( ((unsigned char*) ringbuffer) + (ringbuffer_position + 1)*framesize,
+	  tmp_data, ringbuffer_position*framesize);
+  free(tmp_data);
+  // TODO: Alternative to the Quick-n-dirty method above. Use a loop and only 
+  // copy one frame each time (which saves memory).
+  /*
+  unsigned char tmp_data[framesize];
+  for (n=0; n<frames; n++) {
+    
+    // Save the un-shifted n:th frame.
+    memcpy( tmp_data, (((unsigned char*) ringbuffer) + n ), framesize);
+
+    // Shift the n:th frame.
+    memcpy( (((unsigned char*) ringbuffer) + n ), 
+	    (((unsigned char*) ringbuffer) + ( (n+ringbuffer_position) % frames) ), 
+	    framesize);
+    
+    memcpy( (((unsigned char*) ringbuffer) + ( (n+ringbuffer_position) % frames) ), 
+	    tmp_data,
+	    framesize);
+  }
+  */
   free(triggerbuffer);
   free(ufds);
   
