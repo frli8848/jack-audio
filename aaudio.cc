@@ -1032,6 +1032,8 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
   // Main read loop.
   //
 
+  printf("\n Audio capturing started. Listening to channel 1 for a trigger signal.\n\n");
+
   frames_recorded = 0;
   init = 1;
   while(running &&  ringbuffer_read_running) { // Loop until reading flag is cleared (or CTRL-C).
@@ -1140,8 +1142,8 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	// 2) Add the new data to the trigger ring buffer.
 
 	switch(format) {
+
 	case SND_PCM_FORMAT_FLOAT:
-	  printf("hej1a\n");		  
 	  fbuffer = (float*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy and convert data to doubles.
 	  for (n=0; n<contiguous; n++) {
@@ -1162,7 +1164,6 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	  break;    
 
 	case SND_PCM_FORMAT_S32:
-	  printf("hej1b\n");	
 	  ibuffer = (int*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  n2 = 0;
@@ -1182,8 +1183,8 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 
 	  }
 	  break;
+
 	case SND_PCM_FORMAT_S16:
-	  printf("hej1c\n");	
 	  sbuffer = (short*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
@@ -1221,7 +1222,7 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 
 	  }
 	}
-	printf("hej2\n");	
+
 	// 3) Update the trigger value.
 	
 	for (n=0; n<contiguous; n++) {
@@ -1242,6 +1243,7 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	// Check if we are above the threshold.
 	if ( (trigger / (double) trigger_frames) > trigger_level) {
 	  trigger_active = TRUE;
+	  printf("\n Got a trigger signal!\n\n");
 	}
 	
       } else { // We have already detected a signal just wait until we have got all the requested data. 
@@ -1297,50 +1299,13 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
     
   } // while(running && ringbuffer_read_running) 
 
-  // Now shift the ring buffer so that the data is sequential in time.
-  // That is, the last aquired frame should be at the end of the buffer
-  // and the oldest frame should be first.
+  // Note that the data is not sequential in time in the buffer, that is,
+  // the buffer must be shifted by the calling function/program.
 
-  // Quick-n-dirty method. Uses a temporary (possibly large) buffer.
-#if 0
-  unsigned char *tmp_data;
-  tmp_data = (unsigned char*) malloc(ringbuffer_position*framesize);
-
-  memcpy(tmp_data,(unsigned char*) buffer, ringbuffer_position*framesize);
-
-  memmove( (unsigned char*) buffer, 
-	   ((unsigned char*) buffer) + (ringbuffer_position + 1)*framesize,
-	   (frames - ringbuffer_position)*framesize);
-
-  memcpy( ((unsigned char*) buffer) + (ringbuffer_position + 1)*framesize,
-	  tmp_data, ringbuffer_position*framesize);
-
-  free(tmp_data);
-#endif
-
-  // TODO: Alternative to the Quick-n-dirty method above. Use a loop and only 
-  // copy one frame each time (which saves memory).
-  /*
-  unsigned char tmp_data[framesize];
-  for (n=0; n<frames; n++) {
-    
-    // Save the un-shifted n:th frame.
-    memcpy( tmp_data, (((unsigned char*) buffer) + n ), framesize);
-
-    // Shift the n:th frame.
-    memcpy( (((unsigned char*) buffer) + n ), 
-	    (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
-	    framesize);
-    
-    memcpy( (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
-	    tmp_data,
-	    framesize);
-  }
-  */
   free(triggerbuffer);
   free(ufds);
   
-  return 0;
+  return ringbuffer_position;
 }
 
 /***

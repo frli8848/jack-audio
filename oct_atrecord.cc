@@ -168,6 +168,7 @@ A frames x channels matrix containing the captured audio data.\n\
   snd_pcm_uframes_t avail_min;
   snd_pcm_uframes_t start_threshold;
   snd_pcm_uframes_t stop_threshold;
+  size_t  ringbuffer_position;
 
   const snd_pcm_channel_area_t *record_areas;
 
@@ -454,23 +455,27 @@ A frames x channels matrix containing the captured audio data.\n\
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    t_read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize,channels,
-				  trigger_level, trigger_frames);
+    ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
+					       fbuffer,frames,framesize,channels,
+					       trigger_level, trigger_frames);
     break;    
     
   case SND_PCM_FORMAT_S32:
-    t_read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize,channels,
-				  trigger_level, trigger_frames);
+    ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
+					       ibuffer,frames,framesize,channels,
+					       trigger_level, trigger_frames);
     break;
     
   case SND_PCM_FORMAT_S16:
-    t_read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels,
-				  trigger_level, trigger_frames);
+    ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
+					       sbuffer,frames,framesize,channels,
+					       trigger_level, trigger_frames);
     break;
     
   default:
-    t_read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels,
-				  trigger_level, trigger_frames);
+    ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
+					       sbuffer,frames,framesize,channels,
+					       trigger_level, trigger_frames);
   }
 
   //
@@ -544,6 +549,46 @@ A frames x channels matrix containing the captured audio data.\n\
 	}
       }
     } 
+    
+    // Now shift the (ring) buffer so that the data is sequential in time.
+    // That is, the last aquired frame should be at the end of the buffer
+    // and the oldest frame should be first. The 'ringbuffer_position' is
+    // the index of the last frame in the ring buffer. 
+    
+    // Quick-n-dirty method. Uses a temporary (possibly large) buffer.
+    double *tmp_data;
+    tmp_data = (double*) malloc(ringbuffer_position*channels*sizeof(double));
+    
+    memcpy(tmp_data, Y, ringbuffer_position*channels*sizeof(double));
+  
+    memmove( Y, &Y[ringbuffer_position*channels],
+	     (frames - ringbuffer_position)*channels*sizeof(double));
+    
+    memcpy(&Y[(frames - ringbuffer_position)*channels], tmp_data,
+	   ringbuffer_position*channels*sizeof(double));
+    
+    free(tmp_data);
+    
+    // TODO: Alternative to the Quick-n-dirty method above. Use a loop and only 
+    // copy one frame each time (which saves memory).
+    /*
+      unsigned char tmp_data[framesize];
+      for (n=0; n<frames; n++) {
+      
+      // Save the un-shifted n:th frame.
+      memcpy( tmp_data, (((unsigned char*) buffer) + n ), framesize);
+      
+      // Shift the n:th frame.
+      memcpy( (((unsigned char*) buffer) + n ), 
+      (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
+      framesize);
+      
+      memcpy( (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
+      tmp_data,
+      framesize);
+      }
+    */
+    
     
     oct_retval.append(Ymat);
     
