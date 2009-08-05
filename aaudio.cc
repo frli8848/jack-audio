@@ -971,31 +971,16 @@ int read_and_poll_loop(snd_pcm_t *handle,
  *
  ***/
 
-// Flag used to stop the data aquisition for 
-// the  read_and_poll_loop_ringbuffer function.
-int ringbuffer_read_running = TRUE;
-
-// The current position in the ring buffer.
-int ringbuffer_position = 0;
-
-// Function to exit the read loop in
-// read_and_poll_loop_ringbuffer.
-int stop_read_and_poll_loop_ringbuffer(void)
-{
-  ringbuffer_read_running = FALSE;
-  
-  return ringbuffer_read_running;
-}
-
-int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
-				  const snd_pcm_channel_area_t *record_areas,
-				  snd_pcm_format_t format, 
-				  void *ringbuffer,
-				  snd_pcm_sframes_t frames,
-				  snd_pcm_sframes_t framesize,
-				  unsigned int channels,
-				  double trigger_level,
-				  snd_pcm_sframes_t trigger_frames)
+// Triggered read.
+int t_read_and_poll_loop(snd_pcm_t *handle,
+			 const snd_pcm_channel_area_t *record_areas,
+			 snd_pcm_format_t format, 
+			 void *buffer,
+			 snd_pcm_sframes_t frames,
+			 snd_pcm_sframes_t framesize,
+			 unsigned int channels,
+			 double trigger_level,
+			 snd_pcm_sframes_t trigger_frames)
 {
   struct pollfd *ufds;
   int err, count, init;
@@ -1013,6 +998,11 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   int *ibuffer = NULL;
   short *sbuffer = NULL;
 
+  // Flag used to stop the data aquisition.
+  int ringbuffer_read_running = TRUE;
+  
+  // The current position in the ring buffer.
+  size_t ringbuffer_position = 0;
 
   // Allocate space and clear the trigger buffer.
   triggerbuffer = (double*) malloc(trigger_frames*framesize*sizeof(double));
@@ -1097,7 +1087,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
       
       if (interleaved) {
 	
-	memcpy( (((unsigned char*) ringbuffer) + frames_recorded * framesize),
+	memcpy( (((unsigned char*) buffer) + frames_recorded * framesize),
 		(((unsigned char*) record_areas->addr) + offset * framesize),
 		(contiguous * framesize));
 	
@@ -1105,7 +1095,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	
 	// A separate ring buffer for each channel.
 	for (ch=0; ch<channels; ch++) {
-	  memcpy( (((unsigned char*) ringbuffer) 
+	  memcpy( (((unsigned char*) buffer) 
 		   + frames_recorded * framesize/channels 
 		   + ch*frames*(framesize/channels)),
 		  (((unsigned char*) record_areas[ch].addr) + offset * framesize/channels),
@@ -1152,7 +1142,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	switch(format) {
 	  
 	case SND_PCM_FORMAT_FLOAT:
-	  fbuffer = (float*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
+	  fbuffer = (float*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy and convert data to doubles.
 	  for (n=0; n<contiguous; n++) {
 	    
@@ -1172,7 +1162,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  break;    
 	  
 	case SND_PCM_FORMAT_S32:
-	  ibuffer = (int*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
+	  ibuffer = (int*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  n2 = 0;
 	  for (n=0; n<contiguous; n++) {
@@ -1193,7 +1183,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  break;
 	  
 	case SND_PCM_FORMAT_S16:
-	  sbuffer = (short*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
+	  sbuffer = (short*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
 	    
@@ -1212,7 +1202,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	  break;
 	  
 	default: // SND_PCM_FORMAT_S16 
-	  sbuffer = (short*) (((unsigned char*) ringbuffer) + frames_recorded * framesize);
+	  sbuffer = (short*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
 	    
@@ -1315,13 +1305,13 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   unsigned char *tmp_data;
   tmp_data = (unsigned char*) malloc(ringbuffer_position*framesize);
 
-  memcpy(tmp_data,(unsigned char*) ringbuffer, ringbuffer_position*framesize);
+  memcpy(tmp_data,(unsigned char*) buffer, ringbuffer_position*framesize);
 
-  memmove( (unsigned char*) ringbuffer, 
-	   ((unsigned char*) ringbuffer) + (ringbuffer_position + 1)*framesize,
+  memmove( (unsigned char*) buffer, 
+	   ((unsigned char*) buffer) + (ringbuffer_position + 1)*framesize,
 	   (frames - ringbuffer_position)*framesize);
 
-  memcpy( ((unsigned char*) ringbuffer) + (ringbuffer_position + 1)*framesize,
+  memcpy( ((unsigned char*) buffer) + (ringbuffer_position + 1)*framesize,
 	  tmp_data, ringbuffer_position*framesize);
 
   free(tmp_data);
@@ -1334,14 +1324,14 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   for (n=0; n<frames; n++) {
     
     // Save the un-shifted n:th frame.
-    memcpy( tmp_data, (((unsigned char*) ringbuffer) + n ), framesize);
+    memcpy( tmp_data, (((unsigned char*) buffer) + n ), framesize);
 
     // Shift the n:th frame.
-    memcpy( (((unsigned char*) ringbuffer) + n ), 
-	    (((unsigned char*) ringbuffer) + ( (n+ringbuffer_position) % frames) ), 
+    memcpy( (((unsigned char*) buffer) + n ), 
+	    (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
 	    framesize);
     
-    memcpy( (((unsigned char*) ringbuffer) + ( (n+ringbuffer_position) % frames) ), 
+    memcpy( (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
 	    tmp_data,
 	    framesize);
   }
@@ -1351,20 +1341,6 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   
   return 0;
 }
-
-// buffer   : output audio data. 
-// n_frames : size of the audio data to get from the ring buffer.
-// frames   : size of the ring buffer.
-int get_ring_buffer_data(void* buffer, snd_pcm_sframes_t n_frames, snd_pcm_sframes_t frames)
-{
-
-  // If the buffer is large then it will take time to copy data which will be
-  // a problem since the ring buffer is continously updating. Should one use two 
-  // ring buffers and switch to the other one while copying data?
-
-  return 0;
-}
-
 
 /***
  *

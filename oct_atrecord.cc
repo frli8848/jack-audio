@@ -271,7 +271,6 @@ A frames x channels matrix containing the captured audio data.\n\
   } else
     trigger_frames = fs; // Default to a 1 s buffer length.
 
-
   //
   // Number of audio frames (arg 3).
   //
@@ -383,13 +382,13 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-  if ( (r_period_size != period_size) && (nrhs > 4) )
-    printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
+  if ( (r_period_size != period_size) && (nrhs > 6) )
+    printf("Note: Requested period size %d adjusted to %d.\n", (int) r_period_size, (int) period_size);
   
-  if ( (r_num_periods != num_periods) && verbose)
-    printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
+  if ( (r_num_periods != num_periods) &&  (nrhs > 6) )
+    printf("Note: Requested number of periods %d adjusted to %d.\n", (int) r_num_periods, (int) num_periods);
   
-  if ( (wanted_channels != channels) && verbose) {
+  if ( (wanted_channels != channels) &&  (nrhs > 3) ) {
     printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
   }
 
@@ -455,19 +454,23 @@ A frames x channels matrix containing the captured audio data.\n\
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    read_and_poll_loop_ringbuffer(handle,record_areas,format,fbuffer,frames,framesize,channels);
+    t_read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize,channels,
+				  trigger_level, trigger_frames);
     break;    
     
   case SND_PCM_FORMAT_S32:
-    read_and_poll_loop_ringbuffer(handle,record_areas,format,ibuffer,frames,framesize,channels);
+    t_read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize,channels,
+				  trigger_level, trigger_frames);
     break;
     
   case SND_PCM_FORMAT_S16:
-    read_and_poll_loop_ringbuffer(handle,record_areas,format,sbuffer,frames,framesize,channels);
+    t_read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels,
+				  trigger_level, trigger_frames);
     break;
     
   default:
-    read_and_poll_loop_ringbuffer(handle,record_areas,format,sbuffer,frames,framesize,channels);
+    t_read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels,
+				  trigger_level, trigger_frames);
   }
 
   //

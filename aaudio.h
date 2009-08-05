@@ -70,17 +70,15 @@ int read_and_poll_loop(snd_pcm_t *handle,
 		       snd_pcm_sframes_t framesize,
 		       unsigned int channels);
 
-int stop_read_and_poll_loop_ringbuffer(void);
-int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
-				  const snd_pcm_channel_area_t *record_areas,
-				  snd_pcm_format_t format, 
-				  void *ringbuffer,
-				  snd_pcm_sframes_t frames,
-				  snd_pcm_sframes_t framesize,
-				  unsigned int channels,
-				  double trigger_level,
-				  snd_pcm_sframes_t trigger_frames);
-int get_ring_buffer_data(void* buffer, snd_pcm_sframes_t n_frames);
+int t_read_and_poll_loop(snd_pcm_t *handle,
+			 const snd_pcm_channel_area_t *record_areas,
+			 snd_pcm_format_t format, 
+			 void *ringbuffer,
+			 snd_pcm_sframes_t frames,
+			 snd_pcm_sframes_t framesize,
+			 unsigned int channels,
+			 double trigger_level,
+			 snd_pcm_sframes_t trigger_frames);
 
 void pcm_list(void);
 void device_list(int play_or_rec);
