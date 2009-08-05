@@ -1138,10 +1138,10 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	}
 	
 	// 2) Add the new data to the trigger ring buffer.
-	
+
 	switch(format) {
-	  
 	case SND_PCM_FORMAT_FLOAT:
+	  printf("hej1a\n");		  
 	  fbuffer = (float*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy and convert data to doubles.
 	  for (n=0; n<contiguous; n++) {
@@ -1152,16 +1152,17 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 
-	    ch = 0; // Use the 1st channel for triggerin.
+	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
-	      triggerbuffer[n2] = (double) fbuffer[(n+ch)*frames];  
+	      triggerbuffer[n2] = (double) fbuffer[(n+ch)*channels];  
 	    else  // Non-interleaved.
 	      triggerbuffer[n2] = (double) fbuffer[ch*frames + n];
 	    
 	  }
 	  break;    
-	  
+
 	case SND_PCM_FORMAT_S32:
+	  printf("hej1b\n");	
 	  ibuffer = (int*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  n2 = 0;
@@ -1173,16 +1174,16 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    ch = 0; // Use the 1st channel for triggerin.
+	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
-	      triggerbuffer[n2] = ((double) ibuffer[(n+ch)*frames]) / 2147483648.0; // Normalize audio data.  
+	      triggerbuffer[n2] = ((double) ibuffer[(n+ch)*channels]) / 2147483648.0; // Normalize audio data.  
 	    else  // Non-interleaved.
 	      triggerbuffer[n2] = ((double) ibuffer[ch*frames + n]) / 2147483648.0; // Normalize audio data.
 
 	  }
 	  break;
-	  
 	case SND_PCM_FORMAT_S16:
+	  printf("hej1c\n");	
 	  sbuffer = (short*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
@@ -1193,9 +1194,9 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    ch = 0; // Use the 1st channel for triggerin.
+	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
-	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*frames]) / 32768.0; // Normalize audio data.
+	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
 	      triggerbuffer[n2] = ((double) sbuffer[ch*frames + n]) / 32768.0; // Normalize audio data.
 	  }
@@ -1212,15 +1213,15 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    ch = 0; // Use the 1st channel for triggerin.
+	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
-	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*frames]) / 32768.0; // Normalize audio data.
+	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
 	      triggerbuffer[n2] = ((double) sbuffer[ch*frames + n]) / 32768.0; // Normalize audio data.
 
 	  }
 	}
-	
+	printf("hej2\n");	
 	// 3) Update the trigger value.
 	
 	for (n=0; n<contiguous; n++) {
@@ -1301,7 +1302,7 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
   // and the oldest frame should be first.
 
   // Quick-n-dirty method. Uses a temporary (possibly large) buffer.
-
+#if 0
   unsigned char *tmp_data;
   tmp_data = (unsigned char*) malloc(ringbuffer_position*framesize);
 
@@ -1315,7 +1316,7 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
 	  tmp_data, ringbuffer_position*framesize);
 
   free(tmp_data);
-
+#endif
 
   // TODO: Alternative to the Quick-n-dirty method above. Use a loop and only 
   // copy one frame each time (which saves memory).
