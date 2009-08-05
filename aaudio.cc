@@ -652,7 +652,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_played;
   snd_pcm_sframes_t commit_res;
   int first = 0;
-  unsigned int n;
+  size_t ch;
 
   count = snd_pcm_poll_descriptors_count(handle);
   if (count <= 0) {
@@ -719,7 +719,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	}
       }
       
-      // Test if the number if available frames exceeds the remaining
+      // Test if the number of available frames exceeds the remaining
       // number of frames to write.
       if (contiguous > frames_to_write)
 	contiguous = frames_to_write;
@@ -730,12 +730,12 @@ int write_and_poll_loop(snd_pcm_t *handle,
 		(contiguous * framesize));
       } else { // Non-interleaved
 	// A separate ring buffer for each channel.
-	for (n=0; n<channels; n++) {
-	  //printf(" channel %d : %p\n",n, play_areas[n].addr);
-	  memcpy(  (((unsigned char*) play_areas[n].addr) + offset * framesize/channels),
+	for (ch=0; ch<channels; ch++) {
+	  //printf(" channel %d : %p\n",n, play_areas[ch].addr);
+	  memcpy(  (((unsigned char*) play_areas[ch].addr) + offset * framesize/channels),
 		   (((unsigned char*) buffer) 
 		    + frames_played * framesize/channels 
-		    + n*frames*(framesize/channels)),
+		    + ch*frames*(framesize/channels)),
 	  	   (contiguous * framesize/channels));
 	}
       }
@@ -822,7 +822,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_recorded;
   snd_pcm_sframes_t commit_res;
   int first = 0;
-  unsigned int n;
+  size_t ch;
 
   count = snd_pcm_poll_descriptors_count(handle);
   if (count <= 0) {
@@ -904,11 +904,11 @@ int read_and_poll_loop(snd_pcm_t *handle,
 	      (contiguous * framesize));
       } else { // Non-interleaved
 	// A separate ring buffer for each channel.
-	for (n=0; n<channels; n++) {
+	for (ch=0; ch<channels; ch++) {
 	  memcpy( (((unsigned char*) buffer) 
 		   + frames_recorded * framesize/channels 
-		   + n*frames*(framesize/channels)),
-		  (((unsigned char*) record_areas[n].addr) + offset * framesize/channels),
+		   + ch*frames*(framesize/channels)),
+		  (((unsigned char*) record_areas[ch].addr) + offset * framesize/channels),
 		  (contiguous * framesize/channels));
 	}
       }
@@ -1006,7 +1006,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_recorded, post_trigger_frames = 0;
   snd_pcm_sframes_t commit_res;
   int first = 0;
-  size_t n, n2, trigger_position;
+  size_t n, n2, ch, trigger_position;
   double *triggerbuffer = NULL, trigger = 0;
   int trigger_active = FALSE;
   float *fbuffer = NULL;
@@ -1104,11 +1104,11 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
       } else { // Non-interleaved
 	
 	// A separate ring buffer for each channel.
-	for (n=0; n<channels; n++) {
+	for (ch=0; ch<channels; ch++) {
 	  memcpy( (((unsigned char*) ringbuffer) 
 		   + frames_recorded * framesize/channels 
-		   + n*frames*(framesize/channels)),
-		  (((unsigned char*) record_areas[n].addr) + offset * framesize/channels),
+		   + ch*frames*(framesize/channels)),
+		  (((unsigned char*) record_areas[ch].addr) + offset * framesize/channels),
 		  (contiguous * framesize/channels));
 	}
       }
@@ -1162,10 +1162,12 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 
+	    ch = 0; // Use the 1st channel for triggerin.
 	    if (interleaved) 
-	      triggerbuffer[n2] = (double) fbuffer[n];  
-	    else
-	      triggerbuffer[n2] = (double) fbuffer[n];  
+	      triggerbuffer[n2] = (double) fbuffer[(n+ch)*frames];  
+	    else  // Non-interleaved.
+	      triggerbuffer[n2] = (double) fbuffer[ch*frames + n];
+	    
 	  }
 	  break;    
 	  
@@ -1181,7 +1183,12 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    triggerbuffer[n2] = ((double) ibuffer[n]) / 2147483648.0; // Normalize audio data.
+	    ch = 0; // Use the 1st channel for triggerin.
+	    if (interleaved) 
+	      triggerbuffer[n2] = ((double) ibuffer[(n+ch)*frames]) / 2147483648.0; // Normalize audio data.  
+	    else  // Non-interleaved.
+	      triggerbuffer[n2] = ((double) ibuffer[ch*frames + n]) / 2147483648.0; // Normalize audio data.
+
 	  }
 	  break;
 	  
@@ -1196,7 +1203,11 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    triggerbuffer[n2] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
+	    ch = 0; // Use the 1st channel for triggerin.
+	    if (interleaved) 
+	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*frames]) / 32768.0; // Normalize audio data.
+	    else  // Non-interleaved.
+	      triggerbuffer[n2] = ((double) sbuffer[ch*frames + n]) / 32768.0; // Normalize audio data.
 	  }
 	  break;
 	  
@@ -1211,7 +1222,12 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    triggerbuffer[n2] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
+	    ch = 0; // Use the 1st channel for triggerin.
+	    if (interleaved) 
+	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*frames]) / 32768.0; // Normalize audio data.
+	    else  // Non-interleaved.
+	      triggerbuffer[n2] = ((double) sbuffer[ch*frames + n]) / 32768.0; // Normalize audio data.
+
 	  }
 	}
 	
@@ -1278,7 +1294,7 @@ int read_and_poll_loop_ringbuffer(snd_pcm_t *handle,
 
     // If we have reached the end of the ring buffer then 
     // start from the beginning. 
-    if ( (frames - frames_recorded) == 0) {
+    if ( (frames - frames_recorded) == 0) { // TODO: Have we missed data if frames_recorded > frames?
 	frames_recorded = 0;
 	ringbuffer_position = 0;
     }
