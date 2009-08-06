@@ -82,7 +82,7 @@ CFLAGS	= -Wall -Wimplicit -pipe -O3  -march=pentium -funroll-loops -fomit-frame-
 # Platform dependent suffix of mex-files.
 MEX_EXT = mexglx
  
-OCTVER = 2.9.17+
+OCTVER = 3.2.2
  
 OCT_PATH = /usr/local
  

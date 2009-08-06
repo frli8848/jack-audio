@@ -169,6 +169,7 @@ A frames x channels matrix containing the captured audio data.\n\
   snd_pcm_uframes_t start_threshold;
   snd_pcm_uframes_t stop_threshold;
   size_t  ringbuffer_position;
+  int trigger_ch = 0; // Use the first channel to trigger aquisition.
 
   const snd_pcm_channel_area_t *record_areas;
 
@@ -457,25 +458,25 @@ A frames x channels matrix containing the captured audio data.\n\
   case SND_PCM_FORMAT_FLOAT:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 					       fbuffer,frames,framesize,channels,
-					       trigger_level, trigger_frames);
+					       trigger_level, trigger_ch,trigger_frames);
     break;    
     
   case SND_PCM_FORMAT_S32:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 					       ibuffer,frames,framesize,channels,
-					       trigger_level, trigger_frames);
+					       trigger_level, trigger_ch,trigger_frames);
     break;
     
   case SND_PCM_FORMAT_S16:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 					       sbuffer,frames,framesize,channels,
-					       trigger_level, trigger_frames);
+					       trigger_level, trigger_ch,trigger_frames);
     break;
     
   default:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 					       sbuffer,frames,framesize,channels,
-					       trigger_level, trigger_frames);
+					       trigger_level, trigger_ch,trigger_frames);
   }
 
   //

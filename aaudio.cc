@@ -966,21 +966,26 @@ int read_and_poll_loop(snd_pcm_t *handle,
  * read_and_poll_loop_ringbuffer
  *
  * Function that continously read the audio stream and 
- * saves that data in a ring buffer.
+ * saves that data in a ring buffer when the input signal
+ * is over the trigger level.
  *
+ *
+ * Returns the position of the last aquired frame in 
+ * the ring buffer.
  *
  ***/
 
-// Triggered read.
-int t_read_and_poll_loop(snd_pcm_t *handle,
-			 const snd_pcm_channel_area_t *record_areas,
-			 snd_pcm_format_t format, 
-			 void *buffer,
-			 snd_pcm_sframes_t frames,
-			 snd_pcm_sframes_t framesize,
-			 unsigned int channels,
-			 double trigger_level,
-			 snd_pcm_sframes_t trigger_frames)
+snd_pcm_sframes_t 
+t_read_and_poll_loop(snd_pcm_t *handle,
+		     const snd_pcm_channel_area_t *record_areas,
+		     snd_pcm_format_t format, 
+		     void *buffer,
+		     snd_pcm_sframes_t frames,
+		     snd_pcm_sframes_t framesize,
+		     unsigned int channels,
+		     double trigger_level,
+		     int trigger_ch,
+		     snd_pcm_sframes_t trigger_frames)
 {
   struct pollfd *ufds;
   int err, count, init;
@@ -998,11 +1003,13 @@ int t_read_and_poll_loop(snd_pcm_t *handle,
   int *ibuffer = NULL;
   short *sbuffer = NULL;
 
+  ch = (int) trigger_ch;
+
   // Flag used to stop the data aquisition.
   int ringbuffer_read_running = TRUE;
   
   // The current position in the ring buffer.
-  size_t ringbuffer_position = 0;
+  snd_pcm_sframes_t ringbuffer_position = 0;
 
   // Allocate space and clear the trigger buffer.
   triggerbuffer = (double*) malloc(trigger_frames*framesize*sizeof(double));
