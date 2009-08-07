@@ -99,17 +99,25 @@ ATRECORD runs continously until the level of the input audio stream\n\
 exceeds the trigger_level, then frames/2 is capured before the trigger\n\
 occured and frames/2 after the trigger occured. To make the trigging more\n\
 robust trigger_frames number of frames are used to compute the trigger threshold.\n\
-The threshold is computed using:\n\
-\n\
-if (trigger_level > sum(trigger_buffer.^2)/trigger_frames) ...\n\
 \n\
 Input parameters:\n\
 \n\
 @table @samp\n\
+@item trigger_par\n\
+The trigger parameter vector: trigger_par = [trigger_level,trigger_ch,trigger_frames];\n\
+\n\
+@table @code\n\
 @item trigger_level\n\
-The trigger level.\n\
+The trigger threshold level (>=0 and <= 1.0).\n\
+The threshold is computed using:\n\
+\n\
+if (trigger_level > sum(trigger_buffer.^2)/trigger_frames) ...\n\
+\n\
+@item trigger_ch\n\
+The trigger channel. Optional, defaults to 0 (1st channel).\n\
 @item trigger_frames\n\
-The number of frames to use for triggering. Defaults to fs number of frames (= 1 second trigger buffer).\n\
+The number of frames to use for triggering. Optional, defaults to fs number of frames (= 1 second trigger buffer).\n\
+@end table\n\
 @item frames\n\
 The number of frames (samples/channel). Defaults to 2*trigger_frames.\n\
 \n\
@@ -139,7 +147,7 @@ A frames x channels matrix containing the captured audio data.\n\
 @seealso {aplay, arecord, aplayrec, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
-  double *A,*Y, trigger_level; 
+  double *A,*Y, *t_par, trigger_level; 
   int A_M,A_N;
   int err, verbose = 0;
   octave_idx_type i,n,m;
@@ -189,106 +197,96 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-
   //
-  // The trigger level (arg 1).
-  //
-
-  if (mxGetM(0)*mxGetN(0) != 1) {
-    error("1st arg (the trigger level) must be a scalar !");
-    return oct_retval;
-  }
-
-  const Matrix tmp0 = args(0).matrix_value();
-  trigger_level = tmp0.fortran_vec()[0];
-
-  if (frames < 0) {
-    error("Error in 1st arg. the trigger level must >= 0!");
-    return oct_retval;
-  }
-
-  //
-  // Number of channels (arg 4).
+  // Number of channels (arg 3).
   //
 
-  if (nrhs > 3) {
+  if (nrhs > 2) {
     
-    if (mxGetM(3)*mxGetN(3) != 1) {
-      error("4th arg (number of channels) must be a scalar !");
+    if (mxGetM(2)*mxGetN(2) != 1) {
+      error("3rd arg (number of channels) must be a scalar !");
       return oct_retval;
     }
     
-    const Matrix tmp3 = args(3).matrix_value();
-    channels = (int) tmp3.fortran_vec()[0];
+    const Matrix tmp2 = args(2).matrix_value();
+    channels = (int) tmp2.fortran_vec()[0];
     
     if (channels < 0) {
-      error("Error in 4th arg. The number of channels must be > 0!");
+      error("Error in 3rd arg. The number of channels must be > 0!");
       return oct_retval;
     }
   } else
     channels = 2; // Default to two capture channels.
   
   //
-  // Sampling frequency (arg 5).
+  // Sampling frequency (arg 4).
   //
 
-  if (nrhs > 4) {
+  if (nrhs > 3) {
     
-    if (mxGetM(4)*mxGetN(4) != 1) {
-      error("5th arg (the sampling frequency) must be a scalar !");
+    if (mxGetM(3)*mxGetN(3) != 1) {
+      error("4th arg (the sampling frequency) must be a scalar !");
       return oct_retval;
     }
     
-    const Matrix tmp4 = args(4).matrix_value();
-    fs = (int) tmp4.fortran_vec()[0];
+    const Matrix tmp3 = args(3).matrix_value();
+    fs = (int) tmp3.fortran_vec()[0];
     
     if (fs < 0) {
-      error("Error in 5th arg. The samping frequency must be > 0!");
+      error("Error in 4th arg. The samping frequency must be > 0!");
       return oct_retval;
     }
   } else
     fs = 44100; // Defaults to 44.1 kHz.
 
   //
-  // The length of the trigger buffer (arg 2).
+  // The trigger parameters (arg 1).
   //
 
   // Note we must know the sampling freq. to set the default
   // trigger buffer length.
+  
+  // Check that arg 1 is a 3 element vector
+  if (!((mxGetM(0)<=3 && mxGetN(0)==1) || (mxGetM(0)==1 && mxGetN(0)<=3))) {
+    error("Argument 1 must be a 1 to 3 element vector!");
+    return oct_retval;
+  }
+  const Matrix tmp0 = args(0).matrix_value();
+  t_par = (double*) tmp0.fortran_vec();
+  trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
+  trigger_ch     = (int) t_par[1];		// Trigger channel.
+  trigger_frames = (size_t) t_par[2];		// The length of the trigger buffer.
 
-  if (nrhs > 1) {
+  if (trigger_level < 0 || trigger_level > 1.0) {
+    error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
+    return oct_retval;
+  }
+  
+  if ( mxGetM(0)*mxGetN(0) >= 2) {
     
-    if (mxGetM(1)*mxGetN(1) != 1) {
-      error("2nd arg (length of the trigger buffer) must be a scalar !");
-      return oct_retval;
-    }
-    
-    const Matrix tmp1 = args(1).matrix_value();
-    trigger_frames = (int) tmp1.fortran_vec()[0];
-    
-    if (trigger_frames < 0) {
-      error("Error in 2nd arg. The trigger buffer length must be > 0!");
+    if (trigger_ch < 0 || trigger_ch > channels-1) {
+      error("Error in arg 1! The trigger channel must be > 0 and < %d!",channels-1);
       return oct_retval;
     }
   } else
-    trigger_frames = fs; // Default to a 1 s buffer length.
-
+    trigger_ch = 0; // Default to a 1st channel.
+  
   //
-  // Number of audio frames (arg 3).
+  // Number of audio frames (arg 2).
   //
 
   // Note we must know the trigger buffer length to set the default
   // trigger buffer length.
 
-  if (nrhs > 2) {
+  if (nrhs > 1) {
 
-    if (mxGetM(2)*mxGetN(2) != 1) {
-      error("3rd arg (number of audio frames) must be a scalar !");
+    if (mxGetM(1)*mxGetN(1) != 1) {
+      error("2nd arg (number of audio frames) must be a scalar !");
       return oct_retval;
     }
     
-    const Matrix tmp2 = args(2).matrix_value();
-    frames = (int) tmp2.fortran_vec()[0];
+    const Matrix tmp1 = args(1).matrix_value();
+    frames = (int) tmp1.fortran_vec()[0];
     
     if (frames < 0) {
       error("Error in 3rd arg. The number of audio frames must be > 0!");
@@ -304,17 +302,17 @@ A frames x channels matrix containing the captured audio data.\n\
     frames = 2*trigger_frames; // Defaults to 2*trigger_frames.
   
   //
-  // Audio device (arg 6).
+  // Audio device (arg 5).
   //
 
-  if (nrhs > 5) {
+  if (nrhs > 4) {
     
-    if (!mxIsChar(5)) {
-      error("6th arg (the audio device) must be a string !");
+    if (!mxIsChar(4)) {
+      error("5th arg (the audio device) must be a string !");
       return oct_retval;
     }
     
-    std::string strin = args(5).string_value(); 
+    std::string strin = args(4).string_value(); 
     buflen = strin.length();
     for ( n=0; n<=buflen; n++ ) {
       device[n] = strin[n];
@@ -325,18 +323,18 @@ A frames x channels matrix containing the captured audio data.\n\
       strcpy(device,"default"); 
 
   //
-  // HW/SW parameters (arg 7).
+  // HW/SW parameters (arg 6).
   //
   
-  if (nrhs > 6) {    
+  if (nrhs > 5) {    
     
-    if (mxGetM(6)*mxGetN(6) != 2) {
-      error("7th arg must be a 2 element vector !");
+    if (mxGetM(5)*mxGetN(5) != 2) {
+      error("6th arg must be a 2 element vector !");
       return oct_retval;
     }
     
-    const Matrix tmp6 = args(6).matrix_value();
-    hw_sw_par = (double*) tmp6.fortran_vec();
+    const Matrix tmp5 = args(5).matrix_value();
+    hw_sw_par = (double*) tmp5.fortran_vec();
     
     // hw parameters.
     period_size = (int) hw_sw_par[0];
