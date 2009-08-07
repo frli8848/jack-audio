@@ -1161,7 +1161,6 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 
-	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
 	      triggerbuffer[n2] = (double) fbuffer[(n+ch)*channels];  
 	    else  // Non-interleaved.
@@ -1182,7 +1181,6 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
 	      triggerbuffer[n2] = ((double) ibuffer[(n+ch)*channels]) / 2147483648.0; // Normalize audio data.  
 	    else  // Non-interleaved.
@@ -1202,7 +1200,6 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
 	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
@@ -1221,7 +1218,6 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	    else
 	      n2 = trigger_position + n - trigger_frames;
 	    
-	    ch = 0; // Use the 1st channel for triggering.
 	    if (interleaved) 
 	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
