@@ -111,12 +111,14 @@ The trigger parameter vector: trigger_par = [trigger_level,trigger_ch,trigger_fr
 The trigger threshold level (>=0 and <= 1.0).\n\
 The threshold is computed using:\n\
 \n\
-if (trigger_level > sum(trigger_buffer.^2)/trigger_frames) ...\n\
+if (trigger_level > sum(abs(triggerbuffer)/trigger_frames) ...\n\
+\n\
+where triggerbuffer is the vector of audio samples currently inside the trigger buffer.\n\
 \n\
 @item trigger_ch\n\
-The trigger channel. Optional, defaults to 0 (1st channel).\n\
+The trigger channel. Optional: defaults to 0 (1st channel).\n\
 @item trigger_frames\n\
-The number of frames to use for triggering. Optional, defaults to fs number of frames (= 1 second trigger buffer).\n\
+The number of frames to use for triggering. Optional: defaults to fs number of frames (= 1 second trigger buffer).\n\
 @end table\n\
 @item frames\n\
 The number of frames (samples/channel). Defaults to 2*trigger_frames.\n\
