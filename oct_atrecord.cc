@@ -557,19 +557,21 @@ A frames x channels matrix containing the captured audio data.\n\
     // the index of the last frame in the ring buffer. 
     
     // Quick-n-dirty method. Uses a temporary (possibly large) buffer.
-    double *tmp_data;
-    tmp_data = (double*) malloc(ringbuffer_position*channels*sizeof(double));
-    
-    memcpy(tmp_data, Y, ringbuffer_position*channels*sizeof(double));
-  
-    memmove( Y, &Y[ringbuffer_position*channels],
-	     (frames - ringbuffer_position)*channels*sizeof(double));
-    
-    memcpy(&Y[(frames - ringbuffer_position)*channels], tmp_data,
-	   ringbuffer_position*channels*sizeof(double));
-    
-    free(tmp_data);
-    
+    if (ringbuffer_position > 0) {
+      double *tmp_data;
+      tmp_data = (double*) malloc(ringbuffer_position*channels*sizeof(double));
+      
+      memcpy(tmp_data, Y, ringbuffer_position*channels*sizeof(double));
+      
+      memmove( Y, &Y[ringbuffer_position*channels],
+	       (frames - ringbuffer_position)*channels*sizeof(double));
+      
+      memcpy(&Y[(frames - ringbuffer_position)*channels], tmp_data,
+	     ringbuffer_position*channels*sizeof(double));
+      
+      free(tmp_data);
+    }
+
     // TODO: Alternative to the Quick-n-dirty method above. Use a loop and only 
     // copy one frame each time (which saves memory).
     /*

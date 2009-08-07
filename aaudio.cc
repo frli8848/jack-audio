@@ -998,7 +998,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   int first = 0;
   size_t n, n2, ch, trigger_position;
   double *triggerbuffer = NULL, trigger = 0;
-  int trigger_active = FALSE;
+  int trigger_active = FALSE, has_wrapped = FALSE;
   float *fbuffer = NULL;
   int *ibuffer = NULL;
   short *sbuffer = NULL;
@@ -1293,6 +1293,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
     if ( (frames - frames_recorded) == 0) { // TODO: Have we missed data if frames_recorded > frames?
 	frames_recorded = 0;
 	ringbuffer_position = 0;
+	has_wrapped = TRUE; // To indicated that the ring buffer has been full.
     }
 
     // We have got a trigger. Now wait for frames/2 more data and then
@@ -1307,7 +1308,11 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 
   free(triggerbuffer);
   free(ufds);
-  
+
+  // If the ring buffer never has been wrapped (been full) then we should not shift it.
+  if (!has_wrapped) 
+    ringbuffer_position = 0;
+
   return ringbuffer_position;
 }
 
