@@ -30,6 +30,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <signal.h>
+#include <time.h>
 
 #include <alsa/asoundlib.h>
 #include <poll.h>
@@ -1217,7 +1218,20 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	// Check if we are above the threshold.
 	if ( (trigger / (double) trigger_frames) > trigger_level) {
 	  trigger_active = TRUE;
-	  printf("\n Got a trigger signal!\n\n");
+
+	  struct tm *the_time;
+	  time_t curtime;
+
+	  // Get the current time.
+	  curtime = time(NULL);
+
+	  // Convert it to local time representation. 
+	  the_time = localtime(&curtime);
+	  
+	  printf("\n Got a trigger signal at: ");
+	  fputs (asctime (the_time), stdout);
+	  printf("\n");
+
 	}
 	
       } else { // We have already detected a signal just wait until we have got all the requested data. 
