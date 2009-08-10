@@ -256,8 +256,8 @@ A frames x channels matrix containing the captured audio data.\n\
   const Matrix tmp0 = args(0).matrix_value();
   t_par = (double*) tmp0.fortran_vec();
   trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
-  trigger_ch     = (int) t_par[1];		// Trigger channel.
-  trigger_frames = (size_t) t_par[2];		// The length of the trigger buffer.
+  trigger_ch     = (int)    t_par[1]-1;	// Trigger channel (1--channels).
+  trigger_frames = (size_t) t_par[2]; // The length of the trigger buffer.
 
   if (trigger_level < 0 || trigger_level > 1.0) {
     error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
@@ -267,7 +267,7 @@ A frames x channels matrix containing the captured audio data.\n\
   if ( mxGetM(0)*mxGetN(0) >= 2) {
     
     if (trigger_ch < 0 || trigger_ch > channels-1) {
-      error("Error in arg 1! The trigger channel must be > 0 and < %d!",channels-1);
+      error("Error in arg 1! The trigger channel must be >= 1 and <= %d!",channels);
       return oct_retval;
     }
   } else
@@ -290,13 +290,13 @@ A frames x channels matrix containing the captured audio data.\n\
     const Matrix tmp1 = args(1).matrix_value();
     frames = (int) tmp1.fortran_vec()[0];
     
-    if (frames < 0) {
-      error("Error in 3rd arg. The number of audio frames must be > 0!");
+    if (frames <= 0) {
+      error("Error in 2rd arg. The number of audio frames must be > 0!");
       return oct_retval;
     }
 
     if (frames < trigger_frames) {
-      error("Error in 3rd arg. The number of audio frames must be > the length of the trigger buffer!");
+      error("Error in 2rd arg. The number of audio frames must be larger than the number of the trigger frames!");
       return oct_retval;
     }
 
