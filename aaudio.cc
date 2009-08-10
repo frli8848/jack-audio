@@ -997,13 +997,11 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_sframes_t commit_res;
   int first = 0;
   size_t n, n2, ch, trigger_position = 0;
-  double *triggerbuffer = NULL, trigger = 0;
+  double *triggerbuffer = NULL, trigger = 0.0;
   int trigger_active = FALSE, has_wrapped = FALSE;
   float *fbuffer = NULL;
   int *ibuffer = NULL;
   short *sbuffer = NULL;
-
-  ch = (int) trigger_ch;
 
   // Flag used to stop the data aquisition.
   int ringbuffer_read_running = TRUE;
@@ -1145,61 +1143,60 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	switch(format) {
 
 	case SND_PCM_FORMAT_FLOAT:
-	  fbuffer = (float*) (((unsigned char*) buffer) + frames_recorded * framesize);
+	  fbuffer = (float*) buffer;
 	  // Copy and convert data to doubles.
 	  for (n=0; n<contiguous; n++) {
 	    
 	    n2 = (trigger_position + n) % trigger_frames;
 
 	    if (interleaved) 
-	      triggerbuffer[n2] = (double) fbuffer[(n+ch)*channels];  
+	      triggerbuffer[n2] = (double) fbuffer[(frames_recorded + n)*channels + trigger_ch];  
 	    else  // Non-interleaved.
-	      triggerbuffer[n2] = (double) fbuffer[ch*frames + n];
+	      triggerbuffer[n2] = (double) fbuffer[frames_recorded + n + trigger_ch*frames];
 	    
 	  }
 	  break;    
 
 	case SND_PCM_FORMAT_S32:
-	  ibuffer = (int*) (((unsigned char*) buffer) + frames_recorded * framesize);
+	  ibuffer = (int*) buffer;
 	  // Copy, convert to doubles, and normalize data.
-	  n2 = 0;
 	  for (n=0; n<contiguous; n++) {
 	    
 	    n2 = (trigger_position + n) % trigger_frames;
 
 	    if (interleaved) 
-	      triggerbuffer[n2] = ((double) ibuffer[(n+ch)*channels]) / 2147483648.0; // Normalize audio data.  
+	      triggerbuffer[n2] = ((double) ibuffer[(frames_recorded + n)*channels + trigger_ch]) / 2147483648.0; // Normalize audio data.  
 	    else  // Non-interleaved.
-	      triggerbuffer[n2] = ((double) ibuffer[ch*frames + n]) / 2147483648.0; // Normalize audio data.
+	      triggerbuffer[n2] = ((double) ibuffer[frames_recorded + n + trigger_ch*frames]) / 2147483648.0; // Normalize audio data.
 
 	  }
 	  break;
 
 	case SND_PCM_FORMAT_S16:
-	  sbuffer = (short*) (((unsigned char*) buffer) + frames_recorded * framesize);
+	  sbuffer = (short*) buffer;
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
 
 	    n2 = (trigger_position + n) % trigger_frames;
 
 	    if (interleaved) 
-	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
+	      triggerbuffer[n2] = ((double) sbuffer[(frames_recorded + n)*channels + trigger_ch]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
-	      triggerbuffer[n2] = ((double) sbuffer[ch*frames + n]) / 32768.0; // Normalize audio data.
+	      triggerbuffer[n2] = ((double) sbuffer[frames_recorded + n + trigger_ch*frames]) / 32768.0; // Normalize audio data.
 	  }
 	  break;
 	  
 	default: // SND_PCM_FORMAT_S16 
-	  sbuffer = (short*) (((unsigned char*) buffer) + frames_recorded * framesize);
+	  sbuffer = (short*) buffer;
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
 	    
 	    n2 = (trigger_position + n) % trigger_frames;
 
 	    if (interleaved) 
-	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
+	      triggerbuffer[n2] = ((double) sbuffer[(frames_recorded + n)*channels + trigger_ch]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
-	      triggerbuffer[n2] = ((double) sbuffer[ch*frames + n]) / 32768.0; // Normalize audio data.
+	      triggerbuffer[n2] = ((double) sbuffer[frames_recorded + n + trigger_ch*frames]) / 32768.0; // Normalize audio data.
 
 	  }
 	}
@@ -1212,10 +1209,12 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 
 	  trigger += fabs(triggerbuffer[n2]);
 	}
-
+	printf("trigger = %f [%d %d %d]\n", trigger / (double) trigger_frames,
+	       trigger_position, n2, contiguous);
+	
 	// 4) Set the new position in the trigger buffer.
 
-	trigger_position = n2;	
+	trigger_position = n2 + 1;	
 
 	// Check if we are above the threshold.
 	if ( (trigger / (double) trigger_frames) > trigger_level) {

@@ -179,7 +179,7 @@ A frames x channels matrix containing the captured audio data.\n\
   snd_pcm_uframes_t start_threshold;
   snd_pcm_uframes_t stop_threshold;
   size_t  ringbuffer_position;
-  int trigger_ch = 0; // Use the first channel to trigger aquisition.
+  int trigger_ch;
 
   const snd_pcm_channel_area_t *record_areas;
 
@@ -256,10 +256,10 @@ A frames x channels matrix containing the captured audio data.\n\
   const Matrix tmp0 = args(0).matrix_value();
   t_par = (double*) tmp0.fortran_vec();
   trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
-  trigger_ch     = (int)    t_par[1]-1;	// Trigger channel (1--channels).
+  trigger_ch     = ((int)  t_par[1]) - 1; // Trigger channel (1--channels).
   trigger_frames = (size_t) t_par[2]; // The length of the trigger buffer.
 
-  if (trigger_level < 0 || trigger_level > 1.0) {
+  if (trigger_level < 0.0 || trigger_level > 1.0) {
     error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
     return oct_retval;
   }
