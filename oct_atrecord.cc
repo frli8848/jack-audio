@@ -556,43 +556,24 @@ A frames x channels matrix containing the captured audio data.\n\
     // and the oldest frame should be first. The 'ringbuffer_position' is
     // the index of the last frame in the ring buffer. 
     
-    // Quick-n-dirty method. Uses a temporary (possibly large) buffer.
     if (ringbuffer_position > 0) {
       double *tmp_data;
-      tmp_data = (double*) malloc(ringbuffer_position*channels*sizeof(double));
-      
-      memcpy(tmp_data, Y, ringbuffer_position*channels*sizeof(double));
-      
-      memmove( Y, &Y[ringbuffer_position*channels],
-	       (frames - ringbuffer_position)*channels*sizeof(double));
-      
-      memcpy(&Y[(frames - ringbuffer_position)*channels], tmp_data,
-	     ringbuffer_position*channels*sizeof(double));
-      
+      tmp_data = (double*) malloc(ringbuffer_position*1*sizeof(double));
+
+      // Shift one channel each time.
+      for (n=0; n<channels; n++) {
+	
+	memcpy(tmp_data, &Y[0 + n*frames], ringbuffer_position*1*sizeof(double));
+	
+	memmove(&Y[0 + n*frames], &Y[ringbuffer_position + n*frames],
+		(frames - ringbuffer_position)*1*sizeof(double));
+	
+	memcpy(&Y[(frames - ringbuffer_position) + n*frames], tmp_data,
+	       ringbuffer_position*1*sizeof(double));
+      }
       free(tmp_data);
     }
 
-    // TODO: Alternative to the Quick-n-dirty method above. Use a loop and only 
-    // copy one frame each time (which saves memory).
-    /*
-      unsigned char tmp_data[framesize];
-      for (n=0; n<frames; n++) {
-      
-      // Save the un-shifted n:th frame.
-      memcpy( tmp_data, (((unsigned char*) buffer) + n ), framesize);
-      
-      // Shift the n:th frame.
-      memcpy( (((unsigned char*) buffer) + n ), 
-      (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
-      framesize);
-      
-      memcpy( (((unsigned char*) buffer) + ( (n+ringbuffer_position) % frames) ), 
-      tmp_data,
-      framesize);
-      }
-    */
-    
-    
     oct_retval.append(Ymat);
     
   } // is_running.

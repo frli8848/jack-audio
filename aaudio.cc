@@ -996,7 +996,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_sframes_t frames_recorded, post_trigger_frames = 0;
   snd_pcm_sframes_t commit_res;
   int first = 0;
-  size_t n, n2, ch, trigger_position;
+  size_t n, n2, ch, trigger_position = 0;
   double *triggerbuffer = NULL, trigger = 0;
   int trigger_active = FALSE, has_wrapped = FALSE;
   float *fbuffer = NULL;
@@ -1119,29 +1119,23 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	  return EXIT_FAILURE;
 	}
       }
-     
-      //printf("got %d number of frames\n", (int) contiguous);
 
       // 
       // Update the trigger buffer with the new audio data och check 
       // if we are above the trigger threshold.
       //
 
+      // TODO: This will probably not work if the number new frames (=contiguous)
+      // is larger than the size of the trigger buffer.
+
       if (!trigger_active) {
 
-	// Currently we use the first channel only. TODO: Add a parameter to chose which channel to 
-	// use for triggering.
-	
 	// 1) "Forget" the old data which is now shifted out of the trigger buffer.
 	// We have got 'contiguous' new frames so forget the 'contiguous' oldest ones. 
 	
 	for (n=0; n<contiguous; n++) {
 
-	  // Check if we reached the end of the trigger ring buffer.
-	  if (trigger_position+n < trigger_frames)
-	    n2 = trigger_position + n;
-	  else
-	    n2 = trigger_position + n - trigger_frames;
+	  n2 = (trigger_position + n) % trigger_frames;
 	  
 	  trigger -= fabs(triggerbuffer[n2]);
 	}
@@ -1155,11 +1149,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	  // Copy and convert data to doubles.
 	  for (n=0; n<contiguous; n++) {
 	    
-	    // Check if we reached the end of the trigger ring buffer.
-	    if (trigger_position+n < trigger_frames)
-	      n2 = trigger_position + n;
-	    else
-	      n2 = trigger_position + n - trigger_frames;
+	    n2 = (trigger_position + n) % trigger_frames;
 
 	    if (interleaved) 
 	      triggerbuffer[n2] = (double) fbuffer[(n+ch)*channels];  
@@ -1175,12 +1165,8 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	  n2 = 0;
 	  for (n=0; n<contiguous; n++) {
 	    
-	    // Check if we reached the end of the trigger ring buffer.
-	    if (trigger_position+n < trigger_frames)
-	      n2 = trigger_position + n;
-	    else
-	      n2 = trigger_position + n - trigger_frames;
-	    
+	    n2 = (trigger_position + n) % trigger_frames;
+
 	    if (interleaved) 
 	      triggerbuffer[n2] = ((double) ibuffer[(n+ch)*channels]) / 2147483648.0; // Normalize audio data.  
 	    else  // Non-interleaved.
@@ -1193,13 +1179,9 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	  sbuffer = (short*) (((unsigned char*) buffer) + frames_recorded * framesize);
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
-	    
-	    // Check if we reached the end of the trigger ring buffer.
-	    if (trigger_position+n < trigger_frames)
-	      n2 = trigger_position + n;
-	    else
-	      n2 = trigger_position + n - trigger_frames;
-	    
+
+	    n2 = (trigger_position + n) % trigger_frames;
+
 	    if (interleaved) 
 	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
@@ -1212,12 +1194,8 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	  // Copy, convert to doubles, and normalize data.
 	  for (n=0; n<contiguous; n++) {
 	    
-	    // Check if we reached the end of the trigger ring buffer.
-	    if (trigger_position+n < trigger_frames)
-	      n2 = trigger_position + n;
-	    else
-	      n2 = trigger_position + n - trigger_frames;
-	    
+	    n2 = (trigger_position + n) % trigger_frames;
+
 	    if (interleaved) 
 	      triggerbuffer[n2] = ((double) sbuffer[(n+ch)*channels]) / 32768.0; // Normalize audio data.
 	    else  // Non-interleaved.
@@ -1230,11 +1208,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	
 	for (n=0; n<contiguous; n++) {
 
-	  // Check if we reached the end of the trigger ring buffer.
-	  if (trigger_position+n < trigger_frames)
-	    n2 = trigger_position + n;
-	  else
-	    n2 = trigger_position + n - trigger_frames;
+	  n2 = (trigger_position + n) % trigger_frames;
 
 	  trigger += fabs(triggerbuffer[n2]);
 	}
@@ -1304,7 +1278,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   } // while(running && ringbuffer_read_running) 
 
   // Note that the data is not sequential in time in the buffer, that is,
-  // the buffer must be shifted by the calling function/program.
+  // the buffer must be shifted (if wrapped)  by the calling function/program.
 
   free(triggerbuffer);
   free(ufds);
