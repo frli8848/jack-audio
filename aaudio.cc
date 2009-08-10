@@ -1209,8 +1209,6 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 
 	  trigger += fabs(triggerbuffer[n2]);
 	}
-	printf("trigger = %f [%d %d %d]\n", trigger / (double) trigger_frames,
-	       trigger_position, n2, contiguous);
 	
 	// 4) Set the new position in the trigger buffer.
 
