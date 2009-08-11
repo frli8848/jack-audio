@@ -1,6 +1,6 @@
 /***
  *
- *  Copyright (C) 2008 by Fredrik Lingvall
+ *  Copyright (C) 2008, 2009 Fredrik Lingvall
  *
  *  Parts of this code is based on the aplay program by Jaroslav Kysela and
  *  the pcm.c example from the alsa-lib.
