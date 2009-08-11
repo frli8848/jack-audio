@@ -376,10 +376,10 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   }
 
   if ( (r_period_size != period_size) && (nrhs > 4) )
-    printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
+    printf("Note: Requested period size %d adjusted to %d.\n", (int) r_period_size, (int) period_size);
   
   if ( (r_num_periods != num_periods) && (nrhs > 4) )
-    printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
+    printf("Note: Requested number of periods %d adjusted to %d.\n", r_num_periods, num_periods);
 
 
   // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)

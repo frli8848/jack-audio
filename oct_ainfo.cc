@@ -392,25 +392,25 @@ If no device is given then AINFO lists all PCM devices.\n\
   if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams_play,&val2)) < 0)
     fprintf(stderr,"Unable get max buffer size: %s\n", snd_strerror(err));
   else
-    printf("| Max buffer size                  | %u",val2);
+    printf("| Max buffer size                  | %u", (unsigned int) val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_max(hwparams_rec,&val2)) < 0)
     fprintf(stderr,"Unable get max buffer size: %s\n", snd_strerror(err));
   else
-    printf(" / %u\n",val2);
+    printf(" / %u\n", (unsigned int) val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_min(hwparams_play,&val2)) < 0)
     fprintf(stderr,"Unable to get min buffer size: %s\n", snd_strerror(err));
   else
-    printf("| Min buffer size                  | %u",val2);
+    printf("| Min buffer size                  | %u", (unsigned int) val2);
 
   val2 = 0;
   if ((err=snd_pcm_hw_params_get_buffer_size_min(hwparams_rec,&val2)) < 0)
     fprintf(stderr,"Unable to get min buffer size: %s\n", snd_strerror(err));
   else
-    printf(" / %u\n",val2);
+    printf(" / %u\n", (unsigned int) val2);
 
   //
   // Max/min buffer time.
@@ -488,14 +488,14 @@ If no device is given then AINFO lists all PCM devices.\n\
  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams_play,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
  else
-   printf("| Max period size                  | %d",val2);
+   printf("| Max period size                  | %d", (int) val2);
 
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_size_max(hwparams_rec,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get max period size: %s\n", snd_strerror(err));
  else
-   printf(" /  %d\n",val2);
+   printf(" /  %d\n", (int) val2);
 
  
  dir = 0;
@@ -503,14 +503,14 @@ If no device is given then AINFO lists all PCM devices.\n\
  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams_play,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
  else
-   printf("| Min period size                  | %d",val2);
+   printf("| Min period size                  | %d", (int) val2);
 
  dir = 0;
  val2 = 0;
  if ((err=snd_pcm_hw_params_get_period_size_min(hwparams_rec,&val2,&dir)) < 0)
    fprintf(stderr,"Unable to get min period size: %s\n", snd_strerror(err));
  else
-   printf(" / %d\n",val2);
+   printf(" / %d\n", (int) val2);
 
 
  //

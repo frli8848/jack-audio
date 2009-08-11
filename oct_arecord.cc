@@ -317,7 +317,7 @@ A frames x channels matrix containing the captured audio data.\n\
   }
 
   if ( (r_period_size != period_size) && (nrhs > 4) )
-    printf("Note: Requested period size %d adjusted to %d.\n",r_period_size,period_size);
+    printf("Note: Requested period size %d adjusted to %d.\n", (int) r_period_size, (int) period_size);
   
   if ( (r_num_periods != num_periods) && (nrhs > 4) )
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
