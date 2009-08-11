@@ -116,7 +116,7 @@ if (trigger_level > sum(abs(triggerbuffer)/trigger_frames) ...\n\
 where triggerbuffer is the vector of audio samples currently inside the trigger buffer.\n\
 \n\
 @item trigger_ch\n\
-The trigger channel. Optional: defaults to 0 (1st channel).\n\
+The trigger channel. Optional: defaults to 1 (1st channel).\n\
 @item trigger_frames\n\
 The number of frames to use for triggering. Optional: defaults to fs number of frames (= 1 second trigger buffer).\n\
 @end table\n\
