@@ -6,7 +6,7 @@ L = 10*44100;
 channels = 2;
 
 trigger_level = 0.01;
-trigger_channel = 0;
+trigger_channel = 1;
 trigger_frames = 0.1*Fs;
 trigger_par = [trigger_level trigger_channel trigger_frames];
 

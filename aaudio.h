@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2007,2008 Fredrik Lingvall
+ * Copyright (C) 2007, 2008, 2009 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -41,8 +41,6 @@ int set_swparams(snd_pcm_t *handle,
 		 snd_pcm_uframes_t start_threshold,
 		 snd_pcm_uframes_t stop_threshold);
 
-
-
 void check_hw(snd_pcm_hw_params_t *hwparams);
 int xrun_recovery(snd_pcm_t *handle, int err);
 
@@ -51,7 +49,6 @@ snd_pcm_sframes_t play_poll_loop(snd_pcm_t *handle,
 				 unsigned int poll_timeout,
 				 pollfd *pfd,
 				 snd_pcm_uframes_t period_size);
-
 
 int write_and_poll_loop(snd_pcm_t *handle,
 			const snd_pcm_channel_area_t *areas,
@@ -69,7 +66,6 @@ int read_and_poll_loop(snd_pcm_t *handle,
 		       snd_pcm_sframes_t frames,
 		       snd_pcm_sframes_t framesize,
 		       unsigned int channels);
-
 
 snd_pcm_sframes_t 
 t_read_and_poll_loop(snd_pcm_t *handle,

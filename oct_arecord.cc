@@ -300,7 +300,7 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-  // Setup the hardwear parameters for the playback device.
+  // Setup the hardwear parameters for the capture device.
   if (nrhs <= 4) {
     period_size = 512;
     num_periods = 2;

@@ -1,5 +1,5 @@
 %
-% Script to build the ALSA
+% Script to build the aaudio oct-files.
 %
 
 
