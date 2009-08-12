@@ -91,7 +91,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (atrecord, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {} [Y] = atrecord(trigger_level,trigger_frames,frames,channels,fs,dev_name,hw_pars).\n\
+@deftypefn {Loadable Function} {} [Y] = atrecord(trigger_pars,frames,channels,fs,dev_name,hw_pars).\n\
 \n\
 ATRECORD Captures audio data, from the PCM device given by dev_name,\n\
 using the Advanced Linux Sound Architecture (ALSA) audio library API.\n\
@@ -103,8 +103,8 @@ robust trigger_frames number of frames are used to compute the trigger threshold
 Input parameters:\n\
 \n\
 @table @samp\n\
-@item trigger_par\n\
-The trigger parameter vector: trigger_par = [trigger_level,trigger_ch,trigger_frames];\n\
+@item trigger_pars\n\
+The trigger parameter vector: trigger_pars = [trigger_level,trigger_ch,trigger_frames];\n\
 \n\
 @table @code\n\
 @item trigger_level\n\

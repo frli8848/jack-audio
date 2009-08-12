@@ -6,7 +6,7 @@
 #
 # Copyright (C) 2008, 2009 Fredrik Lingvall.
 
-VERSION=0.2.0
+VERSION=0.2.1
 
 echo "Note add version number $VERSION to the DESCRIPTION file."
 
