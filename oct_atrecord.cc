@@ -95,9 +95,9 @@ DEFUN_DLD (atrecord, args, nlhs,
 \n\
 ATRECORD Captures audio data, from the PCM device given by dev_name,\n\
 using the Advanced Linux Sound Architecture (ALSA) audio library API.\n\
-ATRECORD runs continously until the level of the input audio stream\n\
-exceeds the trigger_level, then frames/2 is capured before the trigger\n\
-occured and frames/2 after the trigger occured. To make the trigging more\n\
+ATRECORD runs continuously until the level of the input audio stream\n\
+exceeds the trigger_level, then frames/2 is captured before the trigger\n\
+occurred and frames/2 after the trigger occurred. To make the triggering more\n\
 robust trigger_frames number of frames are used to compute the trigger threshold.\n\
 \n\
 Input parameters:\n\
@@ -235,7 +235,7 @@ A frames x channels matrix containing the captured audio data.\n\
     fs = (int) tmp3.fortran_vec()[0];
     
     if (fs < 0) {
-      error("Error in 4th arg. The samping frequency must be > 0!");
+      error("Error in 4th arg. The sampling frequency must be > 0!");
       return oct_retval;
     }
   } else
@@ -368,7 +368,7 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-  // Setup the hardwear parameters for the capture device.
+  // Setup the hardware parameters for the capture device.
   if (nrhs <= 4) {
     period_size = 512;
     num_periods = 2;
@@ -418,7 +418,7 @@ A frames x channels matrix containing the captured audio data.\n\
   stop_threshold = 16*period_size; // No idea what to set here.
 
   if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
-    error("Unable to set sofware parameters. Bailing out!");
+    error("Unable to set software parameters. Bailing out!");
     snd_pcm_close(handle);
     return oct_retval;
   }
@@ -432,7 +432,7 @@ A frames x channels matrix containing the captured audio data.\n\
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
   
-  framesize = channels * sample_bytes; // Compute the framesize;
+  framesize = channels * sample_bytes; // Compute the frame size;
 
   //
   // Verbose status info.
@@ -552,7 +552,7 @@ A frames x channels matrix containing the captured audio data.\n\
     } 
     
     // Now shift the (ring) buffer so that the data is sequential in time.
-    // That is, the last aquired frame should be at the end of the buffer
+    // That is, the last acquired frame should be at the end of the buffer
     // and the oldest frame should be first. The 'ringbuffer_position' is
     // the index of the last frame in the ring buffer. 
     

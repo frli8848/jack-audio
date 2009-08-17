@@ -229,7 +229,7 @@ A frames x channels matrix containing the captured audio data.\n\
     fs = (int) tmp2.fortran_vec()[0];
     
     if (fs < 0) {
-      error("Error in 3rd arg. The samping frequency must be > 0!");
+      error("Error in 3rd arg. The sampling frequency must be > 0!");
       return oct_retval;
     }
   } else
@@ -300,7 +300,7 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-  // Setup the hardwear parameters for the capture device.
+  // Setup the hardware parameters for the capture device.
   if (nrhs <= 4) {
     period_size = 512;
     num_periods = 2;
@@ -350,7 +350,7 @@ A frames x channels matrix containing the captured audio data.\n\
   stop_threshold = 16*period_size; // No idea what to set here.
 
   if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
-    error("Unable to set sofware parameters. Bailing out!");
+    error("Unable to set software parameters. Bailing out!");
     snd_pcm_close(handle);
     return oct_retval;
   }
@@ -364,7 +364,7 @@ A frames x channels matrix containing the captured audio data.\n\
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
   
-  framesize = channels * sample_bytes; // Compute the framesize;
+  framesize = channels * sample_bytes; // Compute the frame size;
 
   //
   // Verbose status info.

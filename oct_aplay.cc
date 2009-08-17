@@ -205,7 +205,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     fs = (int) tmp1.fortran_vec()[0];
     
     if (fs < 0) {
-      error("Error in 2nd arg. The samping frequency must be > 0!");
+      error("Error in 2nd arg. The sampling frequency must be > 0!");
       return oct_retval;
     }
   } else
@@ -277,7 +277,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   }
 
   //
-  // Setup the hardwear parameters for the playback device.
+  // Setup the hardware parameters for the playback device.
   //
 
   if (nrhs <= 3) {
@@ -302,7 +302,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
 
 
-  // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
+  // If the number of wanted_channels (given by input data) < channels (which depends on hardware)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
   // copy data to the interleaved buffer. Another solution is just to print an error message 
   // and bail out. 
@@ -396,7 +396,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   stop_threshold = 16*period_size; // No idea what to use here.
   
   if (set_swparams(handle,avail_min,start_threshold,stop_threshold) < 0) {
-    error("Unable to set sofware parameters. Bailing out!");
+    error("Unable to set software parameters. Bailing out!");
     snd_pcm_close(handle);
     return oct_retval;
   }
@@ -411,7 +411,7 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
   
-  framesize = channels * sample_bytes; // Compute the framesize;
+  framesize = channels * sample_bytes; // Compute the frame size;
 
   //
   // Verbose status info.

@@ -259,7 +259,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   if (nrhs > 1) {
     
     if (mxGetM(1)*mxGetN(1) != 1) {
-      error("2nd arg (number of capure channels) must be a scalar !");
+      error("2nd arg (number of capture channels) must be a scalar !");
       return oct_retval;
     }
     
@@ -288,7 +288,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     fs = (int) tmp2.fortran_vec()[0];
     
     if (fs < 0) {
-      error("Error in 3rd arg. The samping frequency must be > 0!");
+      error("Error in 3rd arg. The sampling frequency must be > 0!");
       return oct_retval;
     }
   } else
@@ -359,7 +359,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-  // Setup the hardwear parameters for the playback device.
+  // Setup the hardware parameters for the playback device.
   if (nrhs <= 4) {
     period_size = 512;
     num_periods = 2;
@@ -382,7 +382,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     printf("Note: Requested number of periods %d adjusted to %d.\n", r_num_periods, num_periods);
 
 
-  // If the number of wanted_channels (given by input data) < channels (which depends on hardwear)
+  // If the number of wanted_channels (given by input data) < channels (which depends on hardware)
   // then we must append (silent) channels to get the right offsets (and avoid segfaults) when we 
   // copy data to the interleaved buffer. Another solution is just to print an error message and 
   // bail out. 
@@ -475,7 +475,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   stop_threshold = 16*period_size; // Not sure what to use here.
   
   if (set_swparams(handle_play,avail_min,start_threshold,stop_threshold) < 0) {
-    error("Unable to set audio playback sofware parameters. Bailing out!");
+    error("Unable to set audio playback software parameters. Bailing out!");
     snd_pcm_close(handle_play);
     return oct_retval;
   }
@@ -523,19 +523,19 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   }
   
   if (nrhs <= 4) {
-    avail_min = period_size; // Tha aplay app uses this setting. 
+    avail_min = period_size; // The aplay app uses this setting. 
     start_threshold = (rec_buffer_size/avail_min) * avail_min;
     stop_threshold = 16*period_size; // Perhaps use default here instead!
   }
   
   if (set_swparams(handle_rec,avail_min,start_threshold,stop_threshold) < 0) {
-    error("Unable to set audio capture sofware parameters. Bailing out!");
+    error("Unable to set audio capture software parameters. Bailing out!");
     snd_pcm_close(handle_rec);
     return oct_retval;
   }
   
   //
-  // Get the framesize from PCM device.
+  // Get the frame size from PCM device.
   //
 
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
@@ -547,8 +547,8 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
     sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
 
-  play_framesize = play_channels * sample_bytes; // Compute the framesize;
-  rec_framesize = rec_channels * sample_bytes; // Compute the framesize;
+  play_framesize = play_channels * sample_bytes; // Compute the frame size;
+  rec_framesize = rec_channels * sample_bytes; // Compute the frame size;
 
   //
   // Verbose status info.
@@ -607,7 +607,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   D[0].framesize = rec_framesize;
   D[0].channels = rec_channels;
 
-  // Set status to running (CTRL-C will clear the flag and stop play/capure).
+  // Set status to running (CTRL-C will clear the flag and stop play/capture).
   set_running_flag(); 
 
   // Start the read thread.
@@ -638,10 +638,10 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   }
   
   //
-  // Wait for the read thread to finnish.
+  // Wait for the read thread to finish.
   //
 
-  // Wait for the read thread to finnish.
+  // Wait for the read thread to finish.
   err = pthread_join(threads[0], &retval);
   if (err != 0) {
     error("Error when joining a thread!\n");
