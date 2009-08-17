@@ -114,7 +114,7 @@ void clear_running_flag(void)
 
 /***
  *
- * Return the data access mathod. 
+ * Return the data access method. 
  *
  *
  ***/
@@ -173,7 +173,7 @@ int set_hwparams(snd_pcm_t *handle,
     }
   }
   
-  // Test if the audio hardwear supports the chosen audio sample format, otherwise, first try S32
+  // Test if the audio hardware supports the chosen audio sample format, otherwise, first try S32
   // and, if that fails too, fallback to S16.
   if(snd_pcm_hw_params_test_format(handle, hwparams,*format) != 0){
 
@@ -205,7 +205,7 @@ int set_hwparams(snd_pcm_t *handle,
   // Set the sampling frequency.
   //
 
-  // First get max and min values supporded by the device.
+  // First get max and min values supported by the device.
   direction = 0;
   tmp_fs = *fs;
   if ((err=snd_pcm_hw_params_get_rate_max(hwparams,&max1,&direction)) < 0)
@@ -241,7 +241,7 @@ int set_hwparams(snd_pcm_t *handle,
   // Set the number of channels.
   //
 
-  // First get max and min values supporded by the device.
+  // First get max and min values supported by the device.
   if ((err=snd_pcm_hw_params_get_channels_max(hwparams,&max1)) < 0)
     fprintf(stderr,"Unable to get max number of channels: %s\n", snd_strerror(err));
   
@@ -269,7 +269,7 @@ int set_hwparams(snd_pcm_t *handle,
   // size is returned.
   //
 
-  // First get max and min values supporded by the device.
+  // First get max and min values supported by the device.
   direction = 0;
   max2 = 0;
   if ((err=snd_pcm_hw_params_get_period_size_max(hwparams,&max2,&direction)) < 0) {
@@ -308,7 +308,7 @@ int set_hwparams(snd_pcm_t *handle,
   }
   
   if((err = snd_pcm_hw_params(handle, hwparams)) < 0){
-    fprintf(stderr,"Unable to set HW parameters: %s\n",snd_strerror(err));
+    fprintf(stderr,"Unable to set hardware parameters: %s\n",snd_strerror(err));
     return err;
   }
 
@@ -537,14 +537,14 @@ int set_swparams(snd_pcm_t *handle,
   int err;
   
   if((err = snd_pcm_sw_params_current(handle, swparams)) < 0){
-    fprintf(stderr, "Unable to determine current swparams: %s\n",
+    fprintf(stderr, "Unable to determine current software parameters: %s\n",
 	    snd_strerror(err));
     return err;
   }
  
   // Set the minimum number of frames between interrupts. 
   //
-  //Most PC sound cards can only accept power of 2 frame counts (i.e., 512, 1024, 2048).
+  // Most PC sound cards can only accept power of 2 frame counts (i.e., 512, 1024, 2048).
   if((err = snd_pcm_sw_params_set_avail_min(handle,swparams,avail_min)) < 0){
     fprintf(stderr, "Unable to set minimum available count: %s\n",
 	    snd_strerror(err));
@@ -754,7 +754,7 @@ int write_and_poll_loop(snd_pcm_t *handle,
 	nwritten += contiguous;
 	//frames_played += contiguous;
       } else
-	printf("Warning: Negative byte count\n"); // This should never happend. 
+	printf("Warning: Negative byte count\n"); // This should never happened. 
     }
     frames_played += nwritten;
     
@@ -927,7 +927,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
 	nwritten += contiguous;
 	//frames_recorded += contiguous;
       } else
-	printf("Warning: Zero or negative byte count\n"); // This should never happend. 
+	printf("Warning: Zero or negative byte count\n"); // This should never happened. 
     
     } // while (frames_to_read > 0)
     frames_recorded += nwritten;
@@ -966,12 +966,12 @@ int read_and_poll_loop(snd_pcm_t *handle,
  *
  * read_and_poll_loop_ringbuffer
  *
- * Function that continously read the audio stream and 
+ * Function that continuously read the audio stream and 
  * saves that data in a ring buffer when the input signal
  * is over the trigger level.
  *
  *
- * Returns the position of the last aquired frame in 
+ * Returns the position of the last acquired frame in 
  * the ring buffer.
  *
  ***/
@@ -1004,7 +1004,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   int *ibuffer = NULL;
   short *sbuffer = NULL;
 
-  // Flag used to stop the data aquisition.
+  // Flag used to stop the data acquisition.
   int ringbuffer_read_running = TRUE;
   
   // The current position in the ring buffer.
@@ -1235,7 +1235,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	}
 	
       } else { // We have already detected a signal just wait until we have got all the requested data. 
-	post_trigger_frames += contiguous; // Add the number of aquired frames.
+	post_trigger_frames += contiguous; // Add the number of acquired frames.
       }
 
       if (contiguous >= 0) {
@@ -1243,7 +1243,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	nwritten += contiguous;
 	//frames_recorded += contiguous;
       } else
-	printf("Warning: Zero or negative byte count\n"); // This should never happend. 
+	printf("Warning: Zero or negative byte count\n"); // This should never happened. 
 
       // The current position of the ring buffer.
       ringbuffer_position += contiguous;
@@ -1282,7 +1282,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
     }
 
     // We have got a trigger. Now wait for frames/2 more data and then
-    // we're done aquiring data.
+    // we're done acquiring data.
     if (trigger_active && (post_trigger_frames >= frames/2) )
       ringbuffer_read_running = FALSE; // Exit the read loop.
     
@@ -1329,7 +1329,7 @@ void device_list(int play_or_rec)
 
   card = -1;
   if (snd_card_next(&card) < 0 || card < 0) {
-    error("no soundcards found...");
+    error("no sound cards found...");
     return;
   }
   printf("**** List of %s Hardware Devices ****\n",snd_pcm_stream_name(stream));
