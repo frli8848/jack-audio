@@ -65,7 +65,8 @@ int read_and_poll_loop(snd_pcm_t *handle,
 		       void *buffer,
 		       snd_pcm_sframes_t frames,
 		       snd_pcm_sframes_t framesize,
-		       unsigned int channels);
+		       unsigned int channels,
+		       unsigned int wanted_channels);
 
 snd_pcm_sframes_t 
 t_read_and_poll_loop(snd_pcm_t *handle,
@@ -75,6 +76,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 		     snd_pcm_sframes_t frames,
 		     snd_pcm_sframes_t framesize,
 		     unsigned int channels,
+		     unsigned int wanted_channels,
 		     double trigger_level,
 		     int trigger_ch,
 		     snd_pcm_sframes_t trigger_frames);

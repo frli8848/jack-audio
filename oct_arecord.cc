@@ -322,10 +322,20 @@ A frames x channels matrix containing the captured audio data.\n\
   if ( (r_num_periods != num_periods) && (nrhs > 4) )
     printf("Note: Requested number of periods %d adjusted to %d.\n",r_num_periods,num_periods);
   
-  if ( (wanted_channels != channels) && (nrhs > 1) ) {
-    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
-  }
+  // Note: the current code works when using fewer channels than the pcm device have when
+  // the data is non-interleved but it doesn't work for interleved data.
+  // TODO: Fix so one can have wanted_channels < channels on interleaved devices too.
 
+  if ( is_interleaved() && (wanted_channels != channels) && (nrhs > 1) ) {
+    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
+    wanted_channels = channels;
+  }
+  
+  if ( !is_interleaved() && (wanted_channels > channels) && (nrhs > 1) ) {
+    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
+    wanted_channels = channels;
+  }
+  
   // Allocate buffer space.
   switch(format) {
   
@@ -388,19 +398,23 @@ A frames x channels matrix containing the captured audio data.\n\
   switch(format) {
     
   case SND_PCM_FORMAT_FLOAT:
-    read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize,channels);
+    read_and_poll_loop(handle,record_areas,format,fbuffer,frames,framesize,
+		       channels,wanted_channels);
     break;    
     
   case SND_PCM_FORMAT_S32:
-    read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize,channels);
+    read_and_poll_loop(handle,record_areas,format,ibuffer,frames,framesize,
+		       channels,wanted_channels);
     break;
     
   case SND_PCM_FORMAT_S16:
-    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels);
+    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,
+		       channels,wanted_channels);
     break;
     
   default:
-    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,channels);
+    read_and_poll_loop(handle,record_areas,format,sbuffer,frames,framesize,
+		       channels,wanted_channels);
   }
 
   //
@@ -424,7 +438,7 @@ A frames x channels matrix containing the captured audio data.\n\
   } else {
     
     // Allocate space for output data.
-    Matrix Ymat(frames,channels);
+    Matrix Ymat(frames,wanted_channels);
     Y = Ymat.fortran_vec();
     
     if (is_interleaved()) {
@@ -453,7 +467,7 @@ A frames x channels matrix containing the captured audio data.\n\
 	}
       }
     } else { // Non-interleaved
-      for (n = 0; n < frames*channels; n++) {
+      for (n = 0; n < frames*wanted_channels; n++) {
 	
 	switch(format) {
 	  

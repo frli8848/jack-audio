@@ -390,8 +390,18 @@ A frames x channels matrix containing the captured audio data.\n\
   if ( (r_num_periods != num_periods) &&  (nrhs > 6) )
     printf("Note: Requested number of periods %d adjusted to %d.\n", (int) r_num_periods, (int) num_periods);
   
-  if ( (wanted_channels != channels) &&  (nrhs > 3) ) {
+  // Note: the current code works when using fewer channels than the pcm device have when
+  // the data is non-interleved but it doesn't work for interleved data. 
+  // TODO: Fix so one can have wanted_channels < channels on interleaved devices too.
+
+  if ( is_interleaved() && (wanted_channels != channels) && (nrhs > 3) ) {
     printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
+    wanted_channels = channels;
+  }
+
+  if ( !is_interleaved() && (wanted_channels > channels) && (nrhs > 3) ) {
+    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_channels,channels);
+    wanted_channels = channels;
   }
 
   // Allocate buffer space.
@@ -457,25 +467,29 @@ A frames x channels matrix containing the captured audio data.\n\
     
   case SND_PCM_FORMAT_FLOAT:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       fbuffer,frames,framesize,channels,
+					       fbuffer,frames,framesize,
+					       channels,wanted_channels,
 					       trigger_level, trigger_ch,trigger_frames);
     break;    
     
   case SND_PCM_FORMAT_S32:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       ibuffer,frames,framesize,channels,
+					       ibuffer,frames,framesize,
+					       channels,wanted_channels,
 					       trigger_level, trigger_ch,trigger_frames);
     break;
     
   case SND_PCM_FORMAT_S16:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       sbuffer,frames,framesize,channels,
+					       sbuffer,frames,framesize,
+					       channels,wanted_channels,
 					       trigger_level, trigger_ch,trigger_frames);
     break;
     
   default:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       sbuffer,frames,framesize,channels,
+					       sbuffer,frames,framesize,
+					       channels,wanted_channels,
 					       trigger_level, trigger_ch,trigger_frames);
   }
 
@@ -500,7 +514,7 @@ A frames x channels matrix containing the captured audio data.\n\
   } else {
     
     // Allocate space for output data.
-    Matrix Ymat(frames,channels);
+    Matrix Ymat(frames,wanted_channels);
     Y = Ymat.fortran_vec();
     
     if (is_interleaved()) {
@@ -529,7 +543,7 @@ A frames x channels matrix containing the captured audio data.\n\
 	}
       }
     } else { // Non-interleaved
-      for (n = 0; n < frames*channels; n++) {
+      for (n = 0; n < frames*wanted_channels; n++) {
 	
 	switch(format) {
 	  

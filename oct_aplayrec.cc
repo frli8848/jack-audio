@@ -73,6 +73,7 @@ typedef struct
   unsigned int frames;
   unsigned int framesize;
   unsigned int channels;
+  unsigned int wanted_channels;
 } DATA;
 
 //
@@ -100,9 +101,11 @@ void* smp_process(void *arg)
   snd_pcm_format_t format = D.format;
   int frames = D.frames;
   int framesize = D.framesize;
-  int channels = D.channels;
-
-  read_and_poll_loop(handle_rec,record_areas,format,buffer_rec,frames,framesize,channels);
+  unsigned int channels = D.channels;
+  unsigned int wanted_channels = D.wanted_channels;
+  
+  read_and_poll_loop(handle_rec,record_areas,format,buffer_rec,frames,framesize,
+					       channels,wanted_channels);
 
   return NULL;
 }
@@ -497,11 +500,24 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
 
-  if (wanted_rec_channels < rec_channels) {
-    printf("Warning: You must have (at least) %d input channels for the used hardware!\n", rec_channels);
-    printf("Warning: %d input channels is now used!\n", rec_channels);
+  // Note: the current code works when using fewer channels than the pcm device have when
+  // the data is non-interleved but it doesn't work for interleved data.
+  // TODO: Fix so one can have wanted_channels < channels on interleaved devices too.
 
+  if ( is_interleaved() && (wanted_rec_channels != rec_channels) && (nrhs > 1) ) {
+    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_rec_channels,rec_channels);
+    wanted_rec_channels = rec_channels;
   }
+
+  if ( !is_interleaved() && (wanted_rec_channels > rec_channels) && (nrhs > 1) ) {
+    printf("Note: Requested number of channels %d adjusted to %d.\n",wanted_rec_channels,rec_channels);
+    wanted_rec_channels = rec_channels;
+  }
+
+  //if (wanted_rec_channels < rec_channels) {
+  //   printf("Warning: You must have (at least) %d input channels for the used hardware!\n", rec_channels);
+  //  printf("Warning: %d input channels is now used!\n", rec_channels);
+  //}
 
   // Allocate buffer space.
   switch(format) {
@@ -606,6 +622,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   D[0].frames = frames;
   D[0].framesize = rec_framesize;
   D[0].channels = rec_channels;
+  D[0].wanted_channels = wanted_rec_channels;
 
   // Set status to running (CTRL-C will clear the flag and stop play/capture).
   set_running_flag(); 
@@ -671,11 +688,10 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   
   if (!is_running()) { 
     error("CTRL-C pressed - playback and capture interrupted!\n"); // Bail out.
-    
   } else {
     
     // Allocate space for output data.
-    Matrix Ymat(frames,rec_channels);
+    Matrix Ymat(frames,wanted_rec_channels);
     Y = Ymat.fortran_vec();
 
    if (is_interleaved()) {
@@ -704,7 +720,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
 	}
       }
     } else { // Non-interleaved
-      for (n = 0; n < frames*rec_channels; n++) {
+      for (n = 0; n < frames*wanted_rec_channels; n++) {
 	
 	switch(format) {
 	  

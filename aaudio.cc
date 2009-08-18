@@ -812,7 +812,8 @@ int read_and_poll_loop(snd_pcm_t *handle,
 		       void *buffer,
 		       snd_pcm_sframes_t frames,
 		       snd_pcm_sframes_t framesize,
-		       unsigned int channels)
+		       unsigned int channels,
+		       unsigned int wanted_channels)
 {
   struct pollfd *ufds;
   int err, count, init;
@@ -905,7 +906,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
 	      (contiguous * framesize));
       } else { // Non-interleaved
 	// A separate ring buffer for each channel.
-	for (ch=0; ch<channels; ch++) {
+	for (ch=0; ch<wanted_channels; ch++) {
 	  memcpy( (((unsigned char*) buffer) 
 		   + frames_recorded * framesize/channels 
 		   + ch*frames*(framesize/channels)),
@@ -964,7 +965,7 @@ int read_and_poll_loop(snd_pcm_t *handle,
 
 /***
  *
- * read_and_poll_loop_ringbuffer
+ * t_read_and_poll_loop
  *
  * Function that continuously read the audio stream and 
  * saves that data in a ring buffer when the input signal
@@ -984,6 +985,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 		     snd_pcm_sframes_t frames,
 		     snd_pcm_sframes_t framesize,
 		     unsigned int channels,
+		     unsigned int wanted_channels,
 		     double trigger_level,
 		     int trigger_ch,
 		     snd_pcm_sframes_t trigger_frames)
@@ -1102,7 +1104,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
       } else { // Non-interleaved
 	
 	// A separate ring buffer for each channel.
-	for (ch=0; ch<channels; ch++) {
+	for (ch=0; ch<wanted_channels; ch++) {
 	  memcpy( (((unsigned char*) buffer) 
 		   + frames_recorded * framesize/channels 
 		   + ch*frames*(framesize/channels)),
