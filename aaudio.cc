@@ -1040,7 +1040,10 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   // Main read loop.
   //
 
-  printf("\n Audio capturing started. Listening to channel 1 for a trigger signal.\n\n");
+  //printf("\n Audio capturing started. Listening to channel 1 for a trigger signal.\n\n");
+  
+  // This should work with Octave's diary command.
+  octave_stdout << "\n Audio capturing started. Listening to channel 1 for a trigger signal.\n\n";
 
   frames_recorded = 0;
   init = 1;
@@ -1230,9 +1233,12 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	  // Convert it to local time representation. 
 	  the_time = localtime(&curtime);
 	  
-	  printf("\n Got a trigger signal at: ");
-	  fputs (asctime (the_time), stdout);
-	  printf("\n");
+	  //printf("\n Got a trigger signal at: ");
+	  //fputs (asctime (the_time), stdout);
+	  //printf("\n");
+
+	  // This should work with Octave's diary command.
+	  octave_stdout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
 
 	}
 	
