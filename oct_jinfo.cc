@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009 Fredrik Lingvall
+ * Copyright (C) 2009 Fredrik Lingvall 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
  *   02110-1301, USA.
  *
  ***/
+
+// This code is based on: http://dis-dot-dat.net/index.cgi?item=jacktuts/starting/
 
 #include <string.h>
 #include <stdlib.h>
@@ -52,9 +54,6 @@ using namespace std;
 
 #define TRUE 1
 #define FALSE 0
-
-#define LATENCY 0
-#define ALLOW_ALSA_RESAMPLE TRUE
 
 //
 // Macros.
@@ -323,13 +322,9 @@ JINFO Prints various hardware info of the JACK device\n\
     n++;
   }
   printf("|------------------------------------------------------\n");
-  
-
 
   free (ports_i);
   free (ports_o);
-
-  sleep(20);
 
   // Close the client.
   jack_client_close (client);
