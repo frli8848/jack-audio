@@ -21,7 +21,8 @@
 CXX = mkoctfile
 DLDCC = mkoctfile
 
-LIBDIRS	= -lasound
+ALIBDIRS = -lasound
+JLIBDIRS = -ljack -lpthread -lrt
 
 all:
 
@@ -32,23 +33,33 @@ all: \
 	aplayrec.oct \
 	ainfo.oct
 
+jack: \
+	jinfo.oct
 .cc.o:
 	$(CXX) -c $<
 
+# ALSA
+
 aplay.oct : oct_aplay.o aaudio.o
-	$(DLDCC) $(LIBDIRS) $^ -o $@ 
+	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
 
 arecord.oct : oct_arecord.o aaudio.o
-	$(DLDCC) $(LIBDIRS) $^ -o $@ 
+	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
 
 atrecord.oct : oct_atrecord.o aaudio.o
-	$(DLDCC) $(LIBDIRS) $^ -o $@ 
+	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
 
 aplayrec.oct : oct_aplayrec.o aaudio.o
 	$(DLDCC) -lpthread $^ -o $@ 
 
 ainfo.oct : oct_ainfo.o aaudio.o
-	$(DLDCC) $(LIBDIRS) $^ -o $@
+	$(DLDCC) $(ALIBDIRS) $^ -o $@
+
+
+# jack
+
+jinfo.oct : oct_jinfo.o 
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:
 	rm -f *.o *~ 
