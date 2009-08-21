@@ -121,7 +121,7 @@ hw_pars = [period_size num_periods]. Note these parameters may be changed to all
 values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
 @end table\n\
 \n\
-@copyright{} 2008 Fredrik Lingvall.\n\
+@copyright{} 2008,2009 Fredrik Lingvall.\n\
 @seealso {arecord, aplayrec, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
