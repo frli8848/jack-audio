@@ -34,11 +34,13 @@ all: \
 	ainfo.oct
 
 jack: \
-	jinfo.oct
+	jinfo.oct \
+	jplay.oct
 .cc.o:
 	$(CXX) -c $<
-
+#
 # ALSA
+#
 
 aplay.oct : oct_aplay.o aaudio.o
 	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
@@ -55,10 +57,14 @@ aplayrec.oct : oct_aplayrec.o aaudio.o
 ainfo.oct : oct_ainfo.o aaudio.o
 	$(DLDCC) $(ALIBDIRS) $^ -o $@
 
-
-# jack
+#
+# JACK
+#
 
 jinfo.oct : oct_jinfo.o 
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
+
+jplay.oct : oct_jplay.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:

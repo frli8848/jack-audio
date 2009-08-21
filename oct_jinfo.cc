@@ -27,11 +27,6 @@
 #include <pthread.h>
 #include <signal.h>
 
-#include <jack/jack.h>
-
-//#include <alsa/asoundlib.h>
-#include <poll.h>
-
 //
 // Octave headers.
 //
@@ -50,7 +45,7 @@ using namespace std;
 #include <octave/symtab.h>
 #include <octave/variables.h>
 
-#include "aaudio.h"
+#include "jaudio.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -163,8 +158,9 @@ JINFO Prints various hardware info of the JACK device\n\
 {
   jack_client_t *client;
   const char **ports_i, **ports_o;
+  jack_port_t  *port;
   char device[50];
-  int  buflen,n;
+  int  buflen, n, port_flags;
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
@@ -243,13 +239,18 @@ JINFO Prints various hardware info of the JACK device\n\
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown (client, jack_shutdown, 0);
-  
-  // Display the current sample rate. once the client is activated 
+
+  printf("|------------------------------------------------------\n");
+
+  // Display the current sample rate. Once the client is activated 
   // (see below), you should rely on your own sample rate
   // callback (see above) for this value.
-  printf ("\n Engine sample rate: %lu\n\n", 
-	  (long unsigned int) jack_get_sample_rate (client));
+  printf ("\n JACK engine sample rate: %lu [Hz]\n", 
+	  (long unsigned int) jack_get_sample_rate(client));
   
+  // Display the current JACK load.
+  printf ("\n Current JACK engine CPU load: %1.1f [%%]\n\n", jack_cpu_load(client));
+
   //
   // Create two ports.
   //
@@ -271,22 +272,41 @@ JINFO Prints various hardware info of the JACK device\n\
   // connections to be made to clients that aren't
   // running.
   if ((ports_o = jack_get_ports(client, NULL, NULL, 
+				JackPortIsOutput)) == NULL) {
+    error("Cannot find any capture ports\n");
+    return oct_retval;
+  }
+  /*
+  if ((ports_o = jack_get_ports(client, NULL, NULL, 
+				JackPortIsOutput)) == NULL) {
+    error("Cannot find any physical capture ports\n");
+    return oct_retval;
+  }
+  */
+  /*
+  if ((ports_o = jack_get_ports(client, NULL, NULL, 
 			      JackPortIsPhysical|JackPortIsOutput)) == NULL) {
     error("Cannot find any physical capture ports\n");
     return oct_retval;
   }
-  
+  */
   //if (jack_connect(client, ports_o[0], jack_port_name (input_port))) 
   //  error("Cannot connect input ports\n");
   
   //free (ports_o);
   
   if ((ports_i = jack_get_ports(client, NULL, NULL, 
+				JackPortIsInput)) == NULL) {
+    error("Cannot find any playback ports\n");
+    return oct_retval;
+  }
+  /*
+  if ((ports_i = jack_get_ports(client, NULL, NULL, 
 			      JackPortIsPhysical|JackPortIsInput)) == NULL) {
     error("Cannot find any physical playback ports\n");
     return oct_retval;
   }
-  
+  */
   //if ((ports_o = jack_get_ports(client, NULL, NULL, 
   //			      JackPortIsPhysical|JackPortIsOutput)) == NULL) {
   //  error("Cannot find any physical capture ports\n");
@@ -303,22 +323,36 @@ JINFO Prints various hardware info of the JACK device\n\
   //}
 
   printf("|------------------------------------------------------\n");
-  printf("|         Physical input ports                         \n");
+  printf("|         Input ports                                  \n");
   printf("|------------------------------------------------------\n");
   n = 0;
   while(ports_i[n] != NULL) {
-    printf("|        %s\n", ports_i[n]);
+
+    port = jack_port_by_name(client, ports_i[n]);
+    port_flags = jack_port_flags(port);
+    if (port_flags & JackPortIsPhysical) 
+      printf("|        %s [physical]\n", ports_i[n]);
+    else
+      printf("|        %s\n", ports_i[n]);
+
     n++;
   }
   printf("|------------------------------------------------------\n\n\n");
 
 
   printf("|------------------------------------------------------\n");
-  printf("|         Physical output ports                        \n");
+  printf("|         Output ports                                 \n");
   printf("|------------------------------------------------------\n");
   n = 0;
   while(ports_o[n] != NULL) {
-    printf("|        %s\n", ports_o[n]);
+
+    port = jack_port_by_name(client, ports_o[n]);
+    port_flags = jack_port_flags(port);
+    if (port_flags & JackPortIsPhysical) 
+      printf("|        %s [physical]\n", ports_o[n]);
+    else
+      printf("|        %s\n", ports_o[n]);
+
     n++;
   }
   printf("|------------------------------------------------------\n");
