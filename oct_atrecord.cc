@@ -513,6 +513,7 @@ A frames x channels matrix containing the captured audio data.\n\
     error("CTRL-C pressed - audio capture interrupted!\n"); // Bail out.
   } else {
     
+    octave_stdout << " frames = " << frames << " ch =  " <<  wanted_channels << "\n";
     // Allocate space for output data.
     Matrix Ymat(frames,wanted_channels);
     Y = Ymat.fortran_vec();
@@ -569,13 +570,16 @@ A frames x channels matrix containing the captured audio data.\n\
     // That is, the last acquired frame should be at the end of the buffer
     // and the oldest frame should be first. The 'ringbuffer_position' is
     // the index of the last frame in the ring buffer. 
-    
+
     if (ringbuffer_position > 0) {
+
+      octave_stdout << "shifting ring buffer " << " : pos = " << ringbuffer_position << "\n";
+
       double *tmp_data;
       tmp_data = (double*) malloc(ringbuffer_position*1*sizeof(double));
 
       // Shift one channel each time.
-      for (n=0; n<channels; n++) {
+      for (n=0; n<wanted_channels; n++) {
 	
 	memcpy(tmp_data, &Y[0 + n*frames], ringbuffer_position*1*sizeof(double));
 	

@@ -1041,7 +1041,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   //
 
   // This should work with Octave's diary command.
-  octave_stdout << "\n Audio capturing started. Listening to channel 1 for a trigger signal.\n\n";
+  octave_stdout << "\n Audio capturing started. Listening to channel " << trigger_ch  << " for a trigger signal.\n\n";
 
   frames_recorded = 0;
   init = 1;
