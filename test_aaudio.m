@@ -1,4 +1,4 @@
-function test(channels,device)
+function test_aaudio(channels,device)
 
 if nargin < 1
   channels = 2;
