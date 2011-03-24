@@ -30,6 +30,7 @@ all: \
 	aplay.oct \
 	arecord.oct \
 	atrecord.oct \
+	actrecord.oct \
 	aplayrec.oct \
 	ainfo.oct
 
@@ -49,6 +50,9 @@ arecord.oct : oct_arecord.o aaudio.o
 	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
 
 atrecord.oct : oct_atrecord.o aaudio.o
+	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
+
+actrecord.oct : oct_actrecord.o aaudio.o
 	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
 
 aplayrec.oct : oct_aplayrec.o aaudio.o
