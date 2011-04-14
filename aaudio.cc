@@ -224,7 +224,7 @@ int set_hwparams(snd_pcm_t *handle,
     if (*fs < min1)
       *fs = min1;
 
-    printf("Warning: Trying to use the  rate %d.\n",*fs);
+    printf("Warning: Trying to use the rate %d (min = %d and max = %d).\n",*fs,min1,max1);
 
   }
 
@@ -258,12 +258,12 @@ int set_hwparams(snd_pcm_t *handle,
       *channels = min1;
 
   }
-  
+
   if((err = snd_pcm_hw_params_set_channels(handle, hwparams,*channels)) < 0) {
-    fprintf(stderr, "Warning: Unable to set the number of channels: %s\n",
-	    snd_strerror(err));
+    fprintf(stderr, "Warning: Unable to set the number of hardware channels to %d: %s\n",
+	    *channels,snd_strerror(err));
   }
-  
+    
   //
   // Set approximate target period size in frames (Frames/Period). The chosen approximate target period 
   // size is returned.
