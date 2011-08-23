@@ -239,18 +239,17 @@ JINFO Prints various hardware info of the JACK device\n\
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown (client, jack_shutdown, 0);
-
-  printf("|------------------------------------------------------\n");
-
+  octave_stdout << "|------------------------------------------------------\n";
+  
   // Display the current sample rate. Once the client is activated 
   // (see below), you should rely on your own sample rate
   // callback (see above) for this value.
-  printf ("\n JACK engine sample rate: %lu [Hz]\n", 
-	  (long unsigned int) jack_get_sample_rate(client));
+  octave_stdout << "\n JACK engine sample rate: " << 
+    (long unsigned int) jack_get_sample_rate(client) << " [Hz]\n";
   
   // Display the current JACK load.
-  printf ("\n Current JACK engine CPU load: %1.1f [%%]\n\n", jack_cpu_load(client));
-
+  octave_stdout << "\n Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n\n" << endl;
+  
   //
   // Create two ports.
   //
@@ -322,40 +321,39 @@ JINFO Prints various hardware info of the JACK device\n\
   //  return oct_retval;
   //}
 
-  printf("|------------------------------------------------------\n");
-  printf("|         Input ports                                  \n");
-  printf("|------------------------------------------------------\n");
+  octave_stdout << "|------------------------------------------------------\n";
+  octave_stdout << "|         Input ports                                  \n";
+  octave_stdout << "|------------------------------------------------------\n";
   n = 0;
   while(ports_i[n] != NULL) {
-
+    
     port = jack_port_by_name(client, ports_i[n]);
     port_flags = jack_port_flags(port);
     if (port_flags & JackPortIsPhysical) 
-      printf("|        %s [physical]\n", ports_i[n]);
+      octave_stdout << "|        " << ports_i[n] << " [physical]\n";
     else
-      printf("|        %s\n", ports_i[n]);
-
+      octave_stdout << "|        " << ports_i[n] << endl;
+    
     n++;
   }
-  printf("|------------------------------------------------------\n\n\n");
-
-
-  printf("|------------------------------------------------------\n");
-  printf("|         Output ports                                 \n");
-  printf("|------------------------------------------------------\n");
+  octave_stdout << "|------------------------------------------------------\n\n\n";
+  
+  octave_stdout << "|------------------------------------------------------\n";
+  octave_stdout << "|         Output ports                                 \n";
+  octave_stdout << "|------------------------------------------------------\n";
   n = 0;
   while(ports_o[n] != NULL) {
 
     port = jack_port_by_name(client, ports_o[n]);
     port_flags = jack_port_flags(port);
     if (port_flags & JackPortIsPhysical) 
-      printf("|        %s [physical]\n", ports_o[n]);
+      octave_stdout << "|        " << ports_o[n] << " [physical]\n"; 
     else
-      printf("|        %s\n", ports_o[n]);
-
+      octave_stdout << "|        " << ports_o[n] << endl; 
+	
     n++;
   }
-  printf("|------------------------------------------------------\n");
+  octave_stdout << "|------------------------------------------------------\n";
 
   free (ports_i);
   free (ports_o);
