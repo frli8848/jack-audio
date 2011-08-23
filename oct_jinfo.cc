@@ -329,11 +329,13 @@ JINFO Prints various hardware info of the JACK device\n\
     
     port = jack_port_by_name(client, ports_i[n]);
     port_flags = jack_port_flags(port);
-    if (port_flags & JackPortIsPhysical) 
-      octave_stdout << "|        " << ports_i[n] << " [physical]\n";
-    else
-      octave_stdout << "|        " << ports_i[n] << endl;
-    
+
+    if (strcmp("octave:jinfo:input",ports_i[n]) != 0) { // Don't print the jinfo input.
+      if (port_flags & JackPortIsPhysical) 
+	octave_stdout << "|        " << ports_i[n] << " [physical]\n";
+      else
+	octave_stdout << "|        " << ports_i[n] << endl;
+    }
     n++;
   }
   octave_stdout << "|------------------------------------------------------\n\n\n";
@@ -346,11 +348,13 @@ JINFO Prints various hardware info of the JACK device\n\
 
     port = jack_port_by_name(client, ports_o[n]);
     port_flags = jack_port_flags(port);
-    if (port_flags & JackPortIsPhysical) 
-      octave_stdout << "|        " << ports_o[n] << " [physical]\n"; 
-    else
-      octave_stdout << "|        " << ports_o[n] << endl; 
-	
+
+    if (strcmp("octave:jinfo:output",ports_o[n]) != 0) { // Don't print the jinfo output.
+      if (port_flags & JackPortIsPhysical) 
+	octave_stdout << "|        " << ports_o[n] << " [physical]\n"; 
+      else
+	octave_stdout << "|        " << ports_o[n] << endl; 
+    }
     n++;
   }
   octave_stdout << "|------------------------------------------------------\n";
