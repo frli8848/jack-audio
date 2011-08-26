@@ -43,7 +43,7 @@ int n_input_ports;
 
 jack_client_t *play_client;
 jack_port_t **output_ports;
-int n_output_ports;
+size_t n_output_ports;
 
 /***
  *
@@ -103,13 +103,12 @@ int play_finished(void)
 
 int play_process(jack_nframes_t nframes, void *arg)
 {
-  size_t   frames_to_write, m;
-  size_t   n;
-  double   *output_buffer;
+  size_t   frames_to_write, n, m;
+  double   *output_dbuffer;
   jack_default_audio_sample_t *out;
 
   // Get the adress of the output buffer.
-  output_buffer = (double*) arg;
+  output_dbuffer = (double*) arg;
 
   // The number of available frames.
   frames_to_write = (size_t) nframes;
@@ -120,17 +119,24 @@ int play_process(jack_nframes_t nframes, void *arg)
     // Grab the n:th output buffer.
     out = (jack_default_audio_sample_t *) 
       jack_port_get_buffer(output_ports[n], nframes);
+
+    if (out == NULL)
+      error("jack_port_get_buffer failed!");
     
     if((play_frames - frames_played) > 0 && running) { 
       
       if (frames_to_write >  (play_frames - frames_played) )
 	frames_to_write = play_frames - frames_played; 
 
+
       for(m=0; m<frames_to_write; m++)
-	out[m] = (jack_default_audio_sample_t) 
-	  output_buffer[m+frames_played + n*play_frames];
-      
+	out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
+	  output_dbuffer[m+frames_played + n*play_frames];
+    } else {
+      frames_played = play_frames; 
+      return 0;
     }
+    
   }
   
   frames_played += frames_to_write;
@@ -150,7 +156,7 @@ int play_init(void* buffer, size_t frames, int channels, char **port_names)
   char port_name[255];
 
   // The number of channels (columns) in the buffer matrix.
-  n_output_ports = channels;
+  n_output_ports = (size_t) channels;
 
   // The total number of frames to play.
   play_frames = frames;
@@ -184,11 +190,11 @@ int play_init(void* buffer, size_t frames, int channels, char **port_names)
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown(play_client, jack_shutdown, 0);
-  
+
   output_ports = (jack_port_t**) malloc(n_output_ports * sizeof(jack_port_t*));
-  
-  for (n=1; n<=n_output_ports; n++) { // Port numbers start at 1.
-    sprintf(port_name,"output_%d",n);
+
+  for (n=0; n<n_output_ports; n++) { 
+    sprintf(port_name,"output_%d",n+1); // Port numbers start at 1.
     output_ports[n] = jack_port_register(play_client, port_name, 
 					 JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
   }
@@ -199,10 +205,10 @@ int play_init(void* buffer, size_t frames, int channels, char **port_names)
     return -1;
   }
 
-  // Connect to the output ports.  
+  // Connect to the input ports.  
   for (n=0; n<n_output_ports; n++) {
     if (jack_connect(play_client, jack_port_name(output_ports[n]), port_names[n])) {
-      error("Cannot connect to the output port %s\n",output_ports[n]);
+      error("Cannot connect to the client input port %s\n",port_names[n]);
       play_close();
       return -1;
     }
@@ -214,8 +220,18 @@ int play_init(void* buffer, size_t frames, int channels, char **port_names)
 
 int play_close(void)
 {
+  int n, err;
+   // Unregister all ports for the play client.
+  for (n=0; n<n_output_ports; n++) {
+    err = jack_port_unregister(play_client, output_ports[n]);
+    if (err)
+      error("Failed to unregister an output port");
+  }
+ 
   // Close the client.
-  jack_client_close(play_client);
+  err = jack_client_close(play_client);
+  if (err)
+    error("jack_client_close failed");
 
   free(output_ports);
 
