@@ -208,7 +208,7 @@ int play_init(void* buffer, size_t frames, int channels, char **port_names)
   // Connect to the input ports.  
   for (n=0; n<n_output_ports; n++) {
     if (jack_connect(play_client, jack_port_name(output_ports[n]), port_names[n])) {
-      error("Cannot connect to the client input port %s\n",port_names[n]);
+      error("Cannot connect to the client input port '%s'\n",port_names[n]);
       play_close();
       return -1;
     }
