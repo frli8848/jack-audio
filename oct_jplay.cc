@@ -103,7 +103,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (jplay, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {} jplay(A,fs,jack_inputs).\n\
+@deftypefn {Loadable Function} {} jplay(A,jack_inputs).\n\
 \n\
 JPLAY Plays audio data from the input matrix A using the (low-latency) audio server JACK.\n\
 \n\
@@ -139,8 +139,8 @@ The JACK client input port names, for example, 'system:playback_1', 'system:play
 
   // Check for proper inputs arguments.
 
-  if (nrhs != 3) {
-    error("jplay requires 3 input arguments!");
+  if (nrhs != 2) {
+    error("jplay requires 2 input arguments!");
     return oct_retval;
   }
 
@@ -170,62 +170,38 @@ The JACK client input port names, for example, 'system:playback_1', 'system:play
   }
 
   //
-  // Sampling frequency.
-  //
-
-  if (nrhs > 1) {
-    
-    if (mxGetM(1)*mxGetN(1) != 1) {
-      error("2nd arg (the sampling frequency) must be a scalar !");
-      return oct_retval;
-    }
-    
-    const Matrix tmp1 = args(1).matrix_value();
-    fs = (int) tmp1.fortran_vec()[0];
-    
-    if (fs < 0) {
-      error("Error in 2nd arg. The sampling frequency must be > 0!");
-      return oct_retval;
-    }
-  } else
-    fs = 44100; // Default to 44.1 kHz.
-
-  //
   // The jack (writable client) input audio ports.
   //
-
-  if (nrhs == 3) {
-    
-    if (!mxIsChar(2)) {
-      error("3rd arg must be a string matrix !");
-      return oct_retval;
-    }
-    
-    //octave_stdout << args(2).matrix_value().rows() << " " <<  args(2).matrix_value().cols();
-
-    std::string strin = args(2).string_value(); 
-
-    octave_stdout << strin << endl;
-    buflen = strin.length();
-    
-    /*
+  
+  if (!mxIsChar(1)) {
+    error("2rd arg must be a string matrix !");
+    return oct_retval;
+  }
+  
+  //octave_stdout << args(1).matrix_value().rows() << " " <<  args(2).matrix_value().cols();
+  
+  std::string strin = args(1).string_value(); 
+  
+  octave_stdout << strin << endl;
+  buflen = strin.length();
+  
+  /*
     if (args(2).rows != channels) {
-      error("The number of channels to play don't match the number of jack client input ports!");
-      return octave_retval;
+    error("The number of channels to play don't match the number of jack client input ports!");
+    return octave_retval;
     }
-    */
-
-    port_names = (char**) malloc(channels * sizeof(char*));
-    for ( n=0; n<channels; n++ ) {
-
-      port_names[n] = (char*) malloc(buflen*sizeof(char)+1);
-      
-      for (int k=0; k<=buflen; k++ ) 
-	port_names[n][k] = strin[k];
-      
-      port_names[0][buflen] = '\0';
-    }
-  } 
+  */
+  
+  port_names = (char**) malloc(channels * sizeof(char*));
+  for ( n=0; n<channels; n++ ) {
+    
+    port_names[n] = (char*) malloc(buflen*sizeof(char)+1);
+    
+    for (int k=0; k<=buflen; k++ ) 
+      port_names[n][k] = strin[k];
+    
+    port_names[0][buflen] = '\0';
+  }
   
   //
   // Register signal handlers.
