@@ -74,7 +74,7 @@ void clear_running_flag(void)
 
 
 // This is called whenever the sample rate changes.
-int srate (jack_nframes_t nframes, void *arg)
+int srate(jack_nframes_t nframes, void *arg)
 {
   //printf("The sample rate is now %lu/sec.\n", (long unsigned int) nframes);
   return 0;
@@ -85,7 +85,7 @@ void jerror (const char *desc)
   error("JACK error: %s\n", desc);
 }
 
-void jack_shutdown (void *arg)
+void jack_shutdown(void *arg)
 {
   // Do nothing
   return;
@@ -187,7 +187,7 @@ int play_init(void* buffer, size_t frames, int channels, char **port_names)
   
   output_ports = (jack_port_t**) malloc(n_output_ports * sizeof(jack_port_t*));
   
-  for (n=0; n<n_output_ports; n++) {
+  for (n=1; n<=n_output_ports; n++) { // Port numbers start at 1.
     sprintf(port_name,"output_%d",n);
     output_ports[n] = jack_port_register(play_client, port_name, 
 					 JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
