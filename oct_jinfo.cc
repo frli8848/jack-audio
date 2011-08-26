@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009 Fredrik Lingvall 
+ * Copyright (C) 2009,2011 Fredrik Lingvall 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -152,7 +152,7 @@ DEFUN_DLD (jinfo, args, nlhs,
 \n\
 JINFO Prints various hardware info of the JACK device\n\
 \n\
-@copyright{} 2009 Fredrik Lingvall.\n\
+@copyright{} 2009,2011 Fredrik Lingvall.\n\
 @seealso {aplay, arecord, aplayrec, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
@@ -239,16 +239,17 @@ JINFO Prints various hardware info of the JACK device\n\
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown (client, jack_shutdown, 0);
+
   octave_stdout << "|------------------------------------------------------\n";
   
   // Display the current sample rate. Once the client is activated 
   // (see below), you should rely on your own sample rate
   // callback (see above) for this value.
-  octave_stdout << "\n JACK engine sample rate: " << 
+  octave_stdout << "|\n| JACK engine sample rate: " << 
     (long unsigned int) jack_get_sample_rate(client) << " [Hz]\n";
   
   // Display the current JACK load.
-  octave_stdout << "\n Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n\n" << endl;
+  octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n\n" << endl;
   
   //
   // Create two ports.
@@ -272,7 +273,7 @@ JINFO Prints various hardware info of the JACK device\n\
   // running.
   if ((ports_o = jack_get_ports(client, NULL, NULL, 
 				JackPortIsOutput)) == NULL) {
-    error("Cannot find any capture ports\n");
+    error("Cannot find any output ports\n");
     return oct_retval;
   }
   /*
@@ -296,7 +297,7 @@ JINFO Prints various hardware info of the JACK device\n\
   
   if ((ports_i = jack_get_ports(client, NULL, NULL, 
 				JackPortIsInput)) == NULL) {
-    error("Cannot find any playback ports\n");
+    error("Cannot find any input ports\n");
     return oct_retval;
   }
   /*
