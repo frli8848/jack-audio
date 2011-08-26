@@ -114,7 +114,7 @@ Input parameters:\n\
 A frames x number of playback channels matrix.\n\
 \n\
 @item jack_inputs\n\
-The JACK client input port names, for example, 'system:playback_1', 'system:playback_2', etc.\n\
+A char matrix with the JACK client input port names, for example, ['system:playback_1'; 'system:playback_2'], etc.\n\
 @end table\n\
 \n\
 @copyright{} 2009,2011 Fredrik Lingvall.\n\
