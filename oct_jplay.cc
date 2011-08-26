@@ -129,9 +129,8 @@ The JACK client input port names, for example, 'system:playback_1', 'system:play
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names;
-  int  buflen;
-  unsigned int fs;
-  unsigned int channels;
+  octave_idx_type buflen;
+  octave_idx_type channels;
   
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -150,7 +149,7 @@ The JACK client input port names, for example, 'system:playback_1', 'system:play
   }
 
   //
-  // The audio data (a frames x channels matrix).
+  // Input arg 1 : The audio data (a frames x channels matrix).
   //
 
   const Matrix tmp0 = args(0).matrix_value();
@@ -170,35 +169,42 @@ The JACK client input port names, for example, 'system:playback_1', 'system:play
   }
 
   //
-  // The jack (writable client) input audio ports.
+  // Input arg 2 : The jack (writable client) input audio ports.
   //
   
-  if (!mxIsChar(1)) {
+
+  //if (!mxIsChar(1)) {
+  if ( !args(1).is_sq_string() ) {
     error("2rd arg must be a string matrix !");
     return oct_retval;
   }
   
-  //octave_stdout << args(1).matrix_value().rows() << " " <<  args(2).matrix_value().cols();
-  
-  std::string strin = args(1).string_value(); 
-  
-  octave_stdout << strin << endl;
-  buflen = strin.length();
-  
-  /*
-    if (args(2).rows != channels) {
-    error("The number of channels to play don't match the number of jack client input ports!");
-    return octave_retval;
-    }
-  */
-  
+  charMatrix ch = args(1).char_matrix_value();
+
+  if ( ch.rows() != channels ) {
+    error("The number of channels to play don't match the specified number of jack client input ports!");
+    return oct_retval;
+  }
+
+  //std::string strin = args(1).string_value(); 
+  //octave_stdout << strin << endl;
+  //buflen = strin.length();
+
+  buflen = ch.cols();    
   port_names = (char**) malloc(channels * sizeof(char*));
   for ( n=0; n<channels; n++ ) {
-    
+
     port_names[n] = (char*) malloc(buflen*sizeof(char)+1);
+
+    std::string strin = ch.row_as_string(n);
     
-    for (int k=0; k<=buflen; k++ ) 
-      port_names[n][k] = strin[k];
+    for (int k=0; k<=buflen; k++ )
+      if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
+	port_names[n][k] = strin[k];
+      else {
+	port_names[n][k] = '\0';
+	break;
+      }
     
     port_names[0][buflen] = '\0';
   }
