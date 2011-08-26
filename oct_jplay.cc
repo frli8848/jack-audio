@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009 Fredrik Lingvall 
+ * Copyright (C) 2009,2011 Fredrik Lingvall 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (jplay, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {} jplay(A,fs,dev_name,hw_pars).\n\
+@deftypefn {Loadable Function} {} jplay(A,fs,jack_inputs).\n\
 \n\
 JPLAY Plays audio data from the input matrix A using the (low-latency) audio server JACK.\n\
 \n\
@@ -116,22 +116,23 @@ A frames x number of playback channels matrix.\n\
 @item fs\n\
 The sampling frequency in Hz (default is 44100 [Hz]).\n\
 \n\
-@item dev_name\n\
-The JACK port names, for example, 'system:playback_1', 'system:playback_2', etc.\n\
+@item jack_inputs\n\
+The JACK client input port names, for example, 'system:playback_1', 'system:playback_2', etc.\n\
 @end table\n\
 \n\
-@copyright{} 2009 Fredrik Lingvall.\n\
+@copyright{} 2009,2011 Fredrik Lingvall.\n\
 @seealso {jinfo, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
   double *A; 
   int err,verbose = 0;
-  octave_idx_type n,frames;
+  octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names;
   int  buflen;
   unsigned int fs;
   unsigned int channels;
+  
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
@@ -153,7 +154,7 @@ The JACK port names, for example, 'system:playback_1', 'system:playback_2', etc.
   //
 
   const Matrix tmp0 = args(0).matrix_value();
-  frames = tmp0.rows();		// Audio data length for each channel.
+  frames   = tmp0.rows();	// Audio data length for each channel.
   channels = tmp0.cols();	// Number of channels.
 
   A = (double*) tmp0.fortran_vec();
@@ -190,7 +191,7 @@ The JACK port names, for example, 'system:playback_1', 'system:playback_2', etc.
     fs = 44100; // Default to 44.1 kHz.
 
   //
-  // The jack output audio ports.
+  // The jack (writable client) input audio ports.
   //
 
   if (nrhs == 3) {
@@ -203,41 +204,56 @@ The JACK port names, for example, 'system:playback_1', 'system:playback_2', etc.
     //octave_stdout << args(2).matrix_value().rows() << " " <<  args(2).matrix_value().cols();
 
     std::string strin = args(2).string_value(); 
-    
-    octave_stdout << strin;
 
+    octave_stdout << strin << endl;
     buflen = strin.length();
-    for ( n=0; n<=buflen; n++ ) {
-      port_names[0][n] = strin[n];
-    }
-    port_names[0][buflen] = '\0';
     
-  } 
+    /*
+    if (args(2).rows != channels) {
+      error("The number of channels to play don't match the number of jack client input ports!");
+      return octave_retval;
+    }
+    */
 
+    port_names = (char**) malloc(channels * sizeof(char*));
+    for ( n=0; n<channels; n++ ) {
+
+      port_names[n] = (char*) malloc(buflen*sizeof(char)+1);
+      
+      for (int k=0; k<=buflen; k++ ) 
+	port_names[n][k] = strin[k];
+      
+      port_names[0][buflen] = '\0';
+    }
+  } 
+  
   //
   // Register signal handlers.
   //
 
   if ((old_handler = signal(SIGTERM, &sighandler)) == SIG_ERR) {
-    printf("Couldn't register signal handler.\n");
+    error("Couldn't register signal handler.\n");
   }
 
   if ((old_handler_abrt = signal(SIGABRT, &sighandler)) == SIG_ERR) {
-    printf("Couldn't register signal handler.\n");
+    error("Couldn't register signal handler.\n");
   }
   
   if ((old_handler_keyint = signal(SIGINT, &sighandler)) == SIG_ERR) {
-    printf("Couldn't register signal handler.\n");
+    error("Couldn't register signal handler.\n");
   }
-  
+
+  set_running_flag();
 
   // Init and connect to the output ports.
   if (play_init(A, frames, channels, port_names) < 0)
     return oct_retval;
 
   // Wait until we have played all data.
-  while(!play_finished() || !is_running() )
+  while(!play_finished() && is_running() ) {
+    octave_stdout << "Playing ..." << endl;
     sleep(1);
+  }
 
   // Cleanup.
   play_close();
@@ -247,15 +263,15 @@ The JACK port names, for example, 'system:playback_1', 'system:playback_2', etc.
   //
   
   if (signal(SIGTERM, old_handler) == SIG_ERR) {
-    printf("Couldn't register old signal handler.\n");
+    error("Couldn't register old signal handler.\n");
   }
   
   if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
-    printf("Couldn't register signal handler.\n");
+    error("Couldn't register signal handler.\n");
   }
   
   if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
-    printf("Couldn't register signal handler.\n");
+    error("Couldn't register signal handler.\n");
   }
   
   if (!is_running())
