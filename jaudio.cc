@@ -32,12 +32,12 @@ using namespace std;
 volatile int running;
 
 size_t play_frames;
-size_t rec_frames;
+size_t record_frames;
 
 size_t frames_played;
 size_t frames_recorded;
 
-jack_client_t *rec_client;
+jack_client_t *record_client;
 jack_port_t **input_ports;
 int n_input_ports;
 
@@ -234,6 +234,154 @@ int play_close(void)
     error("jack_client_close failed");
 
   free(output_ports);
+
+  return 0;
+}
+
+// ********************************************************************************************
+
+int record_finished(void)
+{
+
+  return ((record_frames - frames_recorded) <= 0);
+}
+
+//
+// The record callback function.
+//
+
+int record_process(jack_nframes_t nframes, void *arg)
+{
+  size_t   frames_to_record, n, m;
+  double   *input_dbuffer;
+  jack_default_audio_sample_t *in;
+
+  // Get the adress of the input buffer.
+  input_dbuffer = (double*) arg;
+
+  // The number of available frames.
+  frames_to_record = (size_t) nframes;
+  
+  // Loop over all ports.
+  for (n=0; n<n_input_ports; n++) {
+
+    // Grab the n:th input buffer.
+    in = (jack_default_audio_sample_t *) 
+      jack_port_get_buffer(input_ports[n], nframes);
+
+    if (in == NULL)
+      error("jack_port_get_buffer failed!");
+    
+    if((record_frames - frames_recorded) > 0 && running) { 
+      
+      if (frames_to_record >  (record_frames - frames_recorded) )
+	frames_to_record = record_frames - frames_recorded; 
+
+      for(m=0; m<frames_to_record; m++)
+	input_dbuffer[m+frames_recorded + n*record_frames] = (double) in[(jack_nframes_t) m];
+      
+    } else {
+      frames_recorded = record_frames; 
+      return 0;
+    }
+    
+  }
+  
+  frames_recorded += frames_to_record;
+  
+  return 0;
+}
+
+
+//
+//  Init the record client, connect to the jack input ports, and start recording audio data.
+//
+
+int record_init(void* buffer, size_t frames, int channels, char **port_names) 
+{
+  int n;
+  jack_port_t  *port;
+  char port_name[255];
+
+  // The number of channels (columns) in the buffer matrix.
+  n_input_ports = (size_t) channels;
+
+  // The total number of frames to record.
+  record_frames = frames;
+
+  // Reset record counter.
+  frames_recorded = 0;
+
+  // Tell the JACK server to call jerror() whenever it
+  // experiences an error.  Notice that this callback is
+  // global to this process, not specific to each client.
+  // 
+  // This is set here so that it can catch errors in the
+  // connection process.
+  jack_set_error_function (jerror);
+
+  // Try to become a client of the JACK server.
+  if ((record_client = jack_client_new ("octave:jrecord")) == 0) {
+    error("jack server not running?\n");
+    return -1;
+  }
+
+  // Tell the JACK server to call the `record_process()' whenever
+  // there is work to be done.
+  jack_set_process_callback(record_client, record_process, buffer);
+  
+  // Tell the JACK server to call `srate()' whenever
+  // the sample rate of the system changes.
+  jack_set_sample_rate_callback(record_client, srate, 0);
+  
+  // Tell the JACK server to call `jack_shutdown()' if
+  // it ever shuts down, either entirely, or if it
+  // just decides to stop calling us.
+  jack_on_shutdown(record_client, jack_shutdown, 0);
+
+  input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
+
+  for (n=0; n<n_input_ports; n++) { 
+    sprintf(port_name,"input_%d",n+1); // Port numbers start at 1.
+    input_ports[n] = jack_port_register(record_client, port_name, 
+					 JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+  }
+
+  // Tell the JACK server that we are ready to roll.
+  if (jack_activate(record_client)) {
+    error("Cannot activate jack client");
+    return -1;
+  }
+
+  // Connect to the input ports.  
+  for (n=0; n<n_input_ports; n++) {
+    if (jack_connect(record_client, port_names[n], jack_port_name(input_ports[n]))) {
+      error("Cannot connect to the client output port '%s'\n",port_names[n]);
+      record_close();
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+
+int record_close(void)
+{
+  int n, err;
+   // Unregister all ports for the record client.
+  for (n=0; n<n_input_ports; n++) {
+    err = jack_port_unregister(record_client, input_ports[n]);
+    if (err)
+      error("Failed to unregister an input port");
+  }
+ 
+  // Close the client.
+  err = jack_client_close(record_client);
+  if (err)
+    error("jack_client_close failed");
+
+  free(input_ports);
 
   return 0;
 }
