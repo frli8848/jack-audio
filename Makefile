@@ -1,6 +1,6 @@
 #!/usr/local/bin/make
 
-# Copyright (C) 2008, 2009 Fredrik Lingvall
+# Copyright (C) 2008, 2009, 2011 Fredrik Lingvall
 #
 # This program is free software; you can redistribute it and/or modify 
 # it under the terms of the GNU General Public License as published by the
@@ -36,7 +36,8 @@ all: \
 
 jack: \
 	jinfo.oct \
-	jplay.oct
+	jplay.oct \
+	jrecord.oct 
 .cc.o:
 	$(CXX) -c $<
 #
@@ -69,6 +70,9 @@ jinfo.oct : oct_jinfo.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 jplay.oct : oct_jplay.o jaudio.o
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
+
+jrecord.oct : oct_jrecord.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:
