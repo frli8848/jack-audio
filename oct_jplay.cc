@@ -113,9 +113,6 @@ Input parameters:\n\
 @item A\n\
 A frames x number of playback channels matrix.\n\
 \n\
-@item fs\n\
-The sampling frequency in Hz (default is 44100 [Hz]).\n\
-\n\
 @item jack_inputs\n\
 The JACK client input port names, for example, 'system:playback_1', 'system:playback_2', etc.\n\
 @end table\n\
