@@ -146,7 +146,7 @@ int play_process(jack_nframes_t nframes, void *arg)
 
 
 //
-//  Init the play client, connect to the output ports, and start playing audio data.
+//  Init the play client, connect to the jack input ports, and start playing audio data.
 //
 
 int play_init(void* buffer, size_t frames, int channels, char **port_names) 
