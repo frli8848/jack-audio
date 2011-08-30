@@ -39,7 +39,8 @@ jack: \
 	jplay.oct \
 	jrecord.oct \
 	jtrecord.oct 
-.cc.o:
+
+.cc.o:	
 	$(CXX) -c $<
 #
 # ALSA
