@@ -296,7 +296,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   
   // Close the JACK connections and cleanup.
-  record_close();
+  t_record_close();
   
   if (is_running()) { // Ony do this if we have not pressed CTRL-C.
     
