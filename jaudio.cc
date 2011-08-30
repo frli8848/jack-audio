@@ -506,7 +506,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    
 	    m2 = (trigger_position + m) % trigger_frames;
 	    
-	    triggerbuffer[m2] = input_dbuffer[(frames_recorded + m)*n_input_ports + trigger_ch];  
+	    triggerbuffer[m2] = (double) in[(jack_nframes_t) m];
 	    
 	  }
 	  
