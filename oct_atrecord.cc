@@ -19,6 +19,13 @@
  *
  ***/
 
+/***
+ *
+ * atrectord - ALSA Triggered Recording
+ *
+ *
+ ***/
+
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -150,7 +157,6 @@ A frames x channels matrix containing the captured audio data.\n\
 @end deftypefn")
 {
   double *A,*Y, *t_par, trigger_level; 
-  int A_M,A_N;
   int err, verbose = 0;
   octave_idx_type i,n,m;
   snd_pcm_t *handle;
