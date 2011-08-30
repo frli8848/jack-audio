@@ -287,11 +287,11 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   // Wait until we have recorded all data.
   while(!t_record_finished() && is_running() ) {
-    octave_stdout << "Recording ..." << endl;
+    octave_stdout << "Listening ..." << endl;
     sleep(1); // Note: This will give delay of 1 sec but it takes some time 
 	      // to save data so we will always loose some data if we, for
-              // call jtrecord in a loop. To fix this we probably need a
-              // double buffer approach where we switch to a new buffer while
+              // example, call jtrecord in a loop. To fix this we probably need a
+              // double buffer approach where we switch to a second buffer while
               // we save data from the first buffer.
   }
 
@@ -299,7 +299,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Close the JACK connections and cleanup.
   record_close();
   
-  if (is_running()) {
+  if (is_running()) { // Ony do this if we have not pressed CTRL-C.
     
     // Get the position in the ring buffer so we know if we need to unwrap the
     // data.
