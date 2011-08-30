@@ -419,11 +419,11 @@ int record_close(void)
 
 
 double *triggerbuffer = NULL;
-int    triggerport = 0;
+octave_idx_type triggerport = 0;
 double trigger_level = 1.0e16, trigger = 0.0;
 int    trigger_active;
 octave_idx_type trigger_position;
-octave_idx_type trigger_frames;
+octave_idx_type t_frames;
 octave_idx_type trigger_ch;
 
 int ringbuffer_read_running;
@@ -438,9 +438,14 @@ int t_record_finished(void)
 }
 
 
-//
-// The triggered record callback function.
-//
+/***
+ *
+ * t_record_process
+ *
+ * The triggered record callback function.
+ *
+ *
+ ***/
 
 int t_record_process(jack_nframes_t nframes, void *arg)
 {
@@ -481,50 +486,50 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	
 	input_dbuffer[ringbuffer_position + n*record_frames] = (double) in[(jack_nframes_t) m];	  
       }
-      
+
       //
       // Update the triggerbuffer
       //
       
       if (n == triggerport) {
-	
-	if (!trigger_active) { // TODO: We may have a problem if frames_to_read >= trigger_frames!
+
+	if (!trigger_active) { // TODO: We may have a problem if frames_to_read >= t_frames!
 	  
 	  // 1) "Forget" the old data which is now shifted out of the trigger buffer.
 	  // We have got 'frames_to_read' new frames so forget the 'frames_to_read' oldest ones. 
-	  
+
 	  for (m=0; m<frames_to_read; m++) {
-	    
-	    m2 = (trigger_position + m) % trigger_frames;
-	    
+
+	    m2 = (trigger_position + m) % t_frames;
+
 	    trigger -= fabs(triggerbuffer[m2]);
 	  }
-	  
+
 	  // 2) Add the new data to the trigger ring buffer.
 	  
 	  for (m=0; m<frames_to_read; m++) {
 	    
-	    m2 = (trigger_position + m) % trigger_frames;
+	    m2 = (trigger_position + m) % t_frames;
 	    
 	    triggerbuffer[m2] = (double) in[(jack_nframes_t) m];
 	    
 	  }
-	  
+
 	  // 3) Update the trigger value.
 	  
 	  for (m=0; m<frames_to_read; m++) {
 	    
-	    m2 = (trigger_position + m) % trigger_frames;
+	    m2 = (trigger_position + m) % t_frames;
 	    
 	    trigger += fabs(triggerbuffer[m2]);
 	  }
-	  
+
 	  // 4) Set the new position in the trigger buffer.
 	  
 	  trigger_position = m2 + 1;	
 	  
 	  // Check if we are above the threshold.
-	  if ( (trigger / (double) trigger_frames) > trigger_level) {
+	  if ( (trigger / (double) t_frames) > trigger_level) {
 	    trigger_active = TRUE;
 	    
 	    struct tm *the_time;
@@ -560,19 +565,15 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 }
 
 
-
-
 /***
  *
  * t_record_init
  *
- * Function that continuously read the audio stream and 
- * saves that data in a ring buffer when the input signal
- * is over the trigger level.
- *
- *
- * Returns the position of the last acquired frame in 
- * the ring buffer.
+ * Function that starts to continuously read the audio stream 
+ * and save that data in a ring buffer. The data quisition is
+ * stopped when buffer length / 2 frames have been aquired
+ * after the input signal is over the trigger level, which
+ * is controlled by the callback function t_record_process().
  *
  ***/
 
@@ -608,6 +609,8 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   triggerbuffer = (double*) malloc(trigger_frames*sizeof(double));
   bzero(triggerbuffer, trigger_frames*sizeof(double));
 
+  t_frames = trigger_frames;
+
   // Reset the wrapped flag.
   has_wrapped = FALSE;
 
@@ -638,7 +641,7 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
 
   // Tell the JACK server to call the `record_process()' whenever
   // there is work to be done.
-  jack_set_process_callback(record_client, record_process, buffer);
+  jack_set_process_callback(record_client, t_record_process, buffer);
   
   // Tell the JACK server to call `srate()' whenever
   // the sample rate of the system changes.
@@ -648,11 +651,7 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown(record_client, jack_shutdown, 0);
-  
-  // This should work with Octave's diary command.
-  octave_stdout << "\n Audio capturing started. Listening to JACK port '" << 
-    port_names[trigger_channel]  << "' for a trigger signal.\n\n";
-
+ 
   // Register the input ports.  
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
   for (n=0; n<n_input_ports; n++) { 
@@ -676,23 +675,68 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
     }
   }
   
-  // Note that the data is not sequential in time in the buffer, that is,
-  // the buffer must be shifted (if wrapped) by the calling function/program.
-  
-  // If the ring buffer never has been wrapped (been full) then we should not shift it.
-  if (!has_wrapped) 
-    ringbuffer_position = 0;
-
-  //
-  // Cleanup
-  //
-
-  free(triggerbuffer);
+  // This should work with Octave's diary command.
+  octave_stdout << "\n Audio capturing started. Listening to JACK port '" << 
+    port_names[trigger_channel]  << "' for a trigger signal.\n\n";
 
   return 0;
 }
 
+
+/***
+ *
+ * get_ringbuffer_position
+ *
+ * Returns the position of the last acquired frame in 
+ * the ring buffer. This function should only be called
+ * after the data has been aquired.
+ *
+ ***/
+
 octave_idx_type get_ringbuffer_position(void)
 {
+  
+  // Note that the data is not sequential in time in the buffer, that is,
+  // the buffer must be shifted (if wrapped) by the calling function/program.
+  
+  // If the ring buffer never has been wrapped (never been full) then we should not shift it.
+  if (!has_wrapped) 
+    ringbuffer_position = 0;
+
   return ringbuffer_position;
+}
+
+
+/***
+ *
+ * t_record_close
+ *
+ * Close the JACK clients and free port 
+ * and trigger buffer memory.
+ *
+ ***/
+
+int t_record_close(void)
+{
+  int n, err;
+   // Unregister all ports for the record client.
+  for (n=0; n<n_input_ports; n++) {
+    err = jack_port_unregister(record_client, input_ports[n]);
+    if (err)
+      error("Failed to unregister an input port");
+  }
+ 
+  // Close the client.
+  err = jack_client_close(record_client);
+  if (err)
+    error("jack_client_close failed");
+
+  //
+  // Cleanup memory.
+  //
+
+  free(input_ports);
+  free(triggerbuffer);
+
+  return 0;
 }
