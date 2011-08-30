@@ -156,7 +156,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     return oct_retval;
   }
 
-  frames = (size_t) tmp0.fortran_vec()[0];
+  frames = (octave_idx_type) tmp0.fortran_vec()[0];
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
     return oct_retval;
