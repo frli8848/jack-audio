@@ -615,7 +615,12 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   trigger = 0.0;
   trigger_position = 0;
   trigger_active = FALSE;
-  triggerport = trigger_channel - 1;
+  triggerport = trigger_channel;
+
+  if (triggerport < 0 || triggerport >= n_input_ports) {
+    error("Trigger channel out-of-bounds!\n");
+    return -1;
+  }
 
   // Tell the JACK server to call jerror() whenever it
   // experiences an error.  Notice that this callback is

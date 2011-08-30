@@ -251,7 +251,6 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   } else
     trigger_ch = 0; // Default to a 1st channel.
   
-
   //
   // Register signal handlers.
   //
