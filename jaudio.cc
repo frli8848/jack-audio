@@ -448,16 +448,11 @@ int t_record_process(jack_nframes_t nframes, void *arg)
   double   *input_dbuffer;
   jack_default_audio_sample_t *in;
 
-  //
-  // Read data from JACK and save it in the ring buffer.
-  //
-
   // Get the adress of the input buffer.
   input_dbuffer = (double*) arg;
 
   // The number of available frames.
   frames_to_read = (octave_idx_type) nframes;
-  
 
   if ( running && ringbuffer_read_running ) { 
 
@@ -470,91 +465,94 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       
       if (in == NULL)
 	error("jack_port_get_buffer failed!");
+
+      //
+      // Read data from JACK and save it in the ring buffer.
+      //
       
       for(m=0; m<frames_to_read; m++) {
-	
+       	
 	ringbuffer_position += m;
 	
 	if ( ringbuffer_position >= record_frames) { // Check if we have exceeded the size of the ring buffer. 
 	  ringbuffer_position = 0; // We have reached the end of the ringbuffer so start from 0 again.
-	  has_wrapped = TRUE; // To indicated that the ring buffer has been full.
+	  has_wrapped = TRUE; // Indicate that the ring buffer is full.
 	}	
 	
 	input_dbuffer[ringbuffer_position + n*record_frames] = (double) in[(jack_nframes_t) m];	  
       }
       
-    }
-    
-    //
-    // Update the triggerbuffer
-    //
-    
-    if (n == triggerport) {
+      //
+      // Update the triggerbuffer
+      //
       
-      if (!trigger_active) { // TODO: We may have a problem if frames_to_read >= trigger_frames!
+      if (n == triggerport) {
 	
-	// 1) "Forget" the old data which is now shifted out of the trigger buffer.
-	// We have got 'frames_to_read' new frames so forget the 'frames_to_read' oldest ones. 
-	
-	for (m=0; m<frames_to_read; m++) {
+	if (!trigger_active) { // TODO: We may have a problem if frames_to_read >= trigger_frames!
 	  
-	  m2 = (trigger_position + m) % trigger_frames;
+	  // 1) "Forget" the old data which is now shifted out of the trigger buffer.
+	  // We have got 'frames_to_read' new frames so forget the 'frames_to_read' oldest ones. 
 	  
-	  trigger -= fabs(triggerbuffer[m2]);
+	  for (m=0; m<frames_to_read; m++) {
+	    
+	    m2 = (trigger_position + m) % trigger_frames;
+	    
+	    trigger -= fabs(triggerbuffer[m2]);
+	  }
+	  
+	  // 2) Add the new data to the trigger ring buffer.
+	  
+	  for (m=0; m<frames_to_read; m++) {
+	    
+	    m2 = (trigger_position + m) % trigger_frames;
+	    
+	    triggerbuffer[m2] = input_dbuffer[(frames_recorded + m)*n_input_ports + trigger_ch];  
+	    
+	  }
+	  
+	  // 3) Update the trigger value.
+	  
+	  for (m=0; m<frames_to_read; m++) {
+	    
+	    m2 = (trigger_position + m) % trigger_frames;
+	    
+	    trigger += fabs(triggerbuffer[m2]);
+	  }
+	  
+	  // 4) Set the new position in the trigger buffer.
+	  
+	  trigger_position = m2 + 1;	
+	  
+	  // Check if we are above the threshold.
+	  if ( (trigger / (double) trigger_frames) > trigger_level) {
+	    trigger_active = TRUE;
+	    
+	    struct tm *the_time;
+	    time_t curtime;
+	    
+	    // Get the current time.
+	    curtime = time(NULL);
+	    
+	    // Convert it to local time representation. 
+	    the_time = localtime(&curtime);
+	    
+	    // This should work with Octave's diary command.
+	    octave_stdout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
+	    
+	  }
+	  
+	} else { // We have already detected a signal just wait until we have got all the requested data. 
+	  post_trigger_frames += frames_to_read; // Add the number of acquired frames.
 	}
+
+	// We have got a trigger. Now wait for record_frames/2 more data and then
+	// we're done acquiring data.
+	if (trigger_active && (post_trigger_frames >= record_frames/2) )
+	  ringbuffer_read_running = FALSE; // Exit the read loop.
 	
-	// 2) Add the new data to the trigger ring buffer.
-	
-	for (m=0; m<frames_to_read; m++) {
-	  
-	  m2 = (trigger_position + m) % trigger_frames;
-	  
-	  triggerbuffer[m2] = input_dbuffer[(frames_recorded + m)*n_input_ports + trigger_ch];  
-	  
-	}
-	
-	// 3) Update the trigger value.
-	
-	for (m=0; m<frames_to_read; m++) {
-	  
-	  m2 = (trigger_position + m) % trigger_frames;
-	  
-	  trigger += fabs(triggerbuffer[m2]);
-	}
-	
-	// 4) Set the new position in the trigger buffer.
-	
-	trigger_position = m2 + 1;	
-	
-	// Check if we are above the threshold.
-	if ( (trigger / (double) trigger_frames) > trigger_level) {
-	  trigger_active = TRUE;
-	  
-	  struct tm *the_time;
-	  time_t curtime;
-	  
-	  // Get the current time.
-	  curtime = time(NULL);
-	  
-	  // Convert it to local time representation. 
-	  the_time = localtime(&curtime);
-	  
-	  // This should work with Octave's diary command.
-	  octave_stdout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
-	  
-	}
-	
-      } else { // We have already detected a signal just wait until we have got all the requested data. 
-	post_trigger_frames += frames_to_read; // Add the number of acquired frames.
-      }
+      } // if (n == triggerport)
       
-      
-      // We have got a trigger. Now wait for record_frames/2 more data and then
-      // we're done acquiring data.
-      if (trigger_active && (post_trigger_frames >= record_frames/2) )
-	ringbuffer_read_running = FALSE; // Exit the read loop.
-      
-    } // if (n == triggerport)
+    } // for (n=0; n<n_input_ports; n++) 
     
   } // if ( running && ringbuffer_read_running )
   
