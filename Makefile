@@ -37,7 +37,8 @@ all: \
 jack: \
 	jinfo.oct \
 	jplay.oct \
-	jrecord.oct 
+	jrecord.oct \
+	jtrecord.oct 
 .cc.o:
 	$(CXX) -c $<
 #
@@ -73,6 +74,9 @@ jplay.oct : oct_jplay.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 jrecord.oct : oct_jrecord.o jaudio.o
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
+
+jtrecord.oct : oct_jrecord.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:
