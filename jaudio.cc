@@ -397,6 +397,9 @@ double *triggerbuffer = NULL;
 int    triggerport = 0;
 double trigger_level = 1.0e16, trigger = 0.0;
 int    trigger_active;
+octave_idx_type trigger_position;
+octave_idx_type trigger_frames;
+octave_idx_type trigger_ch;
 
 int ringbuffer_read_running;
 octave_idx_type ringbuffer_position = 0;
@@ -481,7 +484,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	  
 	  m2 = (trigger_position + m) % trigger_frames;
 	  
-	  triggerbuffer[m2] = input_dbuffer[(frames_recorded + m)*channels + trigger_ch];  
+	  triggerbuffer[m2] = input_dbuffer[(frames_recorded + m)*n_input_ports + trigger_ch];  
 	  
 	}
 	
@@ -552,7 +555,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
 int t_record_init(void* buffer, octave_idx_type frames, int channels, char **port_names,
 		  double trigger_level,
-		  int trigger_ch,
+		  octave_idx_type trigger_channel,
 		  octave_idx_type trigger_frames)
 {
   int n;
@@ -561,6 +564,9 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
 
   // The number of channels (columns) in the buffer matrix.
   n_input_ports = (octave_idx_type) channels;
+
+  // Set the (global) trigger channel for the JACK callback.
+  trigger_ch = trigger_channel;
 
   // The total number of frames to record.
   record_frames = frames;
@@ -614,7 +620,7 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   trigger_active = FALSE;
 
  // This should work with Octave's diary command.
-  octave_stdout << "\n Audio capturing started. Listening to JACK port " << port_names[trigger_ch]  << " for a trigger signal.\n\n";
+  octave_stdout << "\n Audio capturing started. Listening to JACK port " << port_names[trigger_channel]  << " for a trigger signal.\n\n";
 
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
 

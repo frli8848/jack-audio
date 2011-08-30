@@ -18,6 +18,6 @@ int t_record_finished(void);
 int t_record_process(jack_nframes_t nframes, void *arg);
 int t_record_init(void* buffer, octave_idx_type frames, int channels, char **port_names,
 		  double trigger_level,
-		  int trigger_ch,
+		  octave_idx_type trigger_channel,
 		  octave_idx_type trigger_frames);
 octave_idx_type get_ringbuffer_position(void);
