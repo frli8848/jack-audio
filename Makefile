@@ -77,7 +77,7 @@ jplay.oct : oct_jplay.o jaudio.o
 jrecord.oct : oct_jrecord.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jtrecord.oct : oct_jrecord.o jaudio.o
+jtrecord.oct : oct_jtrecord.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:
