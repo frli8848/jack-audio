@@ -142,13 +142,15 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @seealso {jinfo, jplay, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *y; 
+  double *Y; 
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names;
   octave_idx_type buflen;
   octave_idx_type channels;
+  double trigger_level;
+  octave_idx_type trigger_ch, trigger_frames;
   
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -170,14 +172,14 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Input arg 2 : The number frames/channel.
   //
 
-  const Matrix tmp0 = args(0).matrix_value();
+  const Matrix tmp1 = args(1).matrix_value();
 
-  if ( tmp0.rows() * tmp0.cols() != 1) {
+  if ( tmp1.rows() * tmp1.cols() != 1) {
     error("The first input argument must be a scalar!");
     return oct_retval;
   }
 
-  frames = (size_t) tmp0.fortran_vec()[0];
+  frames = (octave_idx_type) tmp1.fortran_vec()[0];
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
     return oct_retval;
@@ -228,10 +230,10 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     return oct_retval;
   }
   const Matrix tmp0 = args(0).matrix_value();
-  t_par = (double*) tmp0.fortran_vec();
+  double* t_par = (double*) tmp0.fortran_vec();
   trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
-  trigger_ch     = ((int)   t_par[1]) - 1; // Trigger channel (1--channels).
-  trigger_frames = (size_t) t_par[2]; // The length of the trigger buffer.
+  trigger_ch     = ((octave_idx_type) t_par[1]) - 1; // Trigger channel (1--channels).
+  trigger_frames = (octave_idx_type) t_par[2]; // The length of the trigger buffer.
 
   if (trigger_level < 0.0 || trigger_level > 1.0) {
     error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
@@ -268,14 +270,17 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Allocate memory for the output arg.
   //
   
-  Matrix Y(frames, channels);
-  y = Y.fortran_vec();
+  Matrix Ymat(frames, channels);
+  Y = Ymat.fortran_vec();
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
   set_running_flag(); 
 
   // Init and connect to the output ports.
-  if (t_record_init(y, frames, channels, port_names) < 0)
+  if (t_record_init( Y, frames, channels, port_names,
+		     trigger_level,
+		     trigger_ch,
+		     trigger_frames) < 0)
     return oct_retval;
 
   // Wait until we have recorded all data.
@@ -296,7 +301,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     
     // Get the position in the ring buffer so we know if we need to unwrap the
     // data.
-    ringbuffer_position = get_ringbuffer_position();
+    octave_idx_type ringbuffer_position = get_ringbuffer_position();
     
     // If the ringbuffer has wrapped then we need to reorder data.
     if (ringbuffer_position > 0) {
@@ -309,18 +314,18 @@ A char matrix with the JACK client output port names, for example, ['system:capt
       // Shift one channel each time.
       for (n=0; n<channels; n++) {
 	
-	memcpy(tmp_data, &Y[0 + n*record_frames], ringbuffer_position*1*sizeof(double));
+	memcpy(tmp_data, &Y[0 + n*frames], ringbuffer_position*1*sizeof(double));
 	
-	memmove(&Y[0 + n*record_frames], &Y[ringbuffer_position + n*record_frames],
-		(record_frames - ringbuffer_position)*1*sizeof(double));
+	memmove(&Y[0 + n*frames], &Y[ringbuffer_position + n*frames],
+		(frames - ringbuffer_position)*1*sizeof(double));
 	
-	memcpy(&Y[(record_frames - ringbuffer_position) + n*record_frames], tmp_data,
+	memcpy(&Y[(frames - ringbuffer_position) + n*frames], tmp_data,
 	       ringbuffer_position*1*sizeof(double));
       }
       free(tmp_data);
     }
 
-    oct_retval.append(Y);
+    oct_retval.append(Ymat);
   }
   
   //
