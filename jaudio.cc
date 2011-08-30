@@ -599,6 +599,25 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   // Reset record counter.
   frames_recorded = 0;
 
+
+  // Flag used to stop the data acquisition.
+  ringbuffer_read_running = TRUE;
+  
+  // Initialze the ring buffer position.
+  ringbuffer_position = 0;
+
+  // Allocate space and clear the trigger buffer.
+  triggerbuffer = (double*) malloc(trigger_frames*sizeof(double));
+  bzero(triggerbuffer, trigger_frames*sizeof(double));
+
+  // Reset the wrapped flag.
+  has_wrapped = FALSE;
+
+  // Initialize trigger values.
+  trigger = 0.0;
+  trigger_position = 0;
+  trigger_active = FALSE;
+
   // Tell the JACK server to call jerror() whenever it
   // experiences an error.  Notice that this callback is
   // global to this process, not specific to each client.
@@ -625,42 +644,25 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown(record_client, jack_shutdown, 0);
-
-  // Flag used to stop the data acquisition.
-  int ringbuffer_read_running = TRUE;
   
-  // Initialze the ring buffer position.
-  octave_idx_type ringbuffer_position = 0;
+  // This should work with Octave's diary command.
+  octave_stdout << "\n Audio capturing started. Listening to JACK port '" << 
+    port_names[trigger_channel]  << "' for a trigger signal.\n\n";
 
-  // Allocate space and clear the trigger buffer.
-  triggerbuffer = (double*) malloc(trigger_frames*sizeof(double));
-  bzero(triggerbuffer, trigger_frames*sizeof(double));
-
-  // Reset the wrapped flag.
-  has_wrapped = FALSE;
-
-  // Initialize trigger values.
-  trigger = 0.0;
-  trigger_position = 0;
-  trigger_active = FALSE;
-
- // This should work with Octave's diary command.
-  octave_stdout << "\n Audio capturing started. Listening to JACK port " << port_names[trigger_channel]  << " for a trigger signal.\n\n";
-
+  // Register the input ports.  
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
-
   for (n=0; n<n_input_ports; n++) { 
     sprintf(port_name,"input_%d",n+1); // Port numbers start at 1.
     input_ports[n] = jack_port_register(record_client, port_name, 
-					 JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+					JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
   }
-
+  
   // Tell the JACK server that we are ready to roll.
   if (jack_activate(record_client)) {
     error("Cannot activate jack client");
     return -1;
   }
-
+  
   // Connect to the input ports.  
   for (n=0; n<n_input_ports; n++) {
     if (jack_connect(record_client, port_names[n], jack_port_name(input_ports[n]))) {
