@@ -191,12 +191,12 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Input arg 3 : The jack (readable client) ouput audio ports.
   //
 
-  if ( !args(1).is_sq_string() ) {
-    error("2rd arg must be a string matrix !");
+  if ( !args(2).is_sq_string() ) {
+    error("3rd arg must be a string matrix !");
     return oct_retval;
   }
   
-  charMatrix ch = args(1).char_matrix_value();
+  charMatrix ch = args(2).char_matrix_value();
 
   channels = ch.rows();
 
