@@ -20,10 +20,12 @@
  *
  ***/
 
-#include <jack/jack.h>
+// $Revision$ $Date$ $LastChangedBy$
 
 #ifndef __JAUDIO__
 #define __JAUDIO__
+
+#include <jack/jack.h>
 
 int is_running(void);
 void set_running_flag(void);

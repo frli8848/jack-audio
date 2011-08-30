@@ -1,5 +1,7 @@
 #!/usr/bin/make
 
+# $Revision$ $Date$ $LastChangedBy
+
 ###################################
 #
 # File that defines compiler flags that is included

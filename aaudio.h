@@ -19,6 +19,7 @@
  *
  ***/
 
+// $Revision$ $Date$ $LastChangedBy$
 
 #ifndef __AAUDIO__
 #define __AAUDIO__

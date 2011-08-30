@@ -22,6 +22,7 @@
  *
  ***/
 
+// $Revision$ $Date$ $LastChangedBy$
 
 #include "aaudio.h"
 

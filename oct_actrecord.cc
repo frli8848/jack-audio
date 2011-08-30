@@ -19,6 +19,8 @@
  *
  ***/
 
+// $Revision$ $Date$ $LastChangedBy$
+
 /***
  *
  * actrectord - ALSA Continous Triggered Recoreding
@@ -34,6 +36,8 @@
 #include <signal.h>
 
 #include <alsa/asoundlib.h>
+
+#include <time.h>
 
 //
 // Octave headers.
@@ -52,6 +56,10 @@ using namespace std;
 #include <octave/pager.h>
 #include <octave/symtab.h>
 #include <octave/variables.h>
+
+// For saving mat-data.
+#include <octave/load-save.h> 
+#include <octave/ls-oct-binary.h> 
 
 #include "aaudio.h"
 
@@ -210,6 +218,30 @@ void* save_smp_process(void *arg)
       free(tmp_data);
     }
 
+#if 0
+    // Save the data to a Matlab readable format.
+    time_t *t;
+    struct tm *the_tm;
+    time(t);
+    the_tm = localtime(t);
+    char fname[256];
+
+    sprintf(fname,"%d_%d_%d_%d_%d_%d.mat",
+	    the_tm->tm_year, 
+	    the_tm->tm_mon,
+	    the_tm->tm_mday, 
+	    the_tm->tm_hour,
+	    the_tm->tm_min,
+	    the_tm->tm_sec);
+
+    std::ofstream os ("mat.mat");
+    bool boolvar(false);
+    write_header (os, LS_BINARY); 
+    save_binary_data (os, octave_value (Y),
+		      std::string("mat"), std::string(""),
+		      boolvar, boolvar);
+    os.close(); 
+#endif   
     
     //oct_retval.append(Ymat);
     

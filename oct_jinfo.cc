@@ -19,6 +19,8 @@
  *
  ***/
 
+// $Revision$ $Date$ $LastChangedBy$
+
 // This code is based on: http://dis-dot-dat.net/index.cgi?item=jacktuts/starting/
 
 #include <string.h>
@@ -150,10 +152,11 @@ DEFUN_DLD (jinfo, args, nlhs,
 	   "-*- texinfo -*-\n\
 @deftypefn {Loadable Function} {}  jinfo(dev_name).\n\
 \n\
-JINFO Prints various hardware info of the JACK device\n\
+JINFO Prints the input and output ports connected to the\n\
+ (low-latency) JACK audio engine.\n\
 \n\
-@copyright{} 2009,2011 Fredrik Lingvall.\n\
-@seealso {aplay, arecord, aplayrec, @indicateurl{http://jackaudio.org}}\n\
+@copyright{} 2011 Fredrik Lingvall.\n\
+@seealso {jplay, jrecord, jtrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
   jack_client_t *client;

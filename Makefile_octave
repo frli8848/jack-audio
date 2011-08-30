@@ -1,4 +1,6 @@
-#!/usr/local/bin/make
+#!/usr/bin/make
+
+# $Revision$ $Date$ $LastChangedBy
 
 ###################################
 #

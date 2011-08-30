@@ -17,6 +17,7 @@
 # Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+# $Revision$ $Date$ $LastChangedBy
 
 CXX = mkoctfile
 DLDCC = mkoctfile
@@ -46,6 +47,9 @@ jack: \
 # ALSA
 #
 
+ainfo.oct : oct_ainfo.o aaudio.o
+	$(DLDCC) $(ALIBDIRS) $^ -o $@
+
 aplay.oct : oct_aplay.o aaudio.o
 	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
 
@@ -60,9 +64,6 @@ actrecord.oct : oct_actrecord.o aaudio.o
 
 aplayrec.oct : oct_aplayrec.o aaudio.o
 	$(DLDCC) -lpthread $^ -o $@ 
-
-ainfo.oct : oct_ainfo.o aaudio.o
-	$(DLDCC) $(ALIBDIRS) $^ -o $@
 
 #
 # JACK

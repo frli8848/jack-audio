@@ -19,6 +19,8 @@
  *
  ***/
 
+// $Revision$ $Date$ $LastChangedBy$
+
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -139,7 +141,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @end table\n\
 \n\
 @copyright{} 2011 Fredrik Lingvall.\n\
-@seealso {jinfo, jplay, @indicateurl{http://jackaudio.org}}\n\
+@seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
   double *Y; 

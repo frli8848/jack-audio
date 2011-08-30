@@ -19,9 +19,11 @@
  *
  ***/
 
+// $Revision$ $Date$ $LastChangedBy$
+
 /***
  *
- * atrectord - ALSA Triggered Recording
+ * atrecord - ALSA Triggered Recording
  *
  *
  ***/
