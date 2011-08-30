@@ -222,6 +222,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     error("Couldn't register signal handler.\n");
   }
 
+  // Set status to running (CTRL-C will clear the flag and stop playback).
   set_running_flag();
 
   // Init and connect to the output ports.

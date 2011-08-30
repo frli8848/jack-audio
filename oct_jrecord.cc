@@ -217,6 +217,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   Matrix Y(frames, channels);
   y = Y.fortran_vec();
 
+  // Set status to running (CTRL-C will clear the flag and stop capture).
   set_running_flag();
 
   // Init and connect to the output ports.
