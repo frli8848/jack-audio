@@ -19,6 +19,10 @@
  *
  ***/
 
+
+#ifndef __AAUDIO__
+#define __AAUDIO__
+
 #include <alsa/asoundlib.h>
 #include <poll.h>
 
@@ -86,3 +90,5 @@ void pcm_list(void);
 void device_list(int play_or_rec);
 
 int is_interleaved(void);
+
+#endif
