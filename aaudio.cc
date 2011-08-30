@@ -1016,9 +1016,6 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   triggerbuffer = (double*) malloc(trigger_frames*framesize*sizeof(double));
   bzero(triggerbuffer, trigger_frames*framesize*sizeof(double));
 
-  ringbuffer_read_running = TRUE;
-  ringbuffer_position = 0;
-
   count = snd_pcm_poll_descriptors_count(handle);
   if (count <= 0) {
     printf("Invalid poll descriptors count\n");
@@ -1231,10 +1228,6 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	  // Convert it to local time representation. 
 	  the_time = localtime(&curtime);
 	  
-	  //printf("\n Got a trigger signal at: ");
-	  //fputs (asctime (the_time), stdout);
-	  //printf("\n");
-
 	  // This should work with Octave's diary command.
 	  octave_stdout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
 
