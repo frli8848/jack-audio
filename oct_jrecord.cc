@@ -121,7 +121,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @seealso {jinfo, jplay, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *y; 
+  double *Y; 
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
@@ -214,14 +214,14 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Allocate memory for the output arg.
   //
   
-  Matrix Y(frames, channels);
-  y = Y.fortran_vec();
+  Matrix Ymat(frames, channels);
+  Y = Ymat.fortran_vec();
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
   set_running_flag();
 
   // Init and connect to the output ports.
-  if (record_init(y, frames, channels, port_names) < 0)
+  if (record_init(Y, frames, channels, port_names) < 0)
     return oct_retval;
 
   // Wait until we have recorded all data.
@@ -233,7 +233,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Cleanup.
   record_close();
 
-  oct_retval.append(Y);
+  oct_retval.append(Ymat);
 
   //
   // Restore old signal handlers.
