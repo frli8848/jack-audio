@@ -404,7 +404,8 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
 
   if (verbose)
-    printf("Sample format width: %d [bits]\n",snd_pcm_format_width(format));
+    octave_stdout << " Sample format width: " << snd_pcm_format_width(format) << " [bits]\n";
+  //printf("Sample format width: %d [bits]\n",snd_pcm_format_width(format));
 
   
   // Check if the hardware are using less then 32 bits.
@@ -455,15 +456,15 @@ values for the particular PCM device. Defaults to hw_pars = [512 2].\n							\
   //
   
   if (signal(SIGTERM, old_handler) == SIG_ERR) {
-    printf("Couldn't register old signal handler.\n");
+    error("Couldn't register old signal handler.\n");
   }
   
   if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
-    printf("Couldn't register signal handler.\n");
+    error("Couldn't register signal handler.\n");
   }
   
   if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
-    printf("Couldn't register signal handler.\n");
+    error("Couldn't register signal handler.\n");
   }
   
   if (!is_running())
