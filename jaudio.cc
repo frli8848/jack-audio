@@ -485,7 +485,8 @@ octave_idx_type trigger_ch;
 
 int ringbuffer_read_running;
 octave_idx_type ringbuffer_position;
-octave_idx_type post_trigger_frames;
+octave_idx_type post_t_frames_counter;
+octave_idx_type post_t_frames;
 int has_wrapped;
 
 /***
@@ -613,12 +614,12 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	  }
 	  
 	} else { // We have already detected a signal just wait until we have got all the requested data. 
-	  post_trigger_frames += frames_to_read; // Add the number of acquired frames.
+	  post_t_frames_counter += frames_to_read; // Add the number of acquired frames.
 	}
 
 	// We have got a trigger. Now wait for record_frames/2 more data and then
 	// we're done acquiring data.
-	if (trigger_active && (post_trigger_frames >= record_frames/2) )
+	if (trigger_active && (post_t_frames_counter >= post_t_frames) )
 	  ringbuffer_read_running = FALSE; // Exit the read loop.
 	
       } // if (n == triggerport)
@@ -648,7 +649,8 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 int t_record_init(void* buffer, octave_idx_type frames, int channels, char **port_names,
 		  double trigger_level,
 		  octave_idx_type trigger_channel,
-		  octave_idx_type trigger_frames)
+		  octave_idx_type trigger_frames,
+		  octave_idx_type post_trigger_frames)
 {
   int n;
   jack_port_t  *port;
@@ -670,7 +672,8 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   frames_recorded = 0;
 
   // Reset the post trigger counter.
-  post_trigger_frames = 0;
+  post_t_frames_counter = 0;
+  post_t_frames = post_trigger_frames;
 
   // Flag used to stop the data acquisition.
   ringbuffer_read_running = TRUE;

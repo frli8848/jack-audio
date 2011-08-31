@@ -1012,7 +1012,8 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 		     unsigned int wanted_channels,
 		     double trigger_level,
 		     int trigger_ch,
-		     snd_pcm_sframes_t trigger_frames)
+		     snd_pcm_sframes_t trigger_frames,
+		     snd_pcm_sframes_t post_trigger_frames)
 {
   struct pollfd *ufds;
   int err, count, init;
@@ -1020,7 +1021,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
   snd_pcm_sframes_t contiguous; 
   snd_pcm_uframes_t nwritten;
   snd_pcm_uframes_t offset;
-  snd_pcm_sframes_t frames_recorded, post_trigger_frames = 0;
+  snd_pcm_sframes_t frames_recorded, post_t_frames_counter = 0;
   snd_pcm_sframes_t commit_res;
   int first = 0;
   size_t n, n2, ch, trigger_position = 0;
@@ -1258,7 +1259,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 	}
 	
       } else { // We have already detected a signal just wait until we have got all the requested data. 
-	post_trigger_frames += contiguous; // Add the number of acquired frames.
+	post_t_frames_counter += contiguous; // Add the number of acquired frames.
       }
 
       if (contiguous >= 0) {
@@ -1306,7 +1307,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 
     // We have got a trigger. Now wait for frames/2 more data and then
     // we're done acquiring data.
-    if (trigger_active && (post_trigger_frames >= frames/2) )
+    if (trigger_active && (post_t_frames_counter >= post_trigger_frames) )
       ringbuffer_read_running = FALSE; // Exit the read loop.
     
   } // while(running && ringbuffer_read_running) 

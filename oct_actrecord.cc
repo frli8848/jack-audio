@@ -274,7 +274,7 @@ Input parameters:\n\
 \n\
 @table @samp\n\
 @item trigger_pars\n\
-The trigger parameter vector: trigger_pars = [trigger_level,trigger_ch,trigger_frames];\n\
+The trigger parameter vector: trigger_pars = [trigger_level,trigger_ch,trigger_frames,post_trigger_franmes];\n\
 \n\
 @table @code\n\
 @item trigger_level\n\
@@ -323,7 +323,7 @@ A frames x channels matrix containing the captured audio data.\n\
   int err, verbose = 0;
   octave_idx_type i,n,m;
   snd_pcm_t *handle;
-  snd_pcm_sframes_t frames, trigger_frames;
+  snd_pcm_sframes_t frames, trigger_frames, post_trigger_frames;
   unsigned int framesize;
   unsigned int sample_bytes;
   float *fbuffer=NULL, *fbuffer_A, *fbuffer_B;
@@ -427,16 +427,15 @@ A frames x channels matrix containing the captured audio data.\n\
   }
   const Matrix tmp0 = args(0).matrix_value();
   t_par = (double*) tmp0.fortran_vec();
-  trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
-  trigger_ch     = ((int)  t_par[1]) - 1; // Trigger channel (1--channels).
-  trigger_frames = (size_t) t_par[2]; // The length of the trigger buffer.
 
   if (trigger_level < 0.0 || trigger_level > 1.0) {
     error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
     return oct_retval;
   }
-  
+   
   if ( mxGetM(0)*mxGetN(0) >= 2) {
+
+    trigger_ch     = ((octave_idx_type) t_par[1]) - 1; // Trigger channel (1--channels).
     
     if (trigger_ch < 0 || trigger_ch > channels-1) {
       error("Error in arg 1! The trigger channel must be >= 1 and <= %d!",channels);
@@ -444,6 +443,41 @@ A frames x channels matrix containing the captured audio data.\n\
     }
   } else
     trigger_ch = 0; // Default to a 1st channel.
+
+  if ( mxGetM(0)*mxGetN(0) >= 3) {
+
+    trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
+    
+    if (trigger_level < 0 || trigger_level > 1.0) {
+      error("Error in arg 1! The trigger level must be >= 0 and <= 1.0!");
+      return oct_retval;
+    }
+  } else
+    trigger_level = 0.5; // Default to 0.5.
+
+  if ( mxGetM(0)*mxGetN(0) >= 3) {
+
+    trigger_frames = (octave_idx_type) t_par[2]; // The length of the trigger buffer.
+    
+    if (trigger_frames < 1 || trigger_frames >= frames) {
+      error("Error in arg 1! The trigger_frames must be >= 1 and <= %d!",frames);
+      return oct_retval;
+    }
+  } else
+    trigger_frames = 1; // Default to a single frame.
+  
+  if ( mxGetM(0)*mxGetN(0) >= 4) {
+
+    post_trigger_frames = (octave_idx_type) t_par[3]; // The number of frames to record
+                                                      // after triggering.
+    
+    if (post_trigger_frames < 0 || post_trigger_frames > frames) {
+      error("Error in arg 1! The post_trigger_frames must be >= 0 and <= %d!", frames);
+      return oct_retval;
+    }
+  } else
+    post_trigger_frames = 0; // Default to save immediately.
+
   
   //
   // Number of audio frames (arg 2).
@@ -663,28 +697,28 @@ A frames x channels matrix containing the captured audio data.\n\
       ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 						 fbuffer,frames,framesize,
 						 channels,wanted_channels,
-						 trigger_level, trigger_ch,trigger_frames);
+						 trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
       break;    
       
     case SND_PCM_FORMAT_S32:
       ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 						 ibuffer,frames,framesize,
 						 channels,wanted_channels,
-						 trigger_level, trigger_ch,trigger_frames);
+						 trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
       break;
       
     case SND_PCM_FORMAT_S16:
       ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 						 sbuffer,frames,framesize,
 						 channels,wanted_channels,
-						 trigger_level, trigger_ch,trigger_frames);
+						 trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
       break;
       
     default:
       ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
 						 sbuffer,frames,framesize,
 						 channels,wanted_channels,
-						 trigger_level, trigger_ch,trigger_frames);
+						 trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
     }
 
     if (!is_running()) {

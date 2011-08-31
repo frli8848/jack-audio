@@ -113,7 +113,7 @@ Input parameters:\n\
 \n\
 @table @samp\n\
 @item trigger_pars\n\
-The trigger parameter vector: trigger_pars = [trigger_level,trigger_ch,trigger_frames];\n\
+The trigger parameter vector: trigger_pars = [trigger_level,trigger_ch,trigger_frames post_trigger_frames];\n\
 \n\
 @table @code\n\
 @item trigger_level\n\
@@ -152,7 +152,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   octave_idx_type buflen;
   octave_idx_type channels;
   double trigger_level;
-  octave_idx_type trigger_ch, trigger_frames;
+  octave_idx_type trigger_ch, trigger_frames, post_trigger_frames;
   
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -227,22 +227,21 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // trigger buffer length.
   
   // Check that arg 1 is a 3 element vector
-  if (!((mxGetM(0)<=3 && mxGetN(0)==1) || (mxGetM(0)==1 && mxGetN(0)<=3))) {
-    error("Argument 1 must be a 1 to 3 element vector!");
+  if (!((mxGetM(0)<=4 && mxGetN(0)==1) || (mxGetM(0)==1 && mxGetN(0)<=4))) {
+    error("Argument 1 must be a 1 to 4 element vector!");
     return oct_retval;
   }
   const Matrix tmp0 = args(0).matrix_value();
   double* t_par = (double*) tmp0.fortran_vec();
-  trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
-  trigger_ch     = ((octave_idx_type) t_par[1]) - 1; // Trigger channel (1--channels).
-  trigger_frames = (octave_idx_type) t_par[2]; // The length of the trigger buffer.
 
   if (trigger_level < 0.0 || trigger_level > 1.0) {
     error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
     return oct_retval;
   }
-  
+   
   if ( mxGetM(0)*mxGetN(0) >= 2) {
+
+    trigger_ch     = ((octave_idx_type) t_par[1]) - 1; // Trigger channel (1--channels).
     
     if (trigger_ch < 0 || trigger_ch > channels-1) {
       error("Error in arg 1! The trigger channel must be >= 1 and <= %d!",channels);
@@ -250,7 +249,42 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     }
   } else
     trigger_ch = 0; // Default to a 1st channel.
+
+  if ( mxGetM(0)*mxGetN(0) >= 3) {
+
+    trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
+    
+    if (trigger_level < 0 || trigger_level > 1.0) {
+      error("Error in arg 1! The trigger level must be >= 0 and <= 1.0!");
+      return oct_retval;
+    }
+  } else
+    trigger_level = 0.5; // Default to 0.5.
+
+  if ( mxGetM(0)*mxGetN(0) >= 3) {
+
+    trigger_frames = (octave_idx_type) t_par[2]; // The length of the trigger buffer.
+    
+    if (trigger_frames < 1 || trigger_frames >= frames) {
+      error("Error in arg 1! The trigger_frames must be >= 1 and <= %d!",frames);
+      return oct_retval;
+    }
+  } else
+    trigger_frames = 1; // Default to a single frame.
   
+  if ( mxGetM(0)*mxGetN(0) >= 4) {
+
+    post_trigger_frames = (octave_idx_type) t_par[3]; // The number of frames to record
+                                                      // after triggering.
+    
+    if (post_trigger_frames < 0 || post_trigger_frames > frames) {
+      error("Error in arg 1! The post_trigger_frames must be >= 0 and <= %d!", frames);
+      return oct_retval;
+    }
+  } else
+    post_trigger_frames = 0; // Default to save immediately.
+
+
   //
   // Register signal handlers.
   //
@@ -281,7 +315,8 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   if (t_record_init( Y, frames, channels, port_names,
 		     trigger_level,
 		     trigger_ch,
-		     trigger_frames) < 0)
+		     trigger_frames,
+		     post_trigger_frames) < 0)
     return oct_retval;
 
   // Wait until we have recorded all data.

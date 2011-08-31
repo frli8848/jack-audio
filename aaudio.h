@@ -84,7 +84,8 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 		     unsigned int wanted_channels,
 		     double trigger_level,
 		     int trigger_ch,
-		     snd_pcm_sframes_t trigger_frames);
+		     snd_pcm_sframes_t trigger_frames,
+		     snd_pcm_sframes_t post_trigger_frames);
 
 
 void pcm_list(void);
