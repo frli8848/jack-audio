@@ -529,8 +529,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
     for (n=0; n<n_input_ports; n++) {
       
       // We need to keep a local (per channel) ringbuffer index.
-      local_rbuf_pos = ringbuffer_position - 1; // -1 since we increase local_rbuf_pos before
-                                                // we access the data in the for loop below.
+      local_rbuf_pos = ringbuffer_position;
 
       // Grab the n:th input buffer.
       in = (jack_default_audio_sample_t *) 
@@ -545,7 +544,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       
       for(m=0; m<frames_to_read; m++) {
 
-	local_rbuf_pos++;
+	local_rbuf_pos++; // Inrease the ringbuffer position for a new audio sample.
 	
 	if (local_rbuf_pos >= record_frames) { // Check if we have exceeded the size of the ring buffer. 
 	  local_rbuf_pos = 0; // We have reached the end of the ringbuffer so start from 0 again.
