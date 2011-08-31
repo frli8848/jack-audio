@@ -321,7 +321,6 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   // Wait until we have recorded all data.
   while(!t_record_finished() && is_running() ) {
-    octave_stdout << "Listening ..." << endl;
     sleep(1); // Note: This will give delay of 1 sec but it takes some time 
 	      // to save data so we will always loose some data if we, for
               // example, call jtrecord in a loop. To fix this we probably need a

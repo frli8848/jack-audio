@@ -233,7 +233,6 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 
   // Wait until we have played all data.
   while(!play_finished() && is_running() ) {
-    octave_stdout << "Playing ..." << endl;
     sleep(1);
   }
 

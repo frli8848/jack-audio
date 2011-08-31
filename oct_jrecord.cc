@@ -228,7 +228,6 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   // Wait until we have recorded all data.
   while(!record_finished() && is_running() ) {
-    octave_stdout << "Recording ..." << endl;
     sleep(1);
   }
 
