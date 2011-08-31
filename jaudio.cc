@@ -125,9 +125,21 @@ int play_finished(void)
   return ((play_frames - frames_played) <= 0);
 }
 
-//
-// The play callback function.
-//
+/********************************************************************************************
+*
+* Audio Playback
+*
+*********************************************************************************************/
+
+
+
+/***
+ *
+ * play_process
+ *
+ * The play callback function.
+ *
+ ***/
 
 int play_process(jack_nframes_t nframes, void *arg)
 {
@@ -172,10 +184,13 @@ int play_process(jack_nframes_t nframes, void *arg)
   return 0;
 }
 
-
-//
-//  Init the play client, connect to the jack input ports, and start playing audio data.
-//
+/***
+ *
+ * play_init
+ * 
+ * Init the play client, connect to the jack input ports, and start playing audio data.
+ *
+ ***/
 
 int play_init(void* buffer, octave_idx_type frames, int channels, char **port_names) 
 {
@@ -246,6 +261,15 @@ int play_init(void* buffer, octave_idx_type frames, int channels, char **port_na
 }
 
 
+/***
+ *
+ * play_close
+ *
+ * Close the JACK clients and free port 
+ * memory.
+ *
+ ***/
+
 int play_close(void)
 {
   int n, err;
@@ -266,7 +290,20 @@ int play_close(void)
   return 0;
 }
 
-// ********************************************************************************************
+/********************************************************************************************
+*
+* Audio Capturing
+*
+*********************************************************************************************/
+
+
+/***
+ *
+ * record_finished
+ *
+ * To check if we have read all audio data.
+ *
+ ***/
 
 int record_finished(void)
 {
@@ -274,9 +311,13 @@ int record_finished(void)
   return ((record_frames - frames_recorded) <= 0);
 }
 
-//
-// The record callback function.
-//
+/***
+ *
+ * record_process
+ *
+ * The record callback function.
+ *
+ ***/
 
 int record_process(jack_nframes_t nframes, void *arg)
 {
@@ -320,10 +361,13 @@ int record_process(jack_nframes_t nframes, void *arg)
   return 0;
 }
 
-
-//
-//  Init the record client, connect to the jack input ports, and start recording audio data.
-//
+/***
+ *
+ * record_init
+ *
+ * Init the record client, connect to the jack input ports, and start recording audio data.
+ *
+ ***/
 
 int record_init(void* buffer, octave_idx_type frames, int channels, char **port_names) 
 {
@@ -393,6 +437,14 @@ int record_init(void* buffer, octave_idx_type frames, int channels, char **port_
   return 0;
 }
 
+/***
+ *
+ * record_close
+ *
+ * Close the JACK clients and free port 
+ * memory.
+ *
+ ***/
 
 int record_close(void)
 {
@@ -415,8 +467,13 @@ int record_close(void)
 }
 
 
-// ********************************************************************************************
+/********************************************************************************************
+*
+* Triggered Audio Capturing
+*
+*********************************************************************************************/
 
+// Globals for the triggered audio caputring.
 
 double *triggerbuffer = NULL;
 octave_idx_type triggerport = 0;
@@ -431,19 +488,24 @@ octave_idx_type ringbuffer_position;
 octave_idx_type post_trigger_frames;
 int has_wrapped;
 
+/***
+ *
+ * t_record_finished
+ *
+ * To check if we are listening and recording audio data.
+ *
+ ***/
 
 int t_record_finished(void)
 {
   return !ringbuffer_read_running;
 }
 
-
 /***
  *
  * t_record_process
  *
  * The triggered record callback function.
- *
  *
  ***/
 
@@ -716,7 +778,6 @@ octave_idx_type get_ringbuffer_position(void)
 
   return ringbuffer_position;
 }
-
 
 /***
  *
