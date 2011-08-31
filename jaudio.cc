@@ -420,7 +420,7 @@ int record_close(void)
 
 double *triggerbuffer = NULL;
 octave_idx_type triggerport = 0;
-double trigger_level = 1.0e16, trigger = 0.0;
+double t_level = 1.0, trigger = 0.0;
 int    trigger_active;
 octave_idx_type trigger_position;
 octave_idx_type t_frames;
@@ -512,7 +512,6 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    m2 = (trigger_position + m) % t_frames;
 	    
 	    triggerbuffer[m2] = (double) in[(jack_nframes_t) m];
-	    
 	  }
 
 	  // 3) Update the trigger value.
@@ -529,7 +528,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	  trigger_position = m2 + 1;	
 	  
 	  // Check if we are above the threshold.
-	  if ( (trigger / (double) t_frames) > trigger_level) {
+	  if ( (trigger / (double) t_frames) > t_level) {
 	    trigger_active = TRUE;
 	    
 	    struct tm *the_time;
@@ -592,12 +591,14 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   // Set the (global) trigger channel for the JACK callback.
   trigger_ch = trigger_channel;
 
+  // Set the trigger level for the callback function.
+  t_level = trigger_level;
+
   // The total number of frames to record.
   record_frames = frames;
 
   // Reset record counter.
   frames_recorded = 0;
-
 
   // Flag used to stop the data acquisition.
   ringbuffer_read_running = TRUE;
