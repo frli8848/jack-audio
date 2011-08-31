@@ -427,8 +427,8 @@ octave_idx_type t_frames;
 octave_idx_type trigger_ch;
 
 int ringbuffer_read_running;
-octave_idx_type ringbuffer_position = 0;
-octave_idx_type post_trigger_frames = 0;
+octave_idx_type ringbuffer_position;
+octave_idx_type post_trigger_frames;
 int has_wrapped;
 
 
@@ -450,6 +450,7 @@ int t_record_finished(void)
 int t_record_process(jack_nframes_t nframes, void *arg)
 {
   octave_idx_type frames_to_read, n, m, m2;
+  octave_idx_type local_rbuf_pos;
   double   *input_dbuffer;
   jack_default_audio_sample_t *in;
 
@@ -464,6 +465,10 @@ int t_record_process(jack_nframes_t nframes, void *arg)
     // Loop over all JACK ports.
     for (n=0; n<n_input_ports; n++) {
       
+      // We need to keep a local (per channel) ringbuffer index.
+      local_rbuf_pos = ringbuffer_position - 1; // -1 since we increase local_rbuf_pos before
+                                                // we access the data in the for loop below.
+
       // Grab the n:th input buffer.
       in = (jack_default_audio_sample_t *) 
 	jack_port_get_buffer(input_ports[n], nframes);
@@ -476,15 +481,15 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       //
       
       for(m=0; m<frames_to_read; m++) {
-       	
-	ringbuffer_position += m;
+
+	local_rbuf_pos++;
 	
-	if ( ringbuffer_position >= record_frames) { // Check if we have exceeded the size of the ring buffer. 
-	  ringbuffer_position = 0; // We have reached the end of the ringbuffer so start from 0 again.
+	if (local_rbuf_pos >= record_frames) { // Check if we have exceeded the size of the ring buffer. 
+	  local_rbuf_pos = 0; // We have reached the end of the ringbuffer so start from 0 again.
 	  has_wrapped = TRUE; // Indicate that the ring buffer is full.
 	}	
 	
-	input_dbuffer[ringbuffer_position + n*record_frames] = (double) in[(jack_nframes_t) m];	  
+	input_dbuffer[local_rbuf_pos + n*record_frames] = (double) in[(jack_nframes_t) m];	  
       }
 
       //
@@ -557,6 +562,8 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       } // if (n == triggerport)
       
     } // for (n=0; n<n_input_ports; n++) 
+
+    ringbuffer_position = local_rbuf_pos; // Update the global ringbuffer position index.
     
   } // if ( running && ringbuffer_read_running )
   
@@ -599,6 +606,9 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
 
   // Reset record counter.
   frames_recorded = 0;
+
+  // Reset the post trigger counter.
+  post_trigger_frames = 0;
 
   // Flag used to stop the data acquisition.
   ringbuffer_read_running = TRUE;
