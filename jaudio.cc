@@ -476,12 +476,11 @@ int record_close(void)
 // Globals for the triggered audio caputring.
 
 double *triggerbuffer = NULL;
-octave_idx_type triggerport = 0;
+octave_idx_type triggerport;
 double t_level = 1.0, trigger = 0.0;
 int    trigger_active;
 octave_idx_type trigger_position;
 octave_idx_type t_frames;
-octave_idx_type trigger_ch;
 
 int ringbuffer_read_running;
 octave_idx_type ringbuffer_position;
@@ -658,9 +657,6 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   // The number of channels (columns) in the buffer matrix.
   n_input_ports = (octave_idx_type) channels;
 
-  // Set the (global) trigger channel for the JACK callback.
-  trigger_ch = trigger_channel;
-
   // Set the trigger level for the callback function.
   t_level = trigger_level;
 
@@ -689,11 +685,11 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   // Reset the wrapped flag.
   has_wrapped = FALSE;
 
-  // Initialize trigger values.
-  trigger = 0.0;
-  trigger_position = 0;
-  trigger_active = FALSE;
-  triggerport = trigger_channel;
+  // Initialize trigger parameters.
+  trigger = 0.0;	    // Clear the trigger value.
+  trigger_position = 0;	    // Start from the beginning of the buffer.
+  trigger_active = FALSE;   // Clear the trigger status.
+  triggerport = trigger_channel; // The (global) trigger port for the JACK callback function.
 
   if (triggerport < 0 || triggerport >= n_input_ports) {
     error("Trigger channel out-of-bounds!\n");
