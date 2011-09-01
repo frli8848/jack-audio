@@ -36,7 +36,7 @@ cp oct_ainfo.cc aaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING aaudio-$VERSION/
-cp DESCRIPTION aaudio-$VERSION/ 
+cp DESCRIPTION_ALSA aaudio-$VERSION/DESCRIPTION
 
 tar cvzf aaudio-$VERSION.tar.gz aaudio-$VERSION/ 
 
@@ -66,6 +66,6 @@ cp oct_jinfo.cc jaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING jaudio-$VERSION/
-cp DESCRIPTION jaudio-$VERSION/ 
+cp DESCRIPTION_JACK jaudio-$VERSION/DESCRIPTION
 
 tar cvzf jaudio-$VERSION.tar.gz jaudio-$VERSION/ 

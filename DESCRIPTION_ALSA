@@ -1,0 +1,13 @@
+Name: Aaudio
+Version: 0.2.0
+Date: 2011-09-01
+Author: Fredrik Lingvall
+Maintainer: Fredrik Lingvall
+Title: Aaudio
+Description: Audio recording and playing using the Advanced Linux Sound Architecture (ALSA).  
+Categories: Audio
+BuildRequires: pthread, libasound
+Depends: octave (>= 2.9.12)
+Autoload: yes
+License: GPL version 2 or later
+Url: http://folk.uio.no/fl/aaudio.shtml

@@ -1,0 +1,13 @@
+Name: Jaudio
+Version: 0.2.0
+Date: 2011-09-01
+Author: Fredrik Lingvall
+Maintainer: Fredrik Lingvall
+Title: Aaudio
+Description: Audio recording and playing using the JACK Audio Connection Kit (JACK).  
+Categories: Audio
+BuildRequires: pthread, libjack, librt
+Depends: octave (>= 2.9.12)
+Autoload: yes
+License: GPL version 2 or later
+Url: http://folk.uio.no/fl/aaudio.shtml
