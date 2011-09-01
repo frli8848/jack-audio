@@ -667,10 +667,17 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
   
-  // Free memory.
+  //
+  // Free thread memory.
+  //
+
   if (D) {
     free((void*) D);
   }
+  
+  if (threads)
+    free(threads);
+
 
   //
   // Restore old signal handlers.
@@ -744,7 +751,9 @@ A frames x rec_channels matrix containing the captured audio data.\n\
       }
     } 
     
-    oct_retval.append(Ymat);
+   // Append the output data.
+   oct_retval.append(Ymat);
+
   } // is_running
 
   //

@@ -231,10 +231,24 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     sleep(1);
   }
 
-  // Cleanup.
-  record_close();
+  if (is_running()) {
+    // Append the output matrix.
+    oct_retval.append(Ymat);
+  }
 
-  oct_retval.append(Ymat);
+  //
+  // Cleanup.
+  //
+
+  record_close();
+  
+  for ( n=0; n<channels; n++ ) {
+    if (port_names[n])
+      free(port_names[n]);
+  }
+  
+  if (port_names)
+    free(port_names);
 
   //
   // Restore old signal handlers.

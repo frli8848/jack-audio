@@ -236,9 +236,20 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     sleep(1);
   }
 
+  //
   // Cleanup.
+  //
+  
   play_close();
-
+  
+  for ( n=0; n<channels; n++ ) {
+    if (port_names[n])
+      free(port_names[n]);
+  }
+  
+  if (port_names)
+    free(port_names);
+  
   //
   // Restore old signal handlers.
   //

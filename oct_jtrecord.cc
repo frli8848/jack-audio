@@ -332,7 +332,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Close the JACK connections and cleanup.
   t_record_close();
   
-  if (is_running()) { // Ony do this if we have not pressed CTRL-C.
+  if (is_running()) { // Only do this if we have not pressed CTRL-C.
     
     // Get the position in the ring buffer so we know if we need to unwrap the
     // data.
@@ -362,6 +362,18 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
     oct_retval.append(Ymat);
   }
+
+  //
+  // Cleanup.
+  //
+
+  for ( n=0; n<channels; n++ ) {
+    if (port_names[n])
+      free(port_names[n]);
+  }
+  
+  if (port_names)
+    free(port_names);
   
   //
   // Restore old signal handlers.
