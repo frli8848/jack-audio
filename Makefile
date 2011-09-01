@@ -25,18 +25,13 @@ DLDCC = mkoctfile
 ALIBDIRS = -lasound
 JLIBDIRS = -ljack -lpthread -lrt
 
-all:
-
 all: \
 	ainfo.oct \
 	aplay.oct \
 	arecord.oct \
 	atrecord.oct \
 	actrecord.oct \
-	aplayrec.oct
-
-
-jack: \
+	aplayrec.oct \
 	jinfo.oct \
 	jplay.oct \
 	jrecord.oct \
