@@ -1,9 +1,6 @@
 /***
  *
- *  Copyright (C) 2011 Fredrik Lingvall
- *
- *  Parts of this code is based on the aplay program by Jaroslav Kysela and
- *  the pcm.c example from the alsa-lib.
+ * Copyright (C) 2011 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -111,19 +108,18 @@ int srate(jack_nframes_t nframes, void *arg)
 void jerror (const char *desc)
 {
   error("JACK error: %s\n", desc);
+  clear_running_flag(); // Stop if we get a JACK error.
+
+  return;
 }
 
 void jack_shutdown(void *arg)
 {
-  // Do nothing
+  clear_running_flag(); // Stop if JACK shuts down..
+
   return;
 }
 
-int play_finished(void)
-{
-
-  return ((play_frames - frames_played) <= 0);
-}
 
 /********************************************************************************************
 *
@@ -131,7 +127,19 @@ int play_finished(void)
 *
 *********************************************************************************************/
 
+/***
+ *
+ * play_finished
+ *
+ * To check if we have played all audio data.
+ *
+ ***/
 
+int play_finished(void)
+{
+
+  return ((play_frames - frames_played) <= 0);
+}
 
 /***
  *
@@ -192,9 +200,9 @@ int play_process(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int play_init(void* buffer, octave_idx_type frames, int channels, char **port_names) 
+int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, char **port_names) 
 {
-  int n;
+  octave_idx_type n;
   jack_port_t  *port;
   char port_name[255];
 
@@ -237,7 +245,7 @@ int play_init(void* buffer, octave_idx_type frames, int channels, char **port_na
   output_ports = (jack_port_t**) malloc(n_output_ports * sizeof(jack_port_t*));
 
   for (n=0; n<n_output_ports; n++) { 
-    sprintf(port_name,"output_%d",n+1); // Port numbers start at 1.
+    sprintf(port_name,"output_%d", (int) n+1); // Port numbers start at 1.
     output_ports[n] = jack_port_register(play_client, port_name, 
 					 JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
   }
@@ -272,7 +280,8 @@ int play_init(void* buffer, octave_idx_type frames, int channels, char **port_na
 
 int play_close(void)
 {
-  int n, err;
+  octave_idx_type n;
+  int err;
    // Unregister all ports for the play client.
   for (n=0; n<n_output_ports; n++) {
     err = jack_port_unregister(play_client, output_ports[n]);
@@ -369,10 +378,10 @@ int record_process(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int record_init(void* buffer, octave_idx_type frames, int channels, char **port_names) 
+int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, char **port_names) 
 {
-  int n;
-  jack_port_t  *port;
+  octave_idx_type n;
+  jack_port_t *port;
   char port_name[255];
 
   // The number of channels (columns) in the buffer matrix.
@@ -410,11 +419,11 @@ int record_init(void* buffer, octave_idx_type frames, int channels, char **port_
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown(record_client, jack_shutdown, 0);
-
+  
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
-
+  
   for (n=0; n<n_input_ports; n++) { 
-    sprintf(port_name,"input_%d",n+1); // Port numbers start at 1.
+    sprintf(port_name,"input_%d",(int) n+1); // Port numbers start at 1.
     input_ports[n] = jack_port_register(record_client, port_name, 
 					 JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
   }
@@ -448,8 +457,10 @@ int record_init(void* buffer, octave_idx_type frames, int channels, char **port_
 
 int record_close(void)
 {
-  int n, err;
-   // Unregister all ports for the record client.
+  octave_idx_type n;
+  int err;
+
+  // Unregister all ports for the record client.
   for (n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);
     if (err)
@@ -644,13 +655,13 @@ int t_record_process(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int t_record_init(void* buffer, octave_idx_type frames, int channels, char **port_names,
+int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, char **port_names,
 		  double trigger_level,
 		  octave_idx_type trigger_channel,
 		  octave_idx_type trigger_frames,
 		  octave_idx_type post_trigger_frames)
 {
-  int n;
+  octave_idx_type n;
   jack_port_t  *port;
   char port_name[255];
 
@@ -726,7 +737,7 @@ int t_record_init(void* buffer, octave_idx_type frames, int channels, char **por
   // Register the input ports.  
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
   for (n=0; n<n_input_ports; n++) { 
-    sprintf(port_name,"input_%d",n+1); // Port numbers start at 1.
+    sprintf(port_name,"input_%d",(int) n+1); // Port numbers start at 1.
     input_ports[n] = jack_port_register(record_client, port_name, 
 					JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
   }
@@ -788,7 +799,9 @@ octave_idx_type get_ringbuffer_position(void)
 
 int t_record_close(void)
 {
-  int n, err;
+  octave_idx_type n;
+  int err;
+
    // Unregister all ports for the record client.
   for (n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);

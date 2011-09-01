@@ -64,18 +64,6 @@ using namespace std;
 #define mxIsChar(N) args(N).is_string()
 
 //
-// typedef:s
-//
-
-typedef struct
-{
-  double *Y;
-  octave_idx_type frames;
-  octave_idx_type channels;
-  char **port_names;
-} DATA;
-
-//
 // Function prototypes.
 //
 
@@ -84,35 +72,6 @@ void sighandler(int signum);
 void sighandler(int signum);
 void sig_abrt_handler(int signum);
 void sig_keyint_handler(int signum);
-
-/***
- *
- * Audio read (capture) thread function. 
- *
- ***/
-
-void* smp_process(void *arg)
-{
-  DATA D = *(DATA *)arg;
-  double *Y = D.Y;
-  octave_idx_type frames = D.frames;
-  octave_idx_type channels = D.channels;
-  char **port_names = D.port_names;
-
-  // Init and connect to the output ports.
-  if (record_init(Y, frames, channels, port_names) < 0)
-    return NULL;
-
-  // Wait until we have recorded all data.
-  while(!record_finished() && is_running() ) {
-    sleep(1);
-  }
-  
-  // Cleanup.
-  record_close();
-
-  return NULL;
-}
 
 /***
  *
@@ -141,9 +100,11 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (jplayrec, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {} Y = jplayrec(A,jack_inputs,jack_ouputs).\n\
+@deftypefn {Loadable Function} {} Y = jplayrec(A,jack_inputs,jack_ouputs);\n\
 \n\
-JPLAYREC Records audio data to the output matrix Y using the (low-latency) audio server JACK.\n\
+JPLAYREC Plays audio data from the input matrix A, on the jack ports given by jack_inputs and \n\
+records audio data, from the jack ports given by jack_ouput, to the output matrix Y using the \n\
+(low-latency) audio server JACK.\n\
 \n\
 Input parameters:\n\
 \n\
@@ -161,9 +122,6 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @end deftypefn")
 {
   double *A,*Y; 
-  DATA   *D;
-  pthread_t *threads;
-  void   *retval;
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
@@ -273,7 +231,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     
     port_names_out[0][buflen] = '\0';
   }
-  
+
   //
   // Register signal handlers.
   //
@@ -293,62 +251,35 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Allocate memory for the output arg.
   Matrix Ymat(frames, rec_channels);
   Y = Ymat.fortran_vec();
-  
-  // Init tread data parameters.
 
-  D = (DATA*) malloc(sizeof(DATA));
-  if (!D) {
-    error("Failed to allocate memory for thread data!");
-    return oct_retval;
-  }
-
-  D[0].Y = Y;
-  D[0].frames = frames;
-  D[0].channels = rec_channels;
-  D[0].port_names = port_names_out;
 
   // Set status to running (CTRL-C will clear the flag and stop play/capture).
   set_running_flag(); 
 
-  // Start the read thread.
-  err = pthread_create(&threads[0], NULL, smp_process, &D[0]);
-  if (err != 0)
-    error("Error when creating a new thread!\n");
 
-  //
-  // Init playback and connect to the output ports.
-  //
+  // Init recording and connect to the jack output ports.
+  if (record_init(Y, frames, rec_channels, port_names_out) < 0)
+    return oct_retval;
 
+  // Init playback and connect to the jack input ports.
   if (play_init(A, frames, play_channels, port_names_in) < 0)
     return oct_retval;
 
-  // Wait until we have played all data.
-  while(!play_finished() && is_running() ) {
-    sleep(1);
+  // Wait for both playback and record to finish.
+  while( (!record_finished() || !play_finished()) && is_running() ) {
+    octave_stdout << " Running " << endl;
+    sleep(1);  
   }
 
-  // Cleanup.
+  // Close the jack ports.
   play_close();
+  record_close();
 
-  //
-  // Wait for the read thread to finish.
-  //
-
-  // Wait for the read thread to finish.
-  err = pthread_join(threads[0], &retval);
-  if (err != 0) {
-    error("Error when joining a thread!\n");
-    return oct_retval;
-  }
-  
-  // Free memory.
-  if (D) {
-    free((void*) D);
+  if (is_running) {
+    // Append the output data.
+    oct_retval.append(Ymat);
   }
 
-
-
-  oct_retval.append(Ymat);
 
   //
   // Restore old signal handlers.
