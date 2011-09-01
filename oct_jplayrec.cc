@@ -266,11 +266,9 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     return oct_retval;
 
   // Wait for both playback and record to finish.
-  while( (!record_finished() || !play_finished()) && is_running() ) {
-    octave_stdout << " Running " << endl;
+  while( (!record_finished() || !play_finished()) && is_running() )
     sleep(1);  
-  }
-
+  
   // Close the jack ports.
   play_close();
   record_close();
