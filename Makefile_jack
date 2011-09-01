@@ -1,6 +1,6 @@
 #!/usr/bin/make
-#
-# Copyright (C) 2008, 2009, 2011 Fredrik Lingvall
+
+# Copyright (C) 2011 Fredrik Lingvall
 #
 # This program is free software; you can redistribute it and/or modify 
 # it under the terms of the GNU General Public License as published by the
@@ -21,38 +21,33 @@
 
 CXX = mkoctfile
 DLDCC = mkoctfile
-
-ALIBDIRS = -lasound
 JLIBDIRS = -ljack -lpthread -lrt
 
+
 all: \
-	ainfo.oct \
-	aplay.oct \
-	arecord.oct \
-	atrecord.oct \
-	actrecord.oct \
-	aplayrec.oct
+	jinfo.oct \
+	jplay.oct \
+	jrecord.oct \
+	jtrecord.oct \
+	jplayrec.oct 
 
 .cc.o:	
 	$(CXX) -c $<
 
-ainfo.oct : oct_ainfo.o aaudio.o
-	$(DLDCC) $(ALIBDIRS) $^ -o $@
+jinfo.oct : oct_jinfo.o 
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-aplay.oct : oct_aplay.o aaudio.o
-	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
+jplay.oct : oct_jplay.o jaudio.o
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-arecord.oct : oct_arecord.o aaudio.o
-	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
+jrecord.oct : oct_jrecord.o jaudio.o
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-atrecord.oct : oct_atrecord.o aaudio.o
-	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
+jtrecord.oct : oct_jtrecord.o jaudio.o
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-actrecord.oct : oct_actrecord.o aaudio.o
-	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
-
-aplayrec.oct : oct_aplayrec.o aaudio.o
-	$(DLDCC) -lpthread $^ -o $@ 
+jplayrec.oct : oct_jplayrec.o jaudio.o
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:
 	rm -f *.o *~ 
