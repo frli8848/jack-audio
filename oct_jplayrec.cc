@@ -103,7 +103,7 @@ DEFUN_DLD (jplayrec, args, nlhs,
 @deftypefn {Loadable Function} {} Y = jplayrec(A,jack_inputs,jack_ouputs);\n\
 \n\
 JPLAYREC Plays audio data from the input matrix A, on the jack ports given by jack_inputs and \n\
-records audio data, from the jack ports given by jack_ouput, to the output matrix Y using the \n\
+records audio data, from the jack ports given by jack_ouputs, to the output matrix Y using the \n\
 (low-latency) audio server JACK.\n\
 \n\
 Input parameters:\n\
@@ -280,7 +280,6 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     oct_retval.append(Ymat);
   }
 
-
   //
   // Restore old signal handlers.
   //
@@ -298,7 +297,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   }
   
   if (!is_running())
-    error("CTRL-C pressed - record interrupted!\n"); // Bail out.
+    error("CTRL-C pressed - play and record interrupted!\n"); // Bail out.
 
   return oct_retval;
 }
