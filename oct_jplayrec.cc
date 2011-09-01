@@ -1,0 +1,373 @@
+/***
+ *
+ * Copyright (C) 2011 Fredrik Lingvall 
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with the program; see the file COPYING.  If not, write to the 
+ *   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ *   02110-1301, USA.
+ *
+ ***/
+
+// $Revision$ $Date$ $LastChangedBy$
+
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+#include <pthread.h>
+#include <signal.h>
+
+//
+// Octave headers.
+//
+
+#include <octave/oct.h>
+
+#include <octave/config.h>
+
+#include <iostream>
+using namespace std;
+
+#include <octave/defun-dld.h>
+#include <octave/error.h>
+#include <octave/oct-obj.h>
+#include <octave/pager.h>
+#include <octave/symtab.h>
+#include <octave/variables.h>
+
+#include "jaudio.h"
+
+#define TRUE 1
+#define FALSE 0
+
+//
+// Macros.
+//
+
+#ifdef CLAMP
+#undef CLAMP
+#endif
+#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
+#define mxGetM(N)   args(N).matrix_value().rows()
+#define mxGetN(N)   args(N).matrix_value().cols()
+#define mxIsChar(N) args(N).is_string()
+
+//
+// typedef:s
+//
+
+typedef struct
+{
+  double *Y;
+  octave_idx_type frames;
+  octave_idx_type channels;
+  char **port_names;
+} DATA;
+
+//
+// Function prototypes.
+//
+
+void* smp_process(void *arg);
+void sighandler(int signum);
+void sighandler(int signum);
+void sig_abrt_handler(int signum);
+void sig_keyint_handler(int signum);
+
+/***
+ *
+ * Audio read (capture) thread function. 
+ *
+ ***/
+
+void* smp_process(void *arg)
+{
+  DATA D = *(DATA *)arg;
+  double *Y = D.Y;
+  octave_idx_type frames = D.frames;
+  octave_idx_type channels = D.channels;
+  char **port_names = D.port_names;
+
+  // Init and connect to the output ports.
+  if (record_init(Y, frames, channels, port_names) < 0)
+    return NULL;
+
+  // Wait until we have recorded all data.
+  while(!record_finished() && is_running() ) {
+    sleep(1);
+  }
+  
+  // Cleanup.
+  record_close();
+
+  return NULL;
+}
+
+/***
+ *
+ * Signal handlers.
+ *
+ ***/
+
+void sighandler(int signum) {
+  //printf("Caught signal SIGTERM.\n");
+  clear_running_flag();
+}
+
+void sig_abrt_handler(int signum) {
+  //printf("Caught signal SIGABRT.\n");
+}
+
+void sig_keyint_handler(int signum) {
+  //printf("Caught signal SIGINT.\n");
+}
+
+/***
+ * 
+ * Octave (oct) gateway function for JPLAYREC.
+ *
+ ***/
+
+DEFUN_DLD (jplayrec, args, nlhs,
+	   "-*- texinfo -*-\n\
+@deftypefn {Loadable Function} {} Y = jplayrec(A,jack_inputs,jack_ouputs).\n\
+\n\
+JPLAYREC Records audio data to the output matrix Y using the (low-latency) audio server JACK.\n\
+\n\
+Input parameters:\n\
+\n\
+@table @samp\n\
+@item A\n\
+A frames x number of playback channels (jack ports) matrix.\n\
+@item jack_inputs\n\
+A char matrix with the JACK client input port names, for example, ['system:playback_1'; 'system:playback_2'], etc.\n\
+@item jack_ouputs\n\
+A char matrix with the JACK client output port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
+@end table\n\
+\n\
+@copyright{} 2011 Fredrik Lingvall.\n\
+@seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
+@end deftypefn")
+{
+  double *A,*Y; 
+  DATA   *D;
+  pthread_t *threads;
+  void   *retval;
+  int err,verbose = 0;
+  octave_idx_type n, frames;
+  sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
+  char **port_names_in, **port_names_out;
+  octave_idx_type buflen;
+  octave_idx_type play_channels, rec_channels;
+  
+  octave_value_list oct_retval; // Octave return (output) parameters
+
+  int nrhs = args.length ();
+
+  // Check for proper inputs arguments.
+
+  if (nrhs != 3) {
+    error("jplayrec requires 3 input arguments!");
+    return oct_retval;
+  }
+
+  if (nlhs > 1) {
+    error("Too many output args for jplayrec!");
+    return oct_retval;
+  }
+
+  //
+  // Input arg 1 : The audio data to play (a frames x channels matrix).
+  //
+
+  const Matrix tmp0 = args(0).matrix_value();
+  frames = tmp0.rows();		// Audio data length for each channel.
+  play_channels = tmp0.cols();	// Number of channels.
+
+  A = (double*) tmp0.fortran_vec();
+    
+  if (frames < 0) {
+    error("The number of audio frames (rows in arg 1) must > 0!");
+    return oct_retval;
+  }
+  
+  if (play_channels < 0) {
+    error("The number of playback channels (columns in arg 1) must > 0!");
+    return oct_retval;
+  }
+
+  //
+  // Input arg 2 : The jack (writable client) input audio ports.
+  //
+
+  if ( !args(1).is_sq_string() ) {
+    error("2rd arg must be a string matrix !");
+    return oct_retval;
+  }
+  
+  charMatrix ch_in = args(1).char_matrix_value();
+
+  if ( ch_in.rows() != play_channels ) {
+    error("The number of channels to play don't match the specified number of jack client input ports!");
+    return oct_retval;
+  }
+
+  buflen = ch_in.cols();    
+  port_names_in = (char**) malloc(play_channels * sizeof(char*));
+  for ( n=0; n<play_channels; n++ ) {
+
+    port_names_in[n] = (char*) malloc(buflen*sizeof(char)+1);
+
+    std::string strin = ch_in.row_as_string(n);
+    
+    for (int k=0; k<=buflen; k++ )
+      if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
+	port_names_in[n][k] = strin[k];
+      else {
+	port_names_in[n][k] = '\0';
+	break;
+      }
+    
+    port_names_in[0][buflen] = '\0';
+  }
+
+  //
+  // Input arg 3 : The jack (readable client) ouput audio ports.
+  //
+
+  if ( !args(2).is_sq_string() ) {
+    error("2rd arg must be a string matrix !");
+    return oct_retval;
+  }
+  
+  charMatrix ch_out = args(2).char_matrix_value();
+
+  rec_channels = ch_out.rows();
+
+  buflen = ch_out.cols();    
+  port_names_out = (char**) malloc(rec_channels * sizeof(char*));
+  for ( n=0; n<rec_channels; n++ ) {
+
+    port_names_out[n] = (char*) malloc(buflen*sizeof(char)+1);
+
+    std::string strin = ch_out.row_as_string(n);
+    
+    for (int k=0; k<=buflen; k++ )
+      if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
+	port_names_out[n][k] = strin[k];
+      else {
+	port_names_out[n][k] = '\0';
+	break;
+      }
+    
+    port_names_out[0][buflen] = '\0';
+  }
+  
+  //
+  // Register signal handlers.
+  //
+
+  if ((old_handler = signal(SIGTERM, &sighandler)) == SIG_ERR) {
+    error("Couldn't register signal handler.\n");
+  }
+
+  if ((old_handler_abrt = signal(SIGABRT, &sighandler)) == SIG_ERR) {
+    error("Couldn't register signal handler.\n");
+  }
+  
+  if ((old_handler_keyint = signal(SIGINT, &sighandler)) == SIG_ERR) {
+    error("Couldn't register signal handler.\n");
+  }
+
+  // Allocate memory for the output arg.
+  Matrix Ymat(frames, rec_channels);
+  Y = Ymat.fortran_vec();
+  
+  // Init tread data parameters.
+
+  D = (DATA*) malloc(sizeof(DATA));
+  if (!D) {
+    error("Failed to allocate memory for thread data!");
+    return oct_retval;
+  }
+
+  D[0].Y = Y;
+  D[0].frames = frames;
+  D[0].channels = rec_channels;
+  D[0].port_names = port_names_out;
+
+  // Set status to running (CTRL-C will clear the flag and stop play/capture).
+  set_running_flag(); 
+
+  // Start the read thread.
+  err = pthread_create(&threads[0], NULL, smp_process, &D[0]);
+  if (err != 0)
+    error("Error when creating a new thread!\n");
+
+  //
+  // Init playback and connect to the output ports.
+  //
+
+  if (play_init(A, frames, play_channels, port_names_in) < 0)
+    return oct_retval;
+
+  // Wait until we have played all data.
+  while(!play_finished() && is_running() ) {
+    sleep(1);
+  }
+
+  // Cleanup.
+  play_close();
+
+  //
+  // Wait for the read thread to finish.
+  //
+
+  // Wait for the read thread to finish.
+  err = pthread_join(threads[0], &retval);
+  if (err != 0) {
+    error("Error when joining a thread!\n");
+    return oct_retval;
+  }
+  
+  // Free memory.
+  if (D) {
+    free((void*) D);
+  }
+
+
+
+  oct_retval.append(Ymat);
+
+  //
+  // Restore old signal handlers.
+  //
+  
+  if (signal(SIGTERM, old_handler) == SIG_ERR) {
+    error("Couldn't register old signal handler.\n");
+  }
+  
+  if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
+    error("Couldn't register signal handler.\n");
+  }
+  
+  if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
+    error("Couldn't register signal handler.\n");
+  }
+  
+  if (!is_running())
+    error("CTRL-C pressed - record interrupted!\n"); // Bail out.
+
+  return oct_retval;
+}

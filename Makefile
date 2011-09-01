@@ -28,18 +28,20 @@ JLIBDIRS = -ljack -lpthread -lrt
 all:
 
 all: \
+	ainfo.oct \
 	aplay.oct \
 	arecord.oct \
 	atrecord.oct \
 	actrecord.oct \
-	aplayrec.oct \
-	ainfo.oct
+	aplayrec.oct
+
 
 jack: \
 	jinfo.oct \
 	jplay.oct \
 	jrecord.oct \
-	jtrecord.oct 
+	jtrecord.oct \
+	jplayrec.oct 
 
 .cc.o:	
 	$(CXX) -c $<
@@ -79,6 +81,9 @@ jrecord.oct : oct_jrecord.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 jtrecord.oct : oct_jtrecord.o jaudio.o
+	$(DLDCC) $(JLIBDIRS) $^ -o $@
+
+jplayrec.oct : oct_jplayrec.o jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:
