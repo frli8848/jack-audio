@@ -24,7 +24,7 @@ mkdir -p aaudio-$VERSION/
 
 # The ALSA sources
 
-cp Makefile_octave aaudio-$VERSION/src/Makefile
+cp Makefile_alsa aaudio-$VERSION/src/Makefile
 cp aaudio.h aaudio-$VERSION/src/
 cp aaudio.cc aaudio-$VERSION/src/
 cp oct_aplay.cc aaudio-$VERSION/src/
