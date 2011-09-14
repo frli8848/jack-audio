@@ -228,7 +228,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   set_running_flag();
 
   // Init and connect to the output ports.
-  if (play_init(A, frames, channels, port_names) < 0)
+  if (play_init(A, frames, channels, port_names, "octave:jplay") < 0)
     return oct_retval;
 
   // Wait until we have played all data.

@@ -312,7 +312,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   set_running_flag(); 
 
   // Init and connect to the output ports.
-  if (t_record_init( Y, frames, channels, port_names,
+  if (t_record_init( Y, frames, channels, port_names, "octave:jtrecord",
 		     trigger_level,
 		     trigger_ch,
 		     trigger_frames,

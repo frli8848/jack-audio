@@ -223,7 +223,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   set_running_flag();
 
   // Init and connect to the output ports.
-  if (record_init(Y, frames, channels, port_names) < 0)
+  if (record_init(Y, frames, channels, port_names, "octave:jrecord") < 0)
     return oct_retval;
 
   // Wait until we have recorded all data.

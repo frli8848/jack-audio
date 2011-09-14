@@ -258,11 +258,11 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
 
   // Init recording and connect to the jack output ports.
-  if (record_init(Y, frames, rec_channels, port_names_out) < 0)
+  if (record_init(Y, frames, rec_channels, port_names_out, "octave:jplayrec_r") < 0)
     return oct_retval;
 
   // Init playback and connect to the jack input ports.
-  if (play_init(A, frames, play_channels, port_names_in) < 0)
+  if (play_init(A, frames, play_channels, port_names_in, "octave:jplayrec_p") < 0)
     return oct_retval;
 
   // Wait for both playback and record to finish.

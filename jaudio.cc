@@ -105,7 +105,7 @@ int srate(jack_nframes_t nframes, void *arg)
   return 0;
 }
 
-void jerror (const char *desc)
+void jerror(const char *desc)
 {
   error("JACK error: %s\n", desc);
   clear_running_flag(); // Stop if we get a JACK error.
@@ -200,7 +200,8 @@ int play_process(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, char **port_names) 
+int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+	      char **port_names, const char *client_name) 
 {
   octave_idx_type n;
   jack_port_t  *port;
@@ -221,10 +222,10 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, ch
   // 
   // This is set here so that it can catch errors in the
   // connection process.
-  jack_set_error_function (jerror);
+  jack_set_error_function(jerror);
 
   // Try to become a client of the JACK server.
-  if ((play_client = jack_client_new ("octave:jplay")) == 0) {
+  if ((play_client = jack_client_new(client_name)) == 0) {
     error("jack server not running?\n");
     return -1;
   }
@@ -378,7 +379,8 @@ int record_process(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, char **port_names) 
+int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+		char **port_names, const char *client_name) 
 {
   octave_idx_type n;
   jack_port_t *port;
@@ -399,10 +401,10 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
   // 
   // This is set here so that it can catch errors in the
   // connection process.
-  jack_set_error_function (jerror);
+  jack_set_error_function(jerror);
 
   // Try to become a client of the JACK server.
-  if ((record_client = jack_client_new ("octave:jrecord")) == 0) {
+  if ((record_client = jack_client_new(client_name)) == 0) {
     error("jack server not running?\n");
     return -1;
   }
@@ -516,7 +518,7 @@ int t_record_finished(void)
  *
  * t_record_process
  *
- * The triggered record callback function.
+ * The JACK callback function for triggered recording.
  *
  ***/
 
@@ -554,18 +556,19 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       
       for(m=0; m<frames_to_read; m++) {
 
-	local_rbuf_pos++; // Inrease the ringbuffer position for a new audio sample.
-	
 	if (local_rbuf_pos >= record_frames) { // Check if we have exceeded the size of the ring buffer. 
 	  local_rbuf_pos = 0; // We have reached the end of the ringbuffer so start from 0 again.
 	  has_wrapped = TRUE; // Indicate that the ring buffer is full.
 	}	
 	
-	input_dbuffer[local_rbuf_pos + n*record_frames] = (double) in[(jack_nframes_t) m];	  
+	input_dbuffer[local_rbuf_pos + n*record_frames] = (double) in[(jack_nframes_t) m];
+	
+	local_rbuf_pos++; // Inrease the ring buffer position for the next audio sample.	
+
       }
 
       //
-      // Update the triggerbuffer
+      // Update the trigger buffer
       //
       
       if (n == triggerport) {
@@ -622,7 +625,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    
 	  }
 	  
-	} else { // We have already detected a signal just wait until we have got all the requested data. 
+	} else { // We have already detected a signal so wait until we have got all the requested data. 
 	  post_t_frames_counter += frames_to_read; // Add the number of acquired frames.
 	}
 
@@ -647,15 +650,21 @@ int t_record_process(jack_nframes_t nframes, void *arg)
  *
  * t_record_init
  *
- * Function that starts to continuously read the audio stream 
- * and save that data in a ring buffer. The data quisition is
- * stopped when buffer length / 2 frames have been aquired
- * after the input signal is over the trigger level, which
- * is controlled by the callback function t_record_process().
+ * Function that initializes continuous read of the audio stream and
+ * then waits for a trigger signal. Audio data is saved continously 
+ * in a ring buffer and the data quisition is stopped when 
+ * post_trigger_frames frames have been aquired after the input 
+ * signal average level is over the trigger_level. The average 
+ * signal level is computed from a (typically) smaller ring buffer
+ * of trigger_frames length.
+ *
+ * The audio data is read by the JACK callback function 
+ * t_record_process() above.
  *
  ***/
 
-int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, char **port_names,
+int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+		  char **port_names, const char *client_name,
 		  double trigger_level,
 		  octave_idx_type trigger_channel,
 		  octave_idx_type trigger_frames,
@@ -716,7 +725,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   jack_set_error_function (jerror);
 
   // Try to become a client of the JACK server.
-  if ((record_client = jack_client_new ("octave:jtrecord")) == 0) {
+  if ((record_client = jack_client_new (client_name)) == 0) {
     error("jack server not running?\n");
     return -1;
   }
