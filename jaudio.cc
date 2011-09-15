@@ -225,8 +225,9 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   jack_set_error_function(jerror);
 
   // Try to become a client of the JACK server.
-  if ((play_client = jack_client_new(client_name)) == 0) {
-    error("jack server not running?\n");
+  if ((play_client = jack_client_open(client_name,
+				      JackUseExactName,NULL)) == 0) {
+    error("jack engine not running?\n");
     return -1;
   }
 
@@ -404,7 +405,8 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   jack_set_error_function(jerror);
 
   // Try to become a client of the JACK server.
-  if ((record_client = jack_client_new(client_name)) == 0) {
+  if ((record_client = jack_client_open(client_name,
+					JackUseExactName,NULL)) == 0) {
     error("jack server not running?\n");
     return -1;
   }
@@ -725,7 +727,8 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   jack_set_error_function (jerror);
 
   // Try to become a client of the JACK server.
-  if ((record_client = jack_client_new (client_name)) == 0) {
+  if ((record_client = jack_client_open(client_name,
+					JackUseExactName,NULL)) == 0) {
     error("jack server not running?\n");
     return -1;
   }
