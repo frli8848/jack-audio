@@ -121,6 +121,46 @@ void jack_shutdown(void *arg)
 }
 
 
+void print_jack_status(jack_status_t status)
+{
+    
+  if (status && JackFailure)
+    octave_stdout << "JackFailure: Overall operation failed." << endl;
+  
+  if (status && JackNameNotUnique)
+    octave_stdout << "JackNameNotUnique" << endl;
+
+  if (status && JackServerStarted)
+    octave_stdout << "JackServerStarted" << endl;
+
+  if (status && JackServerFailed)
+    octave_stdout << "JackServerFailed" << endl;
+
+  if (status && JackServerError)
+    octave_stdout << "JackServerError" << endl;
+
+  if (status && JackNoSuchClient)
+    octave_stdout << "JackNoSuchClient" << endl;
+
+  if (status && JackLoadFailure)
+    octave_stdout << "JackLoadFailure" << endl;
+
+  if (status && JackInitFailure)
+    octave_stdout << "JackInitFailure" << endl;
+
+  if (status && JackShmFailure)
+    octave_stdout << "JackShmFailure" << endl;
+
+  if (status && JackVersionError)
+    octave_stdout << "JackVersionError" << endl;
+
+  if (status && JackBackendError)
+    octave_stdout << "JackBackendError" << endl;
+
+  if (status && JackClientZombie)
+    octave_stdout << "JackClientZombie" << endl;
+}
+
 /********************************************************************************************
 *
 * Audio Playback
@@ -225,8 +265,10 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   jack_set_error_function(jerror);
 
   // Try to become a client of the JACK server.
+  jack_status_t status;
   if ((play_client = jack_client_open(client_name,
-				      JackUseExactName,NULL)) == 0) {
+				      JackUseExactName,&status)) == 0) {
+    print_jack_status(status);
     error("jack engine not running?\n");
     return -1;
   }
@@ -405,8 +447,10 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   jack_set_error_function(jerror);
 
   // Try to become a client of the JACK server.
+  jack_status_t status;
   if ((record_client = jack_client_open(client_name,
-					JackUseExactName,NULL)) == 0) {
+					JackUseExactName,&status)) == 0) {
+    print_jack_status(status);
     error("jack server not running?\n");
     return -1;
   }
@@ -727,8 +771,10 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   jack_set_error_function (jerror);
 
   // Try to become a client of the JACK server.
+  jack_status_t status;
   if ((record_client = jack_client_open(client_name,
-					JackUseExactName,NULL)) == 0) {
+					JackUseExactName,&status)) == 0) {
+    print_jack_status(status);
     error("jack server not running?\n");
     return -1;
   }
