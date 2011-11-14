@@ -269,7 +269,7 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   if ((play_client = jack_client_open(client_name,
 				      JackUseExactName,&status)) == 0) {
     print_jack_status(status);
-    error("jack engine not running?\n");
+    error("Failed to open JACK client %s\n",client_name);
     return -1;
   }
 
@@ -451,7 +451,7 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   if ((record_client = jack_client_open(client_name,
 					JackUseExactName,&status)) == 0) {
     print_jack_status(status);
-    error("jack server not running?\n");
+    error("Failed to open JACK client %s\n",client_name);
     return -1;
   }
 
@@ -775,7 +775,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   if ((record_client = jack_client_open(client_name,
 					JackUseExactName,&status)) == 0) {
     print_jack_status(status);
-    error("jack server not running?\n");
+    error("Failed to open JACK client %s\n",client_name);
     return -1;
   }
 
