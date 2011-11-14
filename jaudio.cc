@@ -269,7 +269,7 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   if ((play_client = jack_client_open(client_name,
 				      JackUseExactName,&status)) == 0) {
     print_jack_status(status);
-    error("Failed to open JACK client %s\n",client_name);
+    error("Failed to open JACK client: '%s'\n",client_name);
     return -1;
   }
 
@@ -451,7 +451,7 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   if ((record_client = jack_client_open(client_name,
 					JackUseExactName,&status)) == 0) {
     print_jack_status(status);
-    error("Failed to open JACK client %s\n",client_name);
+    error("Failed to open JACK client: '%s'\n",client_name);
     return -1;
   }
 
@@ -744,6 +744,10 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
 
   // Allocate space and clear the trigger buffer.
   triggerbuffer = (double*) malloc(trigger_frames*sizeof(double));
+  if (!triggerbuffer) {
+    error("Trigger buffer memory allocation failed!\n");
+    return -1;
+  }
   bzero(triggerbuffer, trigger_frames*sizeof(double));
 
   t_frames = trigger_frames;
@@ -775,7 +779,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   if ((record_client = jack_client_open(client_name,
 					JackUseExactName,&status)) == 0) {
     print_jack_status(status);
-    error("Failed to open JACK client %s\n",client_name);
+    error("Failed to open JACK client: '%s'\n",client_name);
     return -1;
   }
 
