@@ -124,40 +124,40 @@ void jack_shutdown(void *arg)
 void print_jack_status(jack_status_t status)
 {
     
-  if (status && JackFailure)
+  if (status & JackFailure)
     octave_stdout << "JackFailure: Overall operation failed." << endl;
   
-  if (status && JackNameNotUnique)
+  if (status & JackNameNotUnique)
     octave_stdout << "JackNameNotUnique" << endl;
 
-  if (status && JackServerStarted)
+  if (status & JackServerStarted)
     octave_stdout << "JackServerStarted" << endl;
 
-  if (status && JackServerFailed)
+  if (status & JackServerFailed)
     octave_stdout << "JackServerFailed" << endl;
 
-  if (status && JackServerError)
+  if (status & JackServerError)
     octave_stdout << "JackServerError" << endl;
 
-  if (status && JackNoSuchClient)
+  if (status & JackNoSuchClient)
     octave_stdout << "JackNoSuchClient" << endl;
 
-  if (status && JackLoadFailure)
+  if (status & JackLoadFailure)
     octave_stdout << "JackLoadFailure" << endl;
 
-  if (status && JackInitFailure)
+  if (status & JackInitFailure)
     octave_stdout << "JackInitFailure" << endl;
 
-  if (status && JackShmFailure)
+  if (status & JackShmFailure)
     octave_stdout << "JackShmFailure" << endl;
 
-  if (status && JackVersionError)
+  if (status & JackVersionError)
     octave_stdout << "JackVersionError" << endl;
 
-  if (status && JackBackendError)
+  if (status & JackBackendError)
     octave_stdout << "JackBackendError" << endl;
 
-  if (status && JackClientZombie)
+  if (status & JackClientZombie)
     octave_stdout << "JackClientZombie" << endl;
 }
 
