@@ -7,7 +7,7 @@
 # 
 
 
-VERSION=0.2.1
+VERSION=0.2.2
 
 echo "Note add version number $VERSION to the DESCRIPTION file."
 
