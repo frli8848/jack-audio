@@ -1013,7 +1013,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
 		     double trigger_level,
 		     int trigger_ch,
 		     snd_pcm_sframes_t trigger_frames,
-		     snd_pcm_sframes_t post_trigger_frames)
+		     snd_pcm_sframes_t post_t_frames)
 {
   struct pollfd *ufds;
   int err, count, init;
