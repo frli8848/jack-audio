@@ -675,9 +675,14 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	  post_t_frames_counter += frames_to_read; // Add the number of acquired frames.
 	}
 
-	// We have got a trigger. Now wait for record_frames/2 more data and then
-	// we're done acquiring data.
-	if (trigger_active && (post_t_frames_counter >= post_t_frames) )
+	// We have got a trigger and the buffer has wrapped. Now wait for post_t_frames more 
+	// data and then we're done acquiring data.
+	if (trigger_active && has_wrapped && (post_t_frames_counter >= post_t_frames))
+	  ringbuffer_read_running = FALSE; // Exit the read loop.
+
+	// We have got a trigger and the buffer has NOT wrapped. Now just wait until the buffer
+	// is full. This is to avoid saving a non-full buffer.
+	if (trigger_active && !has_wrapped && (post_t_frames_counter >= frames_to_read))
 	  ringbuffer_read_running = FALSE; // Exit the read loop.
 	
       } // if (n == triggerport)
