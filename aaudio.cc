@@ -1309,10 +1309,12 @@ t_read_and_poll_loop(snd_pcm_t *handle,
     // data and then we're done acquiring data.
     if (trigger_active && has_wrapped && (post_t_frames_counter >= post_t_frames))
       ringbuffer_read_running = FALSE; // Exit the read loop.
-    
+
     // We have got a trigger and the buffer has NOT wrapped. Now just wait until the buffer
-    // is full. This is to avoid saving a non-full buffer.
-    if (trigger_active && !has_wrapped && (post_t_frames_counter >= frames_to_read))
+    // is full. This is to avoid saving a non-full buffer. If the buffer wraps while we
+    // are waiting for record_frames number of frames (= until the ringbuffer is full)
+    // then the condition above applies and we wait for post_t_frames number of frames instead.
+    if (trigger_active && !has_wrapped && (local_rbuf_pos >= record_frames))
       ringbuffer_read_running = FALSE; // Exit the read loop.
     
   } // while(running && ringbuffer_read_running) 
