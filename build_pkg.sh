@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# Scrip to build the aaudio octave package.
+# Script to build the aaudio and jaudio Octave packages.
 #
-# Copyright (C) 2008, 2009, 2011 Fredrik Lingvall.
+# Copyright (C) 2008, 2009, 2011, 2012 Fredrik Lingvall.
 #
 # 
 
@@ -42,7 +42,7 @@ tar cvzf aaudio-$VERSION.tar.gz aaudio-$VERSION/
 
 
 #
-# ALSA
+# JACK
 #
 
 rm -fR jaudio-$VERSION
