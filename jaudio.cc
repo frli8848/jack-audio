@@ -192,11 +192,11 @@ int play_finished(void)
 int play_process(jack_nframes_t nframes, void *arg)
 {
   octave_idx_type   frames_to_write, n, m;
-  double   *output_dbuffer;
+  float   *output_fbuffer;
   jack_default_audio_sample_t *out;
 
   // Get the adress of the output buffer.
-  output_dbuffer = (double*) arg;
+  output_fbuffer = (float*) arg;
 
   // The number of available frames.
   frames_to_write = (octave_idx_type) nframes;
@@ -219,7 +219,7 @@ int play_process(jack_nframes_t nframes, void *arg)
 
       for(m=0; m<frames_to_write; m++)
 	out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
-	  output_dbuffer[m+frames_played + n*play_frames];
+	  output_fbuffer[m+frames_played + n*play_frames];
     } else {
       frames_played = play_frames; 
       return 0;
@@ -375,11 +375,11 @@ int record_finished(void)
 int record_process(jack_nframes_t nframes, void *arg)
 {
   octave_idx_type   frames_to_read, n, m;
-  double   *input_dbuffer;
+  float   *input_fbuffer;
   jack_default_audio_sample_t *in;
 
   // Get the adress of the input buffer.
-  input_dbuffer = (double*) arg;
+  input_fbuffer = (float*) arg;
 
   // The number of available frames.
   frames_to_read = (octave_idx_type) nframes;
@@ -400,7 +400,7 @@ int record_process(jack_nframes_t nframes, void *arg)
 	frames_to_read = record_frames - frames_recorded; 
 
       for(m=0; m<frames_to_read; m++)
-	input_dbuffer[m+frames_recorded + n*record_frames] = (double) in[(jack_nframes_t) m];
+	input_fbuffer[m+frames_recorded + n*record_frames] = (float) in[(jack_nframes_t) m];
       
     } else {
       frames_recorded = record_frames; 
@@ -534,9 +534,9 @@ int record_close(void)
 
 // Globals for the triggered audio caputring.
 
-double *triggerbuffer = NULL;
+float *triggerbuffer = NULL;
 octave_idx_type triggerport;
-double t_level = 1.0, trigger = 0.0;
+float t_level = 1.0, trigger = 0.0;
 int    trigger_active;
 octave_idx_type trigger_position;
 octave_idx_type t_frames;
@@ -572,11 +572,11 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 {
   octave_idx_type frames_to_read, n, m, m2;
   octave_idx_type local_rbuf_pos;
-  double   *input_dbuffer;
+  float   *input_fbuffer;
   jack_default_audio_sample_t *in;
 
   // Get the adress of the input buffer.
-  input_dbuffer = (double*) arg;
+  input_fbuffer = (float*) arg;
 
   // The number of available frames.
   frames_to_read = (octave_idx_type) nframes;
@@ -607,7 +607,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	  has_wrapped = TRUE; // Indicate that the ring buffer is full.
 	}	
 	
-	input_dbuffer[local_rbuf_pos + n*record_frames] = (double) in[(jack_nframes_t) m];
+	input_fbuffer[local_rbuf_pos + n*record_frames] = (float) in[(jack_nframes_t) m];
 	
 	local_rbuf_pos++; // Inrease the ring buffer position for the next audio sample.	
 
@@ -637,7 +637,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    
 	    m2 = (trigger_position + m) % t_frames;
 	    
-	    triggerbuffer[m2] = (double) in[(jack_nframes_t) m];
+	    triggerbuffer[m2] = (float) in[(jack_nframes_t) m];
 	  }
 
 	  // 3) Update the trigger value.
@@ -654,7 +654,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	  trigger_position = m2 + 1;	
 	  
 	  // Check if we are above the threshold.
-	  if ( (trigger / (double) t_frames) > t_level) {
+	  if ( (trigger / (float) t_frames) > t_level) {
 	    trigger_active = TRUE;
 	    
 	    struct tm *the_time;
@@ -718,7 +718,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
 int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
 		  char **port_names, const char *client_name,
-		  double trigger_level,
+		  float trigger_level,
 		  octave_idx_type trigger_channel,
 		  octave_idx_type trigger_frames,
 		  octave_idx_type post_trigger_frames)
@@ -750,12 +750,12 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   ringbuffer_position = 0;
 
   // Allocate space and clear the trigger buffer.
-  triggerbuffer = (double*) malloc(trigger_frames*sizeof(double));
+  triggerbuffer = (float*) malloc(trigger_frames*sizeof(float));
   if (!triggerbuffer) {
     error("Trigger buffer memory allocation failed!\n");
     return -1;
   }
-  bzero(triggerbuffer, trigger_frames*sizeof(double));
+  bzero(triggerbuffer, trigger_frames*sizeof(float));
 
   t_frames = trigger_frames;
 

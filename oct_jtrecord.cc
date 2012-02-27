@@ -144,7 +144,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *Y; 
+  float *Y; 
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
@@ -305,7 +305,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Allocate memory for the output arg.
   //
   
-  Matrix Ymat(frames, channels);
+  FloatMatrix Ymat(frames, channels); // Single precision matrix.
   Y = Ymat.fortran_vec();
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
@@ -313,7 +313,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   // Init and connect to the output ports.
   if (t_record_init( Y, frames, channels, port_names, "octave:jtrecord",
-		     trigger_level,
+		     (float) trigger_level,
 		     trigger_ch,
 		     trigger_frames,
 		     post_trigger_frames) < 0)
@@ -340,19 +340,19 @@ A char matrix with the JACK client output port names, for example, ['system:capt
       
       octave_stdout << "shifting ring buffer " << " : pos = " << ringbuffer_position << "\n";
       
-      double *tmp_data;
-      tmp_data = (double*) malloc(ringbuffer_position*1*sizeof(double));
+      float *tmp_data;
+      tmp_data = (float*) malloc(ringbuffer_position*1*sizeof(float));
       
       // Shift one channel each time.
       for (n=0; n<channels; n++) {
 	
-	memcpy(tmp_data, &Y[0 + n*frames], ringbuffer_position*1*sizeof(double));
+	memcpy(tmp_data, &Y[0 + n*frames], ringbuffer_position*1*sizeof(float));
 	
 	memmove(&Y[0 + n*frames], &Y[ringbuffer_position + n*frames],
-		(frames - ringbuffer_position)*1*sizeof(double));
+		(frames - ringbuffer_position)*1*sizeof(float));
 	
 	memcpy(&Y[(frames - ringbuffer_position) + n*frames], tmp_data,
-	       ringbuffer_position*1*sizeof(double));
+	       ringbuffer_position*1*sizeof(float));
       }
       free(tmp_data);
     }
