@@ -123,7 +123,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @seealso {jinfo, jplay, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *Y; 
+  float *Y; 
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
@@ -216,7 +216,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Allocate memory for the output arg.
   //
   
-  Matrix Ymat(frames, channels);
+  FloatMatrix Ymat(frames, channels);
   Y = Ymat.fortran_vec();
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
