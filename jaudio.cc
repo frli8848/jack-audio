@@ -769,7 +769,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
 int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
 		  char **port_names, const char *client_name,
-		  float trigger_level,
+		  double trigger_level,
 		  octave_idx_type trigger_channel,
 		  octave_idx_type trigger_frames,
 		  octave_idx_type post_trigger_frames)

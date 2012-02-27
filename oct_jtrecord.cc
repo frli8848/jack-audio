@@ -312,13 +312,13 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   set_running_flag(); 
 
   // Init and connect to the output ports.
-  if (t_record_init( Y, frames, channels, port_names, "octave:jtrecord",
-		     (float) trigger_level,
-		     trigger_ch,
-		     trigger_frames,
-		     post_trigger_frames) < 0)
+  if (t_record_init(Y, frames, channels, port_names, "octave:jtrecord",
+		    trigger_level,
+		    trigger_ch,
+		    trigger_frames,
+		    post_trigger_frames) < 0)
     return oct_retval;
-
+  
   // Wait until we have recorded all data.
   while(!t_record_finished() && is_running() ) {
     sleep(1); // Note: This will give delay of 1 sec but it takes some time 
