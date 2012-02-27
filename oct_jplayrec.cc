@@ -169,7 +169,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     
     format = FLOAT_AUDIO;
 
-    const FloatMatrix tmp0 = args(0).matrix_value();
+    const FloatMatrix tmp0 = args(0).float_matrix_value();
     frames = tmp0.rows();		// Audio data length for each channel.
     play_channels = tmp0.cols();	// Number of channels.
     
@@ -283,7 +283,9 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     return oct_retval;
   
   if (format == DOUBLE_AUDIO) {
-    
+
+    octave_stdout << "Playing double precision data...";
+
     const Matrix tmp0 = args(0).matrix_value();
     dA = (double*) tmp0.fortran_vec();
     
@@ -298,11 +300,15 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     // Close the jack ports.
     play_close();
     record_close();
+
+    octave_stdout << "done!" << endl;
   }
   
   if (format == FLOAT_AUDIO) {
+
+    octave_stdout << "Playing single precision data...";
     
-    const FloatMatrix tmp0 = args(0).matrix_value();
+    const FloatMatrix tmp0 = args(0).float_matrix_value();
     fA = (float*) tmp0.fortran_vec();
     
     // Init playback and connect to the jack input ports.
@@ -316,6 +322,8 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     // Close the jack ports.
     play_close();
     record_close();
+
+    octave_stdout << "done!" << endl;
   }
   
   if (is_running) {

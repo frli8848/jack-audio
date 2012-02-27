@@ -168,7 +168,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     
     format = FLOAT_AUDIO;
 
-    const FloatMatrix tmp0 = args(0).matrix_value();
+    const FloatMatrix tmp0 = args(0).float_matrix_value();
     frames   = tmp0.rows();	// Audio data length for each channel.
     channels = tmp0.cols();	// Number of channels.
   }
@@ -247,20 +247,25 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 
   if (format == FLOAT_AUDIO) {
 
-    const FloatMatrix tmp0 = args(0).matrix_value();
+    octave_stdout << "Playing single precision data...";
+
+    const FloatMatrix tmp0 = args(0).float_matrix_value();
     fA = (float*) tmp0.fortran_vec();
-    
+
     if (play_init(fA, frames, channels, port_names, "octave:jplay", FLOAT_AUDIO) < 0)
       return oct_retval;
-
+    
     // Wait until we have played all data.
-    while(!play_finished() && is_running() ) {
+    while(!play_finished() && is_running() )
       sleep(1);
-    }
-
+    
+    play_close();
+    octave_stdout << "done!" << endl;
   }
 
   if (format == DOUBLE_AUDIO) {
+
+    octave_stdout << "Playing double precision data..."; 
     
     const Matrix tmp0 = args(0).matrix_value();
     dA = (double*) tmp0.fortran_vec();
@@ -272,14 +277,15 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     while(!play_finished() && is_running() ) {
       sleep(1);
     }
-    
+  
+    play_close();  
+
+    octave_stdout << "done!" << endl;
   }
 
   //
   // Cleanup.
   //
-  
-  play_close();
   
   for ( n=0; n<channels; n++ ) {
     if (port_names[n])
