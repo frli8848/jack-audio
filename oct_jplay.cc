@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009,2011 Fredrik Lingvall 
+ * Copyright (C) 2009,2011,2012 Fredrik Lingvall 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -161,8 +161,6 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     const Matrix tmp0 = args(0).matrix_value();
     frames   = tmp0.rows();	// Audio data length for each channel.
     channels = tmp0.cols();	// Number of channels.
-    
-    dA = (double*) tmp0.fortran_vec();
   }
   
   // Single precision input data.
@@ -173,8 +171,6 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     const FloatMatrix tmp0 = args(0).matrix_value();
     frames   = tmp0.rows();	// Audio data length for each channel.
     channels = tmp0.cols();	// Number of channels.
-    
-    fA = (float*) tmp0.fortran_vec();
   }
 
   if (frames < 0) {
@@ -250,20 +246,33 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   //
 
   if (format == FLOAT_AUDIO) {
+
+    const FloatMatrix tmp0 = args(0).matrix_value();
+    fA = (float*) tmp0.fortran_vec();
     
     if (play_init(fA, frames, channels, port_names, "octave:jplay", FLOAT_AUDIO) < 0)
       return oct_retval;
+
+    // Wait until we have played all data.
+    while(!play_finished() && is_running() ) {
+      sleep(1);
+    }
+
   }
 
   if (format == DOUBLE_AUDIO) {
     
+    const Matrix tmp0 = args(0).matrix_value();
+    dA = (double*) tmp0.fortran_vec();
+    
     if (play_init(dA, frames, channels, port_names, "octave:jplay", DOUBLE_AUDIO) < 0)
       return oct_retval;
-  }
 
-  // Wait until we have played all data.
-  while(!play_finished() && is_running() ) {
-    sleep(1);
+    // Wait until we have played all data.
+    while(!play_finished() && is_running() ) {
+      sleep(1);
+    }
+    
   }
 
   //

@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011 Fredrik Lingvall 
+ * Copyright (C) 2011,2012 Fredrik Lingvall 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -284,28 +284,40 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   
   if (format == DOUBLE_AUDIO) {
     
+    const Matrix tmp0 = args(0).matrix_value();
+    dA = (double*) tmp0.fortran_vec();
+    
     // Init playback and connect to the jack input ports.
-    if (play_init(fA, frames, play_channels, port_names_in, "octave:jplayrec_p",DOUBLE_AUDIO ) < 0)
+    if (play_init(dA, frames, play_channels, port_names_in, "octave:jplayrec_p",DOUBLE_AUDIO ) < 0)
       return oct_retval;
     
+    // Wait for both playback and record to finish.
+    while( (!record_finished() || !play_finished()) && is_running() )
+      sleep(1);  
+    
+    // Close the jack ports.
+    play_close();
+    record_close();
   }
   
   if (format == FLOAT_AUDIO) {
+    
+    const FloatMatrix tmp0 = args(0).matrix_value();
+    fA = (float*) tmp0.fortran_vec();
     
     // Init playback and connect to the jack input ports.
     if (play_init(fA, frames, play_channels, port_names_in, "octave:jplayrec_p",FLOAT_AUDIO) < 0)
       return oct_retval;
 
+    // Wait for both playback and record to finish.
+    while( (!record_finished() || !play_finished()) && is_running() )
+      sleep(1);  
+    
+    // Close the jack ports.
+    play_close();
+    record_close();
   }
- 
-  // Wait for both playback and record to finish.
-  while( (!record_finished() || !play_finished()) && is_running() )
-    sleep(1);  
   
-  // Close the jack ports.
-  play_close();
-  record_close();
-
   if (is_running) {
     // Append the output data.
     oct_retval.append(Ymat);
