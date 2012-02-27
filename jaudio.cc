@@ -189,7 +189,9 @@ int play_finished(void)
  *
  ***/
 
-int play_process(jack_nframes_t nframes, void *arg)
+// Single precision data.
+
+int play_process_f(jack_nframes_t nframes, void *arg)
 {
   octave_idx_type   frames_to_write, n, m;
   float   *output_fbuffer;
@@ -197,6 +199,51 @@ int play_process(jack_nframes_t nframes, void *arg)
 
   // Get the adress of the output buffer.
   output_fbuffer = (float*) arg;
+
+  // The number of available frames.
+  frames_to_write = (octave_idx_type) nframes;
+  
+  // Loop over all ports.
+  for (n=0; n<n_output_ports; n++) {
+
+    // Grab the n:th output buffer.
+    out = (jack_default_audio_sample_t *) 
+      jack_port_get_buffer(output_ports[n], nframes);
+
+    if (out == NULL)
+      error("jack_port_get_buffer failed!");
+    
+    if((play_frames - frames_played) > 0 && running) { 
+      
+      if (frames_to_write >  (play_frames - frames_played) )
+	frames_to_write = play_frames - frames_played; 
+
+
+      for(m=0; m<frames_to_write; m++)
+	out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
+	  output_fbuffer[m+frames_played + n*play_frames];
+    } else {
+      frames_played = play_frames; 
+      return 0;
+    }
+    
+  }
+  
+  frames_played += frames_to_write;
+  
+  return 0;
+}
+
+// Double precision data.
+
+int play_process_d(jack_nframes_t nframes, void *arg)
+{
+  octave_idx_type   frames_to_write, n, m;
+  double   *output_fbuffer;
+  jack_default_audio_sample_t *out;
+
+  // Get the adress of the output buffer.
+  output_fbuffer = (double*) arg;
 
   // The number of available frames.
   frames_to_write = (octave_idx_type) nframes;
@@ -241,7 +288,7 @@ int play_process(jack_nframes_t nframes, void *arg)
  ***/
 
 int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
-	      char **port_names, const char *client_name) 
+	      char **port_names, const char *client_name, int format) 
 {
   octave_idx_type n;
   jack_port_t  *port;
@@ -275,7 +322,11 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
 
   // Tell the JACK server to call the `play_process()' whenever
   // there is work to be done.
-  jack_set_process_callback(play_client, play_process, buffer);
+  if (format == FLOAT_AUDIO)
+    jack_set_process_callback(play_client, play_process_f, buffer);
+  
+  if (format == DOUBLE_AUDIO)
+    jack_set_process_callback(play_client, play_process_d, buffer);
   
   // Tell the JACK server to call `srate()' whenever
   // the sample rate of the system changes.

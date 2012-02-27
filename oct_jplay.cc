@@ -119,17 +119,19 @@ A frames x number of playback channels matrix.\n\
 A char matrix with the JACK client input port names, for example, ['system:playback_1'; 'system:playback_2'], etc.\n\
 @end table\n\
 \n\
-@copyright{} 2009,2011 Fredrik Lingvall.\n\
+@copyright{} 2009,2011,2012 Fredrik Lingvall.\n\
 @seealso {jinfo, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *A; 
+  double *dA; 
+  float  *fA; 
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names;
   octave_idx_type buflen;
   octave_idx_type channels;
+  int format = FLOAT_AUDIO;
   
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -151,12 +153,30 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   // Input arg 1 : The audio data (a frames x channels matrix).
   //
 
-  const Matrix tmp0 = args(0).matrix_value();
-  frames   = tmp0.rows();	// Audio data length for each channel.
-  channels = tmp0.cols();	// Number of channels.
-
-  A = (double*) tmp0.fortran_vec();
+  // Double precision input data.
+  if(args(0).is_double_type()) {
     
+    format = DOUBLE_AUDIO;
+
+    const Matrix tmp0 = args(0).matrix_value();
+    frames   = tmp0.rows();	// Audio data length for each channel.
+    channels = tmp0.cols();	// Number of channels.
+    
+    dA = (double*) tmp0.fortran_vec();
+  }
+  
+  // Single precision input data.
+  if(args(0).is_float_type()) {
+    
+    format = FLOAT_AUDIO;
+
+    const FloatMatrix tmp0 = args(0).matrix_value();
+    frames   = tmp0.rows();	// Audio data length for each channel.
+    channels = tmp0.cols();	// Number of channels.
+    
+    fA = (float*) tmp0.fortran_vec();
+  }
+
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
     return oct_retval;
@@ -171,8 +191,6 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   // Input arg 2 : The jack (writable client) input audio ports.
   //
   
-
-  //if (!mxIsChar(1)) {
   if ( !args(1).is_sq_string() ) {
     error("2rd arg must be a string matrix !");
     return oct_retval;
@@ -227,9 +245,21 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   // Set status to running (CTRL-C will clear the flag and stop playback).
   set_running_flag();
 
+  //
   // Init and connect to the output ports.
-  if (play_init(A, frames, channels, port_names, "octave:jplay") < 0)
-    return oct_retval;
+  //
+
+  if (format == FLOAT_AUDIO) {
+    
+    if (play_init(fA, frames, channels, port_names, "octave:jplay", FLOAT_AUDIO) < 0)
+      return oct_retval;
+  }
+
+  if (format == DOUBLE_AUDIO) {
+    
+    if (play_init(dA, frames, channels, port_names, "octave:jplay", DOUBLE_AUDIO) < 0)
+      return oct_retval;
+  }
 
   // Wait until we have played all data.
   while(!play_finished() && is_running() ) {

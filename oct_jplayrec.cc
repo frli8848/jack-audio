@@ -121,13 +121,16 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *A,*Y; 
+  double *dA; 
+  float  *fA; 
+  float  *Y; 
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names_in, **port_names_out;
   octave_idx_type buflen;
   octave_idx_type play_channels, rec_channels;
+  int format = FLOAT_AUDIO;
   
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -148,13 +151,31 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   //
   // Input arg 1 : The audio data to play (a frames x channels matrix).
   //
-
-  const Matrix tmp0 = args(0).matrix_value();
-  frames = tmp0.rows();		// Audio data length for each channel.
-  play_channels = tmp0.cols();	// Number of channels.
-
-  A = (double*) tmp0.fortran_vec();
+  
+  // Double precision input data.
+  if(args(0).is_double_type()) {
     
+    format = DOUBLE_AUDIO;
+    
+    const Matrix tmp0 = args(0).matrix_value();
+    frames = tmp0.rows();		// Audio data length for each channel.
+    play_channels = tmp0.cols();	// Number of channels.
+    
+    dA = (double*) tmp0.fortran_vec();
+  }
+  
+  // Single precision input data.
+  if(args(0).is_float_type()) {
+    
+    format = FLOAT_AUDIO;
+
+    const FloatMatrix tmp0 = args(0).matrix_value();
+    frames = tmp0.rows();		// Audio data length for each channel.
+    play_channels = tmp0.cols();	// Number of channels.
+    
+    fA = (float*) tmp0.fortran_vec();
+  }
+  
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
     return oct_retval;
@@ -249,7 +270,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   }
 
   // Allocate memory for the output arg.
-  Matrix Ymat(frames, rec_channels);
+  FloatMatrix Ymat(frames, rec_channels);
   Y = Ymat.fortran_vec();
 
 
@@ -260,11 +281,23 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Init recording and connect to the jack output ports.
   if (record_init(Y, frames, rec_channels, port_names_out, "octave:jplayrec_r") < 0)
     return oct_retval;
+  
+  if (format == DOUBLE_AUDIO) {
+    
+    // Init playback and connect to the jack input ports.
+    if (play_init(fA, frames, play_channels, port_names_in, "octave:jplayrec_p",DOUBLE_AUDIO ) < 0)
+      return oct_retval;
+    
+  }
+  
+  if (format == FLOAT_AUDIO) {
+    
+    // Init playback and connect to the jack input ports.
+    if (play_init(fA, frames, play_channels, port_names_in, "octave:jplayrec_p",FLOAT_AUDIO) < 0)
+      return oct_retval;
 
-  // Init playback and connect to the jack input ports.
-  if (play_init(A, frames, play_channels, port_names_in, "octave:jplayrec_p") < 0)
-    return oct_retval;
-
+  }
+ 
   // Wait for both playback and record to finish.
   while( (!record_finished() || !play_finished()) && is_running() )
     sleep(1);  

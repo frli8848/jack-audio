@@ -25,6 +25,10 @@
 #ifndef __JAUDIO_H__
 #define __JAUDIO_H__
 
+#define FLOAT_AUDIO 0
+#define DOUBLE_AUDIO 1
+
+
 #include <jack/jack.h>
 
 int is_running(void);
@@ -32,8 +36,10 @@ void set_running_flag(void);
 void clear_running_flag(void);
 
 int play_finished(void);
+int play_process_f(jack_nframes_t nframes, void *arg);
+int play_process_d(jack_nframes_t nframes, void *arg);
 int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
-	      char **port_names, const char *client_name);
+	      char **port_names, const char *client_name, int format);
 int play_close(void);
 
 int record_finished(void);
@@ -42,7 +48,8 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
 int record_close(void);
 
 int t_record_finished(void);
-int t_record_process(jack_nframes_t nframes, void *arg);
+int t_record_process_f(jack_nframes_t nframes, void *arg);
+int t_record_process_d(jack_nframes_t nframes, void *arg);
 int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
 		  char **port_names, const char *client_name,
 		  double trigger_level,
