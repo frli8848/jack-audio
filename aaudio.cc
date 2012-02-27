@@ -1,6 +1,6 @@
 /***
  *
- *  Copyright (C) 2008, 2009 Fredrik Lingvall
+ *  Copyright (C) 2008, 2009, 2012 Fredrik Lingvall
  *
  *  Parts of this code is based on the aplay program by Jaroslav Kysela and
  *  the pcm.c example from the alsa-lib.
@@ -1314,7 +1314,7 @@ t_read_and_poll_loop(snd_pcm_t *handle,
     // is full. This is to avoid saving a non-full buffer. If the buffer wraps while we
     // are waiting for record_frames number of frames (= until the ringbuffer is full)
     // then the condition above applies and we wait for post_t_frames number of frames instead.
-    if (trigger_active && !has_wrapped && (local_rbuf_pos >= record_frames))
+    if (trigger_active && !has_wrapped && (frames_recorded >= frames))
       ringbuffer_read_running = FALSE; // Exit the read loop.
     
   } // while(running && ringbuffer_read_running) 
