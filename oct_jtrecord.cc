@@ -139,8 +139,11 @@ A scalar that specifies the number of frames to record/channel.\n\
 @item jack_ouputs\n\
 A char matrix with the JACK client output port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
 @end table\n\
+@item indicator_file\n\
+An optional file name (text string) which, when specified, jtrecord writes a 1 to when a trigger occurs.\n\
+@end table\n\
 \n\
-@copyright{} 2011 Fredrik Lingvall.\n\
+@copyright{} 2011,2012 Fredrik Lingvall.\n\
 @seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
@@ -153,6 +156,8 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   octave_idx_type channels;
   double trigger_level;
   octave_idx_type trigger_ch, trigger_frames, post_trigger_frames;
+  char indicator_file[100];
+  int write_to_i_file = FALSE;
   
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -160,8 +165,8 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   // Check for proper inputs arguments.
 
-  if (nrhs != 3) {
-    error("jtrecord requires 3 input arguments!");
+  if ( (nrhs != 3) && (nrhs != 4)) {
+    error("jtrecord requires 3 or 4input arguments!");
     return oct_retval;
   }
 
@@ -218,6 +223,23 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     
     port_names[0][buflen] = '\0';
   }
+
+  if (nrhs == 4) {
+
+    if (!mxIsChar(3)) {
+      error("Argument 4 must be a string");
+      return oct_retval;
+    }
+
+    std::string strin = args(3).string_value(); 
+    buflen = strin.length();
+    for ( n=0; n<=buflen; n++ ) {
+      indicator_file[n] = strin[n];
+    }
+    indicator_file[buflen] = '\0';
+    write_to_i_file = TRUE;
+  }
+
 
   //
   // Input arg 1 : The trigger parameters.
@@ -326,6 +348,16 @@ A char matrix with the JACK client output port names, for example, ['system:capt
               // example, call jtrecord in a loop. To fix this we probably need a
               // double buffer approach where we switch to a second buffer while
               // we save data from the first buffer.
+
+    // Write a 1 to the indicator file to indicate that we got a trigger.
+    if (got_a_trigger() && write_to_i_file) {
+      FILE *fid;
+      char one = '1';
+      fid = fopen(indicator_file, "w");
+      fputc(one,fid);
+      fclose(fid);
+    }
+    
   }
 
     

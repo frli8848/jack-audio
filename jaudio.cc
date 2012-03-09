@@ -70,6 +70,8 @@ jack_client_t *play_client;
 jack_port_t **output_ports;
 octave_idx_type n_output_ports;
 
+volatile int got_data;
+
 /***
  *
  * Functions for CTRL-C support.
@@ -719,7 +721,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    
 	    // This should work with Octave's diary command.
 	    octave_stdout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
-	    
+	    got_data = TRUE;	    
 	  }
 	  
 	} else { // We have already detected a signal so wait until we have got all the requested data. 
@@ -749,6 +751,19 @@ int t_record_process(jack_nframes_t nframes, void *arg)
   return 0;
 }
 
+/***
+ *
+ * got_a_trigger
+ *
+ * Function that returns the trigger status.
+ *
+ *
+ ***/
+
+int got_a_trigger(void)
+{
+  return got_data;
+}
 
 /***
  *
@@ -777,6 +792,9 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   octave_idx_type n;
   jack_port_t  *port;
   char port_name[255];
+
+  // Clear trigger indicator.
+  got_data = FALSE;
 
   // The number of channels (columns) in the buffer matrix.
   n_input_ports = (octave_idx_type) channels;

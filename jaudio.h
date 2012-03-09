@@ -31,6 +31,7 @@
 
 #include <jack/jack.h>
 
+int got_a_trigger(void);
 int is_running(void);
 void set_running_flag(void);
 void clear_running_flag(void);
