@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011 Fredrik Lingvall
+ * Copyright (C) 2011,2012 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -681,7 +681,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
 	    m2 = (trigger_position + m) % t_frames;
 
-	    trigger -= fabs(triggerbuffer[m2]);
+	    trigger -= fabsf(triggerbuffer[m2]);
 	  }
 
 	  // 2) Add the new data to the trigger ring buffer.
@@ -699,7 +699,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    
 	    m2 = (trigger_position + m) % t_frames;
 	    
-	    trigger += fabs(triggerbuffer[m2]);
+	    trigger += fabsf(triggerbuffer[m2]);
 	  }
 
 	  // 4) Set the new position in the trigger buffer.
@@ -800,7 +800,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   n_input_ports = (octave_idx_type) channels;
 
   // Set the trigger level for the callback function.
-  t_level = trigger_level;
+  t_level = (float) trigger_level;
 
   // The total number of frames to record.
   record_frames = frames;
