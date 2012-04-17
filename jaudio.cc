@@ -573,7 +573,10 @@ int record_close(void)
   if (err)
     error("jack_client_close failed");
 
-  free(input_ports);
+  if (input_ports)
+    free(input_ports);
+  else
+    error("Failed free input_ports memory");
 
   return 0;
 }
@@ -890,7 +893,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   for (n=0; n<n_input_ports; n++) {
     if (jack_connect(record_client, port_names[n], jack_port_name(input_ports[n]))) {
       error("Cannot connect to the client output port '%s'\n",port_names[n]);
-      record_close();
+      t_record_close();
       return -1;
     }
   }
@@ -956,8 +959,15 @@ int t_record_close(void)
   // Cleanup memory.
   //
 
-  free(input_ports);
-  free(triggerbuffer);
+  if(input_ports)
+    free(input_ports);
+  else
+    error("Failed free input_ports memory");
+
+  if (triggerbuffer)
+    free(triggerbuffer);
+  else
+    error("Failed free triggerbuffer memory");
 
   return 0;
 }
