@@ -385,6 +385,16 @@ If no device is given then AINFO lists all PCM devices.\n\
     fprintf(stderr,"Unable to get min number of capture channels: %s\n", snd_strerror(err));
   else
     printf(" / %d\n",val);
+
+  if ((err=snd_pcm_hw_params_get_channels(hwparams_play,&val)) < 0)
+    fprintf(stderr,"Unable to get number of playback channels: %s\n", snd_strerror(err));
+  else
+    printf("| Number of channels           | %d",val);
+
+  if ((err=snd_pcm_hw_params_get_channels(hwparams_rec,&val)) < 0)
+    fprintf(stderr,"Unable to get number of playback channels: %s\n", snd_strerror(err));
+  else
+    printf(" / %d\n",val);
   
   //
   // Max/min buffer size.
