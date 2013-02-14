@@ -39,7 +39,7 @@ cp oct_ainfo.cc aaudio-$VERSION/src/
 cp COPYING aaudio-$VERSION/
 rm -f DESCRIPTION
 cp DESCRIPTION_ALSA DESCRIPTION
-sed -i -e 's/Version:*/Version: $PKG_VERSION/' DESCRIPTION
+sed -i -e "s/Version: */Version: $PKG_VERSION/" DESCRIPTION
 sed -i -e "s/Date: */Date: $DATE/" DESCRIPTION
 sed -i -e "s/Title: Aaudio/Title: Aaudio r$VERSION/" DESCRIPTION
 cp DESCRIPTION aaudio-$VERSION/DESCRIPTION
