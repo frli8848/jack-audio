@@ -349,7 +349,7 @@ An optional file name (text string) which, when specified, jtrecord writes a 1 t
               // double buffer approach where we switch to a second buffer while
               // we save data from the first buffer.
 
-    // Write a 1 to the indicator file to indicate that we got a trigger.
+    // Write a 1 to an indicator file to indicate that we got a trigger.
     if (got_a_trigger() && write_to_i_file) {
       FILE *fid;
       char one = '1';
