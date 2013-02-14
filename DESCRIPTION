@@ -9,5 +9,5 @@ Categories: Audio
 BuildRequires: pthread, libasound
 Depends: octave (>= 2.9.12)
 Autoload: yes
-License: GPL version 2 or later
+License: GPL version: "$VERSION" "$VERSION" 2 or later
 Url: http://folk.uio.no/fl/aaudio.shtml
