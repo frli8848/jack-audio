@@ -7,7 +7,7 @@
 # 
 # $Revision$ $Date$ $LastChangedBy$
 
-#VERSION=0.2.2
+PKG_VERSION=0.2.3
 VERSION=`svnversion . | sed 's/:/-/'`
 DATE=`date '+%Y-%m-%d'`
 
@@ -39,7 +39,9 @@ cp oct_ainfo.cc aaudio-$VERSION/src/
 cp COPYING aaudio-$VERSION/
 rm -f DESCRIPTION
 cp DESCRIPTION_ALSA DESCRIPTION
-sed -i -e 's/Version:*/Version: $VERSION/' DESCRIPTION
+sed -i -e 's/Version:*/Version: $PKG_VERSION/' DESCRIPTION
+sed -i -e "s/Date: */Date: $DATE/" DESCRIPTION
+sed -i -e "s/Title: Aaudio/Title: Aaudio r$VERSION/" DESCRIPTION
 cp DESCRIPTION aaudio-$VERSION/DESCRIPTION
 
 tar cvzf aaudio-$VERSION.tar.gz aaudio-$VERSION/ 
@@ -72,8 +74,9 @@ cp oct_jinfo.cc jaudio-$VERSION/src/
 cp COPYING jaudio-$VERSION/
 rm -f DESCRIPTION
 cp DESCRIPTION_JACK DESCRIPTION
-sed -i -e "s/Version: */Version: $VERSION/" DESCRIPTION
+sed -i -e "s/Version: */Version: $PKG_VERSION/" DESCRIPTION
 sed -i -e "s/Date: */Date: $DATE/" DESCRIPTION
+sed -i -e "s/Title: Jaudio/Title: Jaudio r$VERSION/" DESCRIPTION
 cp DESCRIPTION jaudio-$VERSION/DESCRIPTION
 
 tar cvzf jaudio-$VERSION.tar.gz jaudio-$VERSION/ 
