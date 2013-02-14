@@ -47,7 +47,7 @@ atrecord.oct : oct_atrecord.o aaudio.o
 	$(DLDCC) $(ALIBDIRS) $^ -o $@ 
 
 aplayrec.oct : oct_aplayrec.o aaudio.o
-	$(DLDCC) -lpthread $^ -o $@ 
+	$(DLDCC) $(ALIBDIRS) -lpthread $^ -o $@ 
 
 clean:
 	rm -f *.o *~ 
