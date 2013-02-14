@@ -9,6 +9,8 @@
 
 #VERSION=0.2.2
 VERSION=`svnversion . | sed 's/:/-/'`
+DATE=`date '+%Y-%m-%d'`
+
 
 #
 # ALSA
@@ -35,8 +37,10 @@ cp oct_ainfo.cc aaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING aaudio-$VERSION/
-sed -i -e 's/version:*/version: \"$VERSION\"/' DESCRIPTION
-cp DESCRIPTION_ALSA aaudio-$VERSION/DESCRIPTION
+rm -f DESCRIPTION
+cp DESCRIPTION_ALSA DESCRIPTION
+sed -i -e 's/Version:*/Version: $VERSION/' DESCRIPTION
+cp DESCRIPTION aaudio-$VERSION/DESCRIPTION
 
 tar cvzf aaudio-$VERSION.tar.gz aaudio-$VERSION/ 
 
@@ -66,7 +70,10 @@ cp oct_jinfo.cc jaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING jaudio-$VERSION/
-sed -i -e 's/version.*/version=\"$VERSION\"/' DESCRIPTION_JACK
-cp DESCRIPTION_JACK jaudio-$VERSION/DESCRIPTION
+rm -f DESCRIPTION
+cp DESCRIPTION_JACK DESCRIPTION
+sed -i -e "s/Version: */Version: $VERSION/" DESCRIPTION
+sed -i -e "s/Date: */Date: $DATE/" DESCRIPTION
+cp DESCRIPTION jaudio-$VERSION/DESCRIPTION
 
 tar cvzf jaudio-$VERSION.tar.gz jaudio-$VERSION/ 
