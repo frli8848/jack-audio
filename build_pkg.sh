@@ -2,12 +2,13 @@
 #
 # Script to build the aaudio and jaudio Octave packages.
 #
-# Copyright (C) 2008, 2009, 2011, 2012 Fredrik Lingvall.
+# Copyright (C) 2008, 2009, 2011, 2012, 2013 Fredrik Lingvall.
 #
 # 
+# $Revision$ $Date$ $LastChangedBy$
 
-
-VERSION=0.2.2
+#VERSION=0.2.2
+VERSION=`svnversion .`
 
 echo "Note add version number $VERSION to the DESCRIPTION file."
 
@@ -36,6 +37,7 @@ cp oct_ainfo.cc aaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING aaudio-$VERSION/
+`sed -i -e 's/version:*/version: "$VERSION"/' DESCRIPTION`
 cp DESCRIPTION_ALSA aaudio-$VERSION/DESCRIPTION
 
 tar cvzf aaudio-$VERSION.tar.gz aaudio-$VERSION/ 
@@ -66,6 +68,7 @@ cp oct_jinfo.cc jaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING jaudio-$VERSION/
+`sed -i -e 's/version.*/version="$VERSION"/' DESCRIPTION_JACK`
 cp DESCRIPTION_JACK jaudio-$VERSION/DESCRIPTION
 
 tar cvzf jaudio-$VERSION.tar.gz jaudio-$VERSION/ 
