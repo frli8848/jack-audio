@@ -3,9 +3,9 @@ Version:
 Date:
 Author: Fredrik Lingvall
 Maintainer: Fredrik Lingvall
-Title: Aaudio
+Title: Jaudio
 Description: Audio recording and playing using the JACK Audio Connection Kit (JACK).  
-Categories: Audio
+Categories: Judio
 BuildRequires: pthread, libjack, librt
 Depends: octave (>= 2.9.12)
 Autoload: yes
