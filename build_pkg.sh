@@ -8,9 +8,7 @@
 # $Revision$ $Date$ $LastChangedBy$
 
 #VERSION=0.2.2
-VERSION=`svnversion .`
-
-echo "Note add version number $VERSION to the DESCRIPTION file."
+VERSION=`svnversion . | sed 's/:/-/`
 
 #
 # ALSA
@@ -37,7 +35,7 @@ cp oct_ainfo.cc aaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING aaudio-$VERSION/
-`sed -i -e 's/version:*/version: "$VERSION"/' DESCRIPTION`
+sed -i -e 's/version:*/version: \"$VERSION\"/' DESCRIPTION
 cp DESCRIPTION_ALSA aaudio-$VERSION/DESCRIPTION
 
 tar cvzf aaudio-$VERSION.tar.gz aaudio-$VERSION/ 
@@ -68,7 +66,7 @@ cp oct_jinfo.cc jaudio-$VERSION/src/
 # Mandatory pkg files
 
 cp COPYING jaudio-$VERSION/
-`sed -i -e 's/version.*/version="$VERSION"/' DESCRIPTION_JACK`
+sed -i -e 's/version.*/version=\"$VERSION\"/' DESCRIPTION_JACK
 cp DESCRIPTION_JACK jaudio-$VERSION/DESCRIPTION
 
 tar cvzf jaudio-$VERSION.tar.gz jaudio-$VERSION/ 
