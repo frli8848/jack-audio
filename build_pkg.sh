@@ -8,7 +8,7 @@
 # $Revision$ $Date$ $LastChangedBy$
 
 #VERSION=0.2.2
-VERSION=`svnversion . | sed 's/:/-/`
+VERSION=`svnversion . | sed 's/:/-/'`
 
 #
 # ALSA
