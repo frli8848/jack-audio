@@ -140,7 +140,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (aplayrec, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  [Y] = aplayrec(A,rec_channels,fs,dev_name,hw_pars).\n\
+@deftypefn {Loadable Function} {}  [Y] = aplayrec(A,rec_channels,fs,recdev,playdev,hw_pars).\n\
 \n\
 APLAYREC Plays audio data from the input matrix A, on the PCM device given by dev_name, and \n\
 records audio data to the output matrix Y using the Advanced Linux Sound Architecture (ALSA)\n\
@@ -158,8 +158,12 @@ The number of capture channels (default is 2).\n\
 @item fs\n\
 The sampling frequency in Hz (default is 44100 [Hz]).\n\
 \n\
-@item dev_name\n\
-The ALSA device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', etc.\n\
+@item recdev\n\
+The ALSA record device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', etc.\n\
+(defaults to 'default').\n\
+\n\
+@item playdev\n\
+The ALSA playback device name, for example, 'hw:0,0', 'hw:1,0', 'plughw:0,0', 'default', etc.\n\
 (defaults to 'default').\n\
 \n\
 @item hw_pars\n\
@@ -174,7 +178,7 @@ Output parameters:\n\
 A frames x rec_channels matrix containing the captured audio data.\n\
 @end table\n\
 \n\
-@copyright{ 2008 Fredrik Lingvall}.\n\
+@copyright{ 2008, 2013 Fredrik Lingvall}.\n\
 @seealso {aplay, arecord, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
@@ -198,7 +202,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   short *sbuffer_rec;
   const snd_pcm_channel_area_t *record_areas;
   const snd_pcm_channel_area_t *play_areas;
-  char device[50];
+  char play_device[50], rec_device[50];
   int  buflen;
   //char *device = "plughw:1,0";
   //char *device = "hw:1,0";
@@ -300,38 +304,59 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     fs = 44100; // Default to 44.1 kHz.
 
   //
-  // Audio device.
+  // Record audio device.
   //
 
   if (nrhs > 3) {
     
     if (!mxIsChar(3)) {
-      error("4th arg (the audio playback and capture device) must be a string !");
+      error("4th arg (the audio capture device) must be a string !");
       return oct_retval;
     }
     
     std::string strin = args(3).string_value(); 
     buflen = strin.length();
     for ( n=0; n<=buflen; n++ ) {
-      device[n] = strin[n];
+      rec_device[n] = strin[n];
     }
-    device[buflen] = '\0';
+    rec_device[buflen] = '\0';
     
   } else
-      strcpy(device,"default"); 
+      strcpy(rec_device,"default"); 
+
+  //
+  // Playback audio device.
+  //
+
+  if (nrhs > 3) {
+    
+    if (!mxIsChar(4)) {
+      error("5th arg (the audio playback device) must be a string !");
+      return oct_retval;
+    }
+    
+    std::string strin = args(4).string_value(); 
+    buflen = strin.length();
+    for ( n=0; n<=buflen; n++ ) {
+      play_device[n] = strin[n];
+    }
+    play_device[buflen] = '\0';
+    
+  } else
+      strcpy(play_device,"default"); 
 
   //
   // HW/SW parameters
   //
   
-  if (nrhs > 4) {    
+  if (nrhs > 5) {    
     
-    if (mxGetM(4)*mxGetN(4) != 2) {
-      error("5th arg must be a 2 element vector !");
+    if (mxGetM(5)*mxGetN(5) != 2) {
+      error("6th arg must be a 2 element vector !");
       return oct_retval;
     }
     
-    const Matrix tmp4 = args(4).matrix_value();
+    const Matrix tmp4 = args(5).matrix_value();
     hw_sw_par = (double*) tmp4.fortran_vec();
     
     // hw parameters.
@@ -359,7 +384,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   // Open and configure the PCM playback device. 
   //
 
-  if ((err = snd_pcm_open(&handle_play,device,SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
+  if ((err = snd_pcm_open(&handle_play,play_device,SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
     error("Playback open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
@@ -489,7 +514,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   // Open and configure the PCM capture device. 
   //
 
-  if ((err = snd_pcm_open(&handle_rec, device, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
+  if ((err = snd_pcm_open(&handle_rec, rec_device, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
     error("Capture open error: %s\n", snd_strerror(err));
     return oct_retval;
   }
