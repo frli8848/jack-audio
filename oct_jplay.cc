@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009,2011,2012 Fredrik Lingvall 
+ * Copyright (C) 2009,2011,2012,2014 Fredrik Lingvall 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <math.h>
 #include <pthread.h>
 #include <signal.h>
