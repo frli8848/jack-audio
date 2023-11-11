@@ -166,7 +166,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   }
   
   // Single precision input data.
-  if(args(0).is_float_type()) {
+  if(args(0).is_single_type()) {
     
     format = FLOAT_AUDIO;
 

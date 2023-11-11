@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009,2011,2012,2014 Fredrik Lingvall 
+ * Copyright (C) 2009,2011,2012,2014 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with the program; see the file COPYING.  If not, write to the 
+ *   along with the program; see the file COPYING.  If not, write to the
  *   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  *   02110-1301, USA.
  *
@@ -97,15 +97,15 @@ void sig_keyint_handler(int signum) {
   //printf("Caught signal SIGINT.\n");
 }
 
-  
+
 /***
- * 
+ *
  * Octave (oct) gateway function for JPLAY.
  *
  ***/
 
 DEFUN_DLD (jplay, args, nlhs,
-	   "-*- texinfo -*-\n\
+           "-*- texinfo -*-\n\
 @deftypefn {Loadable Function} {} jplay(A,jack_inputs).\n\
 \n\
 JPLAY Plays audio data from the input matrix A using the (low-latency) audio server JACK.\n\
@@ -124,8 +124,8 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 @seealso {jinfo, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *dA; 
-  float  *fA; 
+  double *dA;
+  float  *fA;
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
@@ -133,7 +133,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   octave_idx_type buflen;
   octave_idx_type channels;
   int format = FLOAT_AUDIO;
-  
+
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
@@ -156,17 +156,17 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 
   // Double precision input data.
   if(args(0).is_double_type()) {
-    
+
     format = DOUBLE_AUDIO;
 
     const Matrix tmp0 = args(0).matrix_value();
     frames   = tmp0.rows();	// Audio data length for each channel.
     channels = tmp0.cols();	// Number of channels.
   }
-  
+
   // Single precision input data.
-  if(args(0).is_float_type()) {
-    
+  if(args(0).is_single_type()) {
+
     format = FLOAT_AUDIO;
 
     const FloatMatrix tmp0 = args(0).float_matrix_value();
@@ -178,7 +178,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     error("The number of audio frames (rows in arg 1) must > 0!");
     return oct_retval;
   }
-  
+
   if (channels < 0) {
     error("The number of channels (columns in arg 1) must > 0!");
     return oct_retval;
@@ -187,12 +187,12 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   //
   // Input arg 2 : The jack (writable client) input audio ports.
   //
-  
+
   if ( !args(1).is_sq_string() ) {
     error("2rd arg must be a string matrix !");
     return oct_retval;
   }
-  
+
   charMatrix ch = args(1).char_matrix_value();
 
   if ( ch.rows() != channels ) {
@@ -200,29 +200,29 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     return oct_retval;
   }
 
-  //std::string strin = args(1).string_value(); 
+  //std::string strin = args(1).string_value();
   //octave_stdout << strin << endl;
   //buflen = strin.length();
 
-  buflen = ch.cols();    
+  buflen = ch.cols();
   port_names = (char**) malloc(channels * sizeof(char*));
   for ( n=0; n<channels; n++ ) {
 
     port_names[n] = (char*) malloc(buflen*sizeof(char)+1);
 
     std::string strin = ch.row_as_string(n);
-    
+
     for (int k=0; k<=buflen; k++ )
       if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
-	port_names[n][k] = strin[k];
+        port_names[n][k] = strin[k];
       else {
-	port_names[n][k] = '\0';
-	break;
+        port_names[n][k] = '\0';
+        break;
       }
-    
+
     port_names[0][buflen] = '\0';
   }
-  
+
   //
   // Register signal handlers.
   //
@@ -234,7 +234,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   if ((old_handler_abrt = signal(SIGABRT, &sighandler)) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if ((old_handler_keyint = signal(SIGINT, &sighandler)) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
@@ -255,22 +255,22 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 
     if (play_init(fA, frames, channels, port_names, "octave:jplay", FLOAT_AUDIO) < 0)
       return oct_retval;
-    
+
     // Wait until we have played all data.
     while(!play_finished() && is_running() )
       sleep(1);
-    
+
     play_close();
     octave_stdout << "done!" << endl;
   }
 
   if (format == DOUBLE_AUDIO) {
 
-    octave_stdout << "Playing double precision data..."; 
-    
+    octave_stdout << "Playing double precision data...";
+
     const Matrix tmp0 = args(0).matrix_value();
     dA = (double*) tmp0.fortran_vec();
-    
+
     if (play_init(dA, frames, channels, port_names, "octave:jplay", DOUBLE_AUDIO) < 0)
       return oct_retval;
 
@@ -278,8 +278,8 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     while(!play_finished() && is_running() ) {
       sleep(1);
     }
-  
-    play_close();  
+
+    play_close();
 
     octave_stdout << "done!" << endl;
   }
@@ -287,31 +287,31 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   //
   // Cleanup.
   //
-  
+
   for ( n=0; n<channels; n++ ) {
     if (port_names[n])
       free(port_names[n]);
   }
-  
+
   if (port_names)
     free(port_names);
-  
+
   //
   // Restore old signal handlers.
   //
-  
+
   if (signal(SIGTERM, old_handler) == SIG_ERR) {
     error("Couldn't register old signal handler.\n");
   }
-  
+
   if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if (!is_running())
     error("CTRL-C pressed - playback interrupted!\n"); // Bail out.
 
