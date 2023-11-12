@@ -249,7 +249,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
   frames = tmp0.rows();		// Audio data length for each channel.
   play_channels = tmp0.cols();	// Number of channels.
 
-  A = (double*) tmp0.fortran_vec();
+  A = (double*) tmp0.data();
     
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
@@ -273,7 +273,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     }
     
     const Matrix tmp1 = args(1).matrix_value();
-    rec_channels = (int) tmp1.fortran_vec()[0];
+    rec_channels = (int) tmp1.data()[0];
     
     if (rec_channels < 0) {
       error("Error in 2nd arg. The number of capture channels must > 0!");
@@ -294,7 +294,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     }
     
     const Matrix tmp2 = args(2).matrix_value();
-    fs = (int) tmp2.fortran_vec()[0];
+    fs = (int) tmp2.data()[0];
     
     if (fs < 0) {
       error("Error in 3rd arg. The sampling frequency must be > 0!");
@@ -357,7 +357,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     }
     
     const Matrix tmp4 = args(5).matrix_value();
-    hw_sw_par = (double*) tmp4.fortran_vec();
+    hw_sw_par = (double*) tmp4.data();
     
     // hw parameters.
     period_size = (int) hw_sw_par[0];
@@ -726,7 +726,7 @@ A frames x rec_channels matrix containing the captured audio data.\n\
     
     // Allocate space for output data.
     Matrix Ymat(frames,wanted_rec_channels);
-    Y = Ymat.fortran_vec();
+    Y = (double*) Ymat.data();
 
    if (is_interleaved()) {
       

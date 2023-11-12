@@ -785,7 +785,7 @@ Input parameters:\n\
   channels = tmp0.cols();	// Number of channels.
   wanted_channels = channels;
 
-  A = (double*) tmp0.fortran_vec();
+  A = (double*) tmp0.data();
     
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
@@ -809,7 +809,7 @@ Input parameters:\n\
     }
     
     const Matrix tmp1 = args(1).matrix_value();
-    fs = (int) tmp1.fortran_vec()[0];
+    fs = (int) tmp1.data()[0];
     
     if (fs < 0) {
       error("Error in 2nd arg. The samping frequency must be > 0!");
@@ -851,7 +851,7 @@ Input parameters:\n\
     }
     
     const Matrix tmp3 = args(3).matrix_value();
-    hw_sw_par = (double*) tmp3.fortran_vec();
+    hw_sw_par = (double*) tmp3.data();
     
     // hw parameters.
     period_size = (int) hw_sw_par[0];

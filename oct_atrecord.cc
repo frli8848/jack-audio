@@ -13,7 +13,7 @@
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with the program; see the file COPYING.  If not, write to the 
+ *   along with the program; see the file COPYING.  If not, write to the
  *   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  *   02110-1301, USA.
  *
@@ -93,13 +93,13 @@ void sig_keyint_handler(int signum) {
 }
 
 /***
- * 
+ *
  * Octave (oct) gateway function for ATRECORD.
  *
  ***/
 
 DEFUN_DLD (atrecord, args, nlhs,
-	   "-*- texinfo -*-\n\
+           "-*- texinfo -*-\n\
 @deftypefn {Loadable Function} {} [Y] = atrecord(trigger_pars,frames,channels,fs,dev_name,hw_pars).\n\
 \n\
 ATRECORD Captures audio data, from the PCM device given by dev_name,\n\
@@ -158,7 +158,7 @@ A frames x channels matrix containing the captured audio data.\n\
 @seealso {aplay, arecord, aplayrec, ainfo, @indicateurl{http://www.alsa-project.org}}\n\
 @end deftypefn")
 {
-  double *A,*Y, *t_par, trigger_level; 
+  double *A,*Y, *t_par, trigger_level;
   int err, verbose = 0;
   octave_idx_type i,n,m;
   snd_pcm_t *handle;
@@ -191,8 +191,8 @@ A frames x channels matrix containing the captured audio data.\n\
 
   const snd_pcm_channel_area_t *record_areas;
 
-  octave_value_list oct_retval; 
-  
+  octave_value_list oct_retval;
+
   int nrhs = args.length ();
 
   // Check for proper input and output  arguments.
@@ -212,36 +212,36 @@ A frames x channels matrix containing the captured audio data.\n\
   //
 
   if (nrhs > 2) {
-    
+
     if (mxGetM(2)*mxGetN(2) != 1) {
       error("3rd arg (number of channels) must be a scalar !");
       return oct_retval;
     }
-    
+
     const Matrix tmp2 = args(2).matrix_value();
-    channels = (int) tmp2.fortran_vec()[0];
-    
+    channels = (int) tmp2.data()[0];
+
     if (channels < 0) {
       error("Error in 3rd arg. The number of channels must be > 0!");
       return oct_retval;
     }
   } else
     channels = 2; // Default to two capture channels.
-  
+
   //
   // Sampling frequency (arg 4).
   //
 
   if (nrhs > 3) {
-    
+
     if (mxGetM(3)*mxGetN(3) != 1) {
       error("4th arg (the sampling frequency) must be a scalar !");
       return oct_retval;
     }
-    
+
     const Matrix tmp3 = args(3).matrix_value();
-    fs = (int) tmp3.fortran_vec()[0];
-    
+    fs = (int) tmp3.data()[0];
+
     if (fs < 0) {
       error("Error in 4th arg. The sampling frequency must be > 0!");
       return oct_retval;
@@ -255,24 +255,24 @@ A frames x channels matrix containing the captured audio data.\n\
 
   // Note we must know the sampling freq. to set the default
   // trigger buffer length.
-  
+
   // Check that arg 1 is a 3 element vector
   if (!((mxGetM(0)<=3 && mxGetN(0)==1) || (mxGetM(0)==1 && mxGetN(0)<=3))) {
     error("Argument 1 must be a 1 to 3 element vector!");
     return oct_retval;
   }
   const Matrix tmp0 = args(0).matrix_value();
-  t_par = (double*) tmp0.fortran_vec();
+  t_par = (double*) tmp0.data();
 
   if (trigger_level < 0.0 || trigger_level > 1.0) {
     error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
     return oct_retval;
   }
-   
+
   if ( mxGetM(0)*mxGetN(0) >= 2) {
 
     trigger_ch     = ((octave_idx_type) t_par[1]) - 1; // Trigger channel (1--channels).
-    
+
     if (trigger_ch < 0 || trigger_ch > channels-1) {
       error("Error in arg 1! The trigger channel must be >= 1 and <= %d!",channels);
       return oct_retval;
@@ -283,7 +283,7 @@ A frames x channels matrix containing the captured audio data.\n\
   if ( mxGetM(0)*mxGetN(0) >= 3) {
 
     trigger_level  = t_par[0]; // The trigger level (should be between 0.0 and 1.0).
-    
+
     if (trigger_level < 0 || trigger_level > 1.0) {
       error("Error in arg 1! The trigger level must be >= 0 and <= 1.0!");
       return oct_retval;
@@ -294,19 +294,19 @@ A frames x channels matrix containing the captured audio data.\n\
   if ( mxGetM(0)*mxGetN(0) >= 3) {
 
     trigger_frames = (octave_idx_type) t_par[2]; // The length of the trigger buffer.
-    
+
     if (trigger_frames < 1 || trigger_frames >= frames) {
       error("Error in arg 1! The trigger_frames must be >= 1 and <= %d!",frames);
       return oct_retval;
     }
   } else
     trigger_frames = 1; // Default to a single frame.
-  
+
   if ( mxGetM(0)*mxGetN(0) >= 4) {
 
     post_trigger_frames = (octave_idx_type) t_par[3]; // The number of frames to record
                                                       // after triggering.
-    
+
     if (post_trigger_frames < 0 || post_trigger_frames > frames) {
       error("Error in arg 1! The post_trigger_frames must be >= 0 and <= %d!", frames);
       return oct_retval;
@@ -327,10 +327,10 @@ A frames x channels matrix containing the captured audio data.\n\
       error("2nd arg (number of audio frames) must be a scalar !");
       return oct_retval;
     }
-    
+
     const Matrix tmp1 = args(1).matrix_value();
-    frames = (int) tmp1.fortran_vec()[0];
-    
+    frames = (int) tmp1.data()[0];
+
     if (frames <= 0) {
       error("Error in 2rd arg. The number of audio frames must be > 0!");
       return oct_retval;
@@ -341,48 +341,48 @@ A frames x channels matrix containing the captured audio data.\n\
       return oct_retval;
     }
 
-  }  else 
+  }  else
     frames = 2*trigger_frames; // Defaults to 2*trigger_frames.
-  
+
   //
   // Audio device (arg 5).
   //
 
   if (nrhs > 4) {
-    
+
     if (!mxIsChar(4)) {
       error("5th arg (the audio device) must be a string !");
       return oct_retval;
     }
-    
-    std::string strin = args(4).string_value(); 
+
+    std::string strin = args(4).string_value();
     buflen = strin.length();
     for ( n=0; n<=buflen; n++ ) {
       device[n] = strin[n];
     }
     device[buflen] = '\0';
-    
+
   } else
-      strcpy(device,"default"); 
+      strcpy(device,"default");
 
   //
   // HW/SW parameters (arg 6).
   //
-  
-  if (nrhs > 5) {    
-    
+
+  if (nrhs > 5) {
+
     if (mxGetM(5)*mxGetN(5) != 2) {
       error("6th arg must be a 2 element vector !");
       return oct_retval;
     }
-    
+
     const Matrix tmp5 = args(5).matrix_value();
-    hw_sw_par = (double*) tmp5.fortran_vec();
-    
+    hw_sw_par = (double*) tmp5.data();
+
     // hw parameters.
     period_size = (int) hw_sw_par[0];
     num_periods = (int) hw_sw_par[1];
-  } 
+  }
 
   //
   // Register signal handlers.
@@ -395,11 +395,11 @@ A frames x channels matrix containing the captured audio data.\n\
   if ((old_handler_abrt=signal(SIGABRT, &sighandler)) == SIG_ERR) {
     printf("Couldn't register signal handler.\n");
   }
-  
+
   if ((old_handler_keyint=signal(SIGINT, &sighandler)) == SIG_ERR) {
     printf("Couldn't register signal handler.\n");
   }
-  
+
   //
   // Open the PCM device for capture.
   //
@@ -427,12 +427,12 @@ A frames x channels matrix containing the captured audio data.\n\
 
   if ( (r_period_size != period_size) && (nrhs > 6) )
     printf("Note: Requested period size %d adjusted to %d.\n", (int) r_period_size, (int) period_size);
-  
+
   if ( (r_num_periods != num_periods) &&  (nrhs > 6) )
     printf("Note: Requested number of periods %d adjusted to %d.\n", (int) r_num_periods, (int) num_periods);
-  
+
   // Note: the current code works when using fewer channels than the pcm device have when
-  // the data is non-interleved but it doesn't work for interleved data. 
+  // the data is non-interleved but it doesn't work for interleved data.
   // TODO: Fix so one can have wanted_channels < channels on interleaved devices too.
 
   if ( is_interleaved() && (wanted_channels != channels) && (nrhs > 3) ) {
@@ -447,11 +447,11 @@ A frames x channels matrix containing the captured audio data.\n\
 
   // Allocate buffer space.
   switch(format) {
-  
+
   case SND_PCM_FORMAT_FLOAT:
     fbuffer = (float*) malloc(frames*channels*sizeof(float));
-    break;    
-    
+    break;
+
   case SND_PCM_FORMAT_S32:
     ibuffer = (int*) malloc(frames*channels*sizeof(int));
     break;
@@ -459,12 +459,12 @@ A frames x channels matrix containing the captured audio data.\n\
   case SND_PCM_FORMAT_S16:
     sbuffer = (short*) malloc(frames*channels*sizeof(short));
     break;
-    
+
   default:
     sbuffer = (short*) malloc(frames*channels*sizeof(short));
   }
 
-  avail_min = period_size; // aplay uses this setting. 
+  avail_min = period_size; // aplay uses this setting.
   start_threshold = (buffer_size/avail_min) * avail_min;
   stop_threshold = 16*period_size; // No idea what to set here.
 
@@ -475,14 +475,14 @@ A frames x channels matrix containing the captured audio data.\n\
   }
 
   sample_bytes = snd_pcm_format_width(format)/8; // Compute the number of bytes per sample.
-  
+
   if (verbose)
     printf("Sample format width: %d [bits]\n",snd_pcm_format_width(format));
-  
+
   // Check if the hardware are using less then 32 bits.
   if ((format == SND_PCM_FORMAT_S32) && (snd_pcm_format_width(format) != 32))
-    sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards. 
-  
+    sample_bytes = 32/8; // Use int to store, for example, data for 24 bit cards.
+
   framesize = channels * sample_bytes; // Compute the frame size;
 
   //
@@ -492,125 +492,125 @@ A frames x channels matrix containing the captured audio data.\n\
   if (verbose) {
     snd_output_t *snderr;
     snd_output_stdio_attach(&snderr ,stderr, 0);
-    
+
     fprintf(stderr, "Record state:%d\n", snd_pcm_state(handle));
     snd_pcm_dump_setup(handle, snderr);
   }
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
-  set_running_flag(); 
+  set_running_flag();
 
   //
   // Read the audio data from the PCM device.
   //
 
   switch(format) {
-    
+
   case SND_PCM_FORMAT_FLOAT:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       fbuffer,frames,framesize,
-					       channels,wanted_channels,
-					       trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
-    break;    
-    
+                                               fbuffer,frames,framesize,
+                                               channels,wanted_channels,
+                                               trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
+    break;
+
   case SND_PCM_FORMAT_S32:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       ibuffer,frames,framesize,
-					       channels,wanted_channels,
-					       trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
+                                               ibuffer,frames,framesize,
+                                               channels,wanted_channels,
+                                               trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
     break;
-    
+
   case SND_PCM_FORMAT_S16:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       sbuffer,frames,framesize,
-					       channels,wanted_channels,
-					       trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
+                                               sbuffer,frames,framesize,
+                                               channels,wanted_channels,
+                                               trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
     break;
-    
+
   default:
     ringbuffer_position = t_read_and_poll_loop(handle,record_areas,format,
-					       sbuffer,frames,framesize,
-					       channels,wanted_channels,
-					       trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
+                                               sbuffer,frames,framesize,
+                                               channels,wanted_channels,
+                                               trigger_level, trigger_ch,trigger_frames,post_trigger_frames);
   }
 
   //
   // Restore old signal handlers.
   //
-  
+
   if (signal(SIGTERM, old_handler) == SIG_ERR) {
     printf("Couldn't register old signal handler.\n");
   }
-  
+
   if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
     printf("Couldn't register signal handler.\n");
   }
-  
+
   if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
     printf("Couldn't register signal handler.\n");
   }
-  
+
   if (!is_running()) {
     error("CTRL-C pressed - audio capture interrupted!\n"); // Bail out.
   } else {
-    
+
     octave_stdout << " frames = " << frames << " ch =  " <<  wanted_channels << "\n";
     // Allocate space for output data.
     Matrix Ymat(frames,wanted_channels);
-    Y = Ymat.fortran_vec();
-    
+    Y = (double*) Ymat.data();
+
     if (is_interleaved()) {
-      
+
       // Convert from interleaved audio data.
       for (n = 0; n < channels; n++) {
-	for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
-	  
-	  switch(format) {
-	    
-	  case SND_PCM_FORMAT_FLOAT:
-	    Y[m] = (double) fbuffer[i];  
-	    break;    
-	    
-	  case SND_PCM_FORMAT_S32:
-	    Y[m] = ((double) ibuffer[i]) / 2147483648.0; // Normalize audio data.
-	    break;
-	    
-	  case SND_PCM_FORMAT_S16:
-	    Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
-	    break;
-	    
-	  default:
-	    Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
-	  }
-	}
+        for (i = n,m = n*frames; m < (n+1)*frames; i+=channels,m++) {// n:th channel.
+
+          switch(format) {
+
+          case SND_PCM_FORMAT_FLOAT:
+            Y[m] = (double) fbuffer[i];
+            break;
+
+          case SND_PCM_FORMAT_S32:
+            Y[m] = ((double) ibuffer[i]) / 2147483648.0; // Normalize audio data.
+            break;
+
+          case SND_PCM_FORMAT_S16:
+            Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+            break;
+
+          default:
+            Y[m] = ((double) sbuffer[i]) / 32768.0; // Normalize audio data.
+          }
+        }
       }
     } else { // Non-interleaved
       for (n = 0; n < frames*wanted_channels; n++) {
-	
-	switch(format) {
-	  
-	case SND_PCM_FORMAT_FLOAT:
-	  Y[n] = (double) fbuffer[n];  
-	  break;    
-	  
-	case SND_PCM_FORMAT_S32:
-	  Y[n] = ((double) ibuffer[n]) / 2147483648.0; // Normalize audio data.
-	  break;
-	  
-	case SND_PCM_FORMAT_S16:
-	  Y[n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
-	  break;
-	  
-	default:
-	  Y[n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
-	}
+
+        switch(format) {
+
+        case SND_PCM_FORMAT_FLOAT:
+          Y[n] = (double) fbuffer[n];
+          break;
+
+        case SND_PCM_FORMAT_S32:
+          Y[n] = ((double) ibuffer[n]) / 2147483648.0; // Normalize audio data.
+          break;
+
+        case SND_PCM_FORMAT_S16:
+          Y[n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
+          break;
+
+        default:
+          Y[n] = ((double) sbuffer[n]) / 32768.0; // Normalize audio data.
+        }
       }
-    } 
-    
+    }
+
     // Now shift the (ring) buffer so that the data is sequential in time.
     // That is, the last acquired frame should be at the end of the buffer
     // and the oldest frame should be first. The 'ringbuffer_position' is
-    // the index of the last frame in the ring buffer. 
+    // the index of the last frame in the ring buffer.
 
     if (ringbuffer_position > 0) {
 
@@ -621,46 +621,46 @@ A frames x channels matrix containing the captured audio data.\n\
 
       // Shift one channel each time.
       for (n=0; n<wanted_channels; n++) {
-	
-	memcpy(tmp_data, &Y[0 + n*frames], ringbuffer_position*1*sizeof(double));
-	
-	memmove(&Y[0 + n*frames], &Y[ringbuffer_position + n*frames],
-		(frames - ringbuffer_position)*1*sizeof(double));
-	
-	memcpy(&Y[(frames - ringbuffer_position) + n*frames], tmp_data,
-	       ringbuffer_position*1*sizeof(double));
+
+        memcpy(tmp_data, &Y[0 + n*frames], ringbuffer_position*1*sizeof(double));
+
+        memmove(&Y[0 + n*frames], &Y[ringbuffer_position + n*frames],
+                (frames - ringbuffer_position)*1*sizeof(double));
+
+        memcpy(&Y[(frames - ringbuffer_position) + n*frames], tmp_data,
+               ringbuffer_position*1*sizeof(double));
       }
       free(tmp_data);
     }
 
     oct_retval.append(Ymat);
-    
+
   } // is_running.
-  
+
   //
   // Cleanup.
   //
-  
+
   snd_pcm_close(handle);
 
   switch (format) {
-    
+
   case SND_PCM_FORMAT_FLOAT:
-    free(fbuffer);    
-    break;    
-    
+    free(fbuffer);
+    break;
+
   case SND_PCM_FORMAT_S32:
     free(ibuffer);
     break;
-    
+
   case SND_PCM_FORMAT_S16:
     free(sbuffer);
     break;
-    
+
   default:
     free(sbuffer);
-    
+
   }
-  
+
   return oct_retval;
 }

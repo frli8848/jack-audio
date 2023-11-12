@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011,2012 Fredrik Lingvall 
+ * Copyright (C) 2011,2012 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with the program; see the file COPYING.  If not, write to the 
+ *   along with the program; see the file COPYING.  If not, write to the
  *   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  *   02110-1301, USA.
  *
@@ -97,15 +97,15 @@ void sig_keyint_handler(int signum) {
   //printf("Caught signal SIGINT.\n");
 }
 
-  
+
 /***
- * 
+ *
  * Octave (oct) gateway function for JRECORD.
  *
  ***/
 
 DEFUN_DLD (jrecord, args, nlhs,
-	   "-*- texinfo -*-\n\
+           "-*- texinfo -*-\n\
 @deftypefn {Loadable Function} {} Y = jrecord(frames,jack_ouputs).\n\
 \n\
 JRECORD Records audio data to the output matrix Y using the (low-latency) audio server JACK.\n\
@@ -124,14 +124,14 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @seealso {jinfo, jplay, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  float *Y; 
+  float *Y;
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names;
   octave_idx_type buflen;
   octave_idx_type channels;
-  
+
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
@@ -159,7 +159,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     return oct_retval;
   }
 
-  frames = (octave_idx_type) tmp0.fortran_vec()[0];
+  frames = (octave_idx_type) tmp0.data()[0];
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
     return oct_retval;
@@ -173,30 +173,30 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     error("2rd arg must be a string matrix !");
     return oct_retval;
   }
-  
+
   charMatrix ch = args(1).char_matrix_value();
 
   channels = ch.rows();
 
-  buflen = ch.cols();    
+  buflen = ch.cols();
   port_names = (char**) malloc(channels * sizeof(char*));
   for ( n=0; n<channels; n++ ) {
 
     port_names[n] = (char*) malloc(buflen*sizeof(char)+1);
 
     std::string strin = ch.row_as_string(n);
-    
+
     for (int k=0; k<=buflen; k++ )
       if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
-	port_names[n][k] = strin[k];
+        port_names[n][k] = strin[k];
       else {
-	port_names[n][k] = '\0';
-	break;
+        port_names[n][k] = '\0';
+        break;
       }
-    
+
     port_names[0][buflen] = '\0';
   }
-  
+
   //
   // Register signal handlers.
   //
@@ -208,17 +208,17 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   if ((old_handler_abrt = signal(SIGABRT, &sighandler)) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if ((old_handler_keyint = signal(SIGINT, &sighandler)) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
 
-  // 
+  //
   // Allocate memory for the output arg.
   //
-  
+
   FloatMatrix Ymat(frames, channels);
-  Y = Ymat.fortran_vec();
+  Y = (float*) Ymat.data();
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
   set_running_flag();
@@ -242,31 +242,31 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   //
 
   record_close();
-  
+
   for ( n=0; n<channels; n++ ) {
     if (port_names[n])
       free(port_names[n]);
   }
-  
+
   if (port_names)
     free(port_names);
 
   //
   // Restore old signal handlers.
   //
-  
+
   if (signal(SIGTERM, old_handler) == SIG_ERR) {
     error("Couldn't register old signal handler.\n");
   }
-  
+
   if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if (!is_running())
     error("CTRL-C pressed - record interrupted!\n"); // Bail out.
 

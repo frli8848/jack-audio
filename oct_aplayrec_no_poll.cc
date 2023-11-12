@@ -306,7 +306,7 @@ Input parameters:\n\
   const Matrix tmp0 = args(0).matrix_value();
   frames = tmp0.rows();		// Audio data length for each channel.
   channels = tmp0.cols();	// Number of channels.
-  A = (double*) tmp0.fortran_vec();
+  A = (double*) tmp0.data();
     
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
@@ -330,7 +330,7 @@ Input parameters:\n\
     }
     
     const Matrix tmp1 = args(1).matrix_value();
-    fs = (int) tmp1.fortran_vec()[0];
+    fs = (int) tmp1.data()[0];
     
     if (fs < 0) {
       error("Error in 2nd arg. The samping frequency must be > 0!");
@@ -547,7 +547,7 @@ Input parameters:\n\
     
     // Allocate space for output data.
     Matrix Ymat(frames,channels);
-    Y = Ymat.fortran_vec();
+    Y = (double*) Ymat.data();
     
     // Convert from interleaved audio data.
     for (n = 0; n < channels; n++) {

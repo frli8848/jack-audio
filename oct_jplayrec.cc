@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011,2012 Fredrik Lingvall 
+ * Copyright (C) 2011,2012 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with the program; see the file COPYING.  If not, write to the 
+ *   along with the program; see the file COPYING.  If not, write to the
  *   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  *   02110-1301, USA.
  *
@@ -94,13 +94,13 @@ void sig_keyint_handler(int signum) {
 }
 
 /***
- * 
+ *
  * Octave (oct) gateway function for JPLAYREC.
  *
  ***/
 
 DEFUN_DLD (jplayrec, args, nlhs,
-	   "-*- texinfo -*-\n\
+           "-*- texinfo -*-\n\
 @deftypefn {Loadable Function} {} Y = jplayrec(A,jack_inputs,jack_ouputs);\n\
 \n\
 JPLAYREC Plays audio data from the input matrix A, on the jack ports given by jack_inputs and \n\
@@ -122,9 +122,9 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 @seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *dA; 
-  float  *fA; 
-  float  *Y; 
+  double *dA;
+  float  *fA;
+  float  *Y;
   int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
@@ -132,7 +132,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   octave_idx_type buflen;
   octave_idx_type play_channels, rec_channels;
   int format = FLOAT_AUDIO;
-  
+
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
@@ -152,36 +152,36 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   //
   // Input arg 1 : The audio data to play (a frames x channels matrix).
   //
-  
+
   // Double precision input data.
   if(args(0).is_double_type()) {
-    
+
     format = DOUBLE_AUDIO;
-    
+
     const Matrix tmp0 = args(0).matrix_value();
     frames = tmp0.rows();		// Audio data length for each channel.
     play_channels = tmp0.cols();	// Number of channels.
-    
-    dA = (double*) tmp0.fortran_vec();
+
+    dA = (double*) tmp0.data();
   }
-  
+
   // Single precision input data.
   if(args(0).is_single_type()) {
-    
+
     format = FLOAT_AUDIO;
 
     const FloatMatrix tmp0 = args(0).float_matrix_value();
     frames = tmp0.rows();		// Audio data length for each channel.
     play_channels = tmp0.cols();	// Number of channels.
-    
-    fA = (float*) tmp0.fortran_vec();
+
+    fA = (float*) tmp0.data();
   }
-  
+
   if (frames < 0) {
     error("The number of audio frames (rows in arg 1) must > 0!");
     return oct_retval;
   }
-  
+
   if (play_channels < 0) {
     error("The number of playback channels (columns in arg 1) must > 0!");
     return oct_retval;
@@ -195,7 +195,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     error("2rd arg must be a string matrix !");
     return oct_retval;
   }
-  
+
   charMatrix ch_in = args(1).char_matrix_value();
 
   if ( ch_in.rows() != play_channels ) {
@@ -203,22 +203,22 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     return oct_retval;
   }
 
-  buflen = ch_in.cols();    
+  buflen = ch_in.cols();
   port_names_in = (char**) malloc(play_channels * sizeof(char*));
   for ( n=0; n<play_channels; n++ ) {
 
     port_names_in[n] = (char*) malloc(buflen*sizeof(char)+1);
 
     std::string strin = ch_in.row_as_string(n);
-    
+
     for (int k=0; k<=buflen; k++ )
       if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
-	port_names_in[n][k] = strin[k];
+        port_names_in[n][k] = strin[k];
       else {
-	port_names_in[n][k] = '\0';
-	break;
+        port_names_in[n][k] = '\0';
+        break;
       }
-    
+
     port_names_in[0][buflen] = '\0';
   }
 
@@ -230,27 +230,27 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     error("2rd arg must be a string matrix !");
     return oct_retval;
   }
-  
+
   charMatrix ch_out = args(2).char_matrix_value();
 
   rec_channels = ch_out.rows();
 
-  buflen = ch_out.cols();    
+  buflen = ch_out.cols();
   port_names_out = (char**) malloc(rec_channels * sizeof(char*));
   for ( n=0; n<rec_channels; n++ ) {
 
     port_names_out[n] = (char*) malloc(buflen*sizeof(char)+1);
 
     std::string strin = ch_out.row_as_string(n);
-    
+
     for (int k=0; k<=buflen; k++ )
       if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
-	port_names_out[n][k] = strin[k];
+        port_names_out[n][k] = strin[k];
       else {
-	port_names_out[n][k] = '\0';
-	break;
+        port_names_out[n][k] = '\0';
+        break;
       }
-    
+
     port_names_out[0][buflen] = '\0';
   }
 
@@ -265,68 +265,68 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   if ((old_handler_abrt = signal(SIGABRT, &sighandler)) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if ((old_handler_keyint = signal(SIGINT, &sighandler)) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
 
   // Allocate memory for the output arg.
   FloatMatrix Ymat(frames, rec_channels);
-  Y = Ymat.fortran_vec();
+  Y = (float*) Ymat.data();
 
 
   // Set status to running (CTRL-C will clear the flag and stop play/capture).
-  set_running_flag(); 
+  set_running_flag();
 
 
   // Init recording and connect to the jack output ports.
   if (record_init(Y, frames, rec_channels, port_names_out, "octave:jplayrec_r") < 0)
     return oct_retval;
-  
+
   if (format == DOUBLE_AUDIO) {
 
     octave_stdout << "Playing double precision data...";
 
     const Matrix tmp0 = args(0).matrix_value();
-    dA = (double*) tmp0.fortran_vec();
-    
+    dA = (double*) tmp0.data();
+
     // Init playback and connect to the jack input ports.
     if (play_init(dA, frames, play_channels, port_names_in, "octave:jplayrec_p",DOUBLE_AUDIO ) < 0)
       return oct_retval;
-    
+
     // Wait for both playback and record to finish.
     while( (!record_finished() || !play_finished()) && is_running() )
-      sleep(1);  
-    
+      sleep(1);
+
     // Close the jack ports.
     play_close();
     record_close();
 
     octave_stdout << "done!" << endl;
   }
-  
+
   if (format == FLOAT_AUDIO) {
 
     octave_stdout << "Playing single precision data...";
-    
+
     const FloatMatrix tmp0 = args(0).float_matrix_value();
-    fA = (float*) tmp0.fortran_vec();
-    
+    fA = (float*) tmp0.data();
+
     // Init playback and connect to the jack input ports.
     if (play_init(fA, frames, play_channels, port_names_in, "octave:jplayrec_p",FLOAT_AUDIO) < 0)
       return oct_retval;
 
     // Wait for both playback and record to finish.
     while( (!record_finished() || !play_finished()) && is_running() )
-      sleep(1);  
-    
+      sleep(1);
+
     // Close the jack ports.
     play_close();
     record_close();
 
     octave_stdout << "done!" << endl;
   }
-  
+
   if (is_running) {
     // Append the output data.
     oct_retval.append(Ymat);
@@ -335,19 +335,19 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   //
   // Restore old signal handlers.
   //
-  
+
   if (signal(SIGTERM, old_handler) == SIG_ERR) {
     error("Couldn't register old signal handler.\n");
   }
-  
+
   if (signal(SIGABRT,  old_handler_abrt) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if (signal(SIGINT, old_handler_keyint) == SIG_ERR) {
     error("Couldn't register signal handler.\n");
   }
-  
+
   if (!is_running())
     error("CTRL-C pressed - play and record interrupted!\n"); // Bail out.
 

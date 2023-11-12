@@ -251,7 +251,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     octave_stdout << "Playing single precision data...";
 
     const FloatMatrix tmp0 = args(0).float_matrix_value();
-    fA = (float*) tmp0.fortran_vec();
+    fA = (float*) tmp0.data();
 
     if (play_init(fA, frames, channels, port_names, "octave:jplay", FLOAT_AUDIO) < 0)
       return oct_retval;
@@ -269,7 +269,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     octave_stdout << "Playing double precision data...";
 
     const Matrix tmp0 = args(0).matrix_value();
-    dA = (double*) tmp0.fortran_vec();
+    dA = (double*) tmp0.data();
 
     if (play_init(dA, frames, channels, port_names, "octave:jplay", DOUBLE_AUDIO) < 0)
       return oct_retval;

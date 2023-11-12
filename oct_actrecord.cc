@@ -142,7 +142,7 @@ void* save_smp_process(void *arg)
     octave_stdout << " frames = " << frames << " ch =  " <<  wanted_channels << "\n";
     // Allocate space for output data.
     Matrix Ymat(frames,wanted_channels);
-    Y = Ymat.fortran_vec();
+    Y = (double*) Ymat.data();
     
     if (is_interleaved()) {
       
@@ -383,7 +383,7 @@ A frames x channels matrix containing the captured audio data.\n\
     }
     
     const Matrix tmp2 = args(2).matrix_value();
-    channels = (int) tmp2.fortran_vec()[0];
+    channels = (int) tmp2.data()[0];
     
     if (channels < 0) {
       error("Error in 3rd arg. The number of channels must be > 0!");
@@ -404,7 +404,7 @@ A frames x channels matrix containing the captured audio data.\n\
     }
     
     const Matrix tmp3 = args(3).matrix_value();
-    fs = (int) tmp3.fortran_vec()[0];
+    fs = (int) tmp3.data()[0];
     
     if (fs < 0) {
       error("Error in 4th arg. The sampling frequency must be > 0!");
@@ -426,7 +426,7 @@ A frames x channels matrix containing the captured audio data.\n\
     return oct_retval;
   }
   const Matrix tmp0 = args(0).matrix_value();
-  t_par = (double*) tmp0.fortran_vec();
+  t_par = (double*) tmp0.data();
 
   if (trigger_level < 0.0 || trigger_level > 1.0) {
     error("Error in 1st arg! The trigger level must be >= 0 and <= 1.0!");
@@ -494,7 +494,7 @@ A frames x channels matrix containing the captured audio data.\n\
     }
     
     const Matrix tmp1 = args(1).matrix_value();
-    frames = (int) tmp1.fortran_vec()[0];
+    frames = (int) tmp1.data()[0];
     
     if (frames <= 0) {
       error("Error in 2rd arg. The number of audio frames must be > 0!");
@@ -542,7 +542,7 @@ A frames x channels matrix containing the captured audio data.\n\
     }
     
     const Matrix tmp5 = args(5).matrix_value();
-    hw_sw_par = (double*) tmp5.fortran_vec();
+    hw_sw_par = (double*) tmp5.data();
     
     // hw parameters.
     period_size = (int) hw_sw_par[0];
