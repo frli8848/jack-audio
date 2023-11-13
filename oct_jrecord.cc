@@ -27,6 +27,7 @@
 #include <signal.h>
 
 #include <iostream>
+#include <thread>
 
 #include <octave/oct.h>
 
@@ -82,7 +83,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (jrecord, args, nlhs,
            "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {} Y = jrecord(frames,jack_inputs).\n\
+@deftypefn {Loadable Function} {} Y = jrecord(frames, jack_inputs).\n\
 \n\
 JRECORD Records audio data to the output matrix Y using the (low-latency) audio server JACK.\n\
 \n\
@@ -96,8 +97,15 @@ A scalar that specifies the number of frames to record/channel.\n\
 A char matrix with the JACK client input port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
 @end table\n\
 \n\
+Output arguments:\n\
+\n\
+@table @samp\n\
+@item Y\n\
+A frames x channels single precision matrix containing the recorded audio data.\n\
+@end table\n\
+\n\
 @copyright{} 2011-2023 Fredrik Lingvall.\n\
-@seealso {jinfo, jplay, @indicateurl{http://jackaudio.org}}\n\
+@seealso {jinfo, jplay,jplayrec, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
   float *Y;
@@ -200,12 +208,13 @@ A char matrix with the JACK client input port names, for example, ['system:captu
   set_running_flag();
 
   // Init and connect to the output ports.
-  if (record_init(Y, frames, channels, port_names, "octave:jrecord") < 0)
+  if (record_init(Y, frames, channels, port_names, "octave:jrecord") < 0) {
     return oct_retval;
-
+  }
+  
   // Wait until we have recorded all data.
   while(!record_finished() && is_running() ) {
-    sleep(1);
+    std::this_thread::sleep_for (std::chrono::milliseconds(100));
   }
 
   if (is_running()) {
