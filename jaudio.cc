@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011,2012, 2023 Fredrik Lingvall
+ * Copyright (C) 2011,2012,2023 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
  *
  ***/
 
-// $Revision$ $Date$ $LastChangedBy$
-
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -31,19 +29,19 @@
 // Octave headers.
 //
 
-#include <octave/oct.h>
-
-#include <octave/oct.h>
+//#include <octave/oct.h>
 
 #include <iostream>
-using namespace std;
+//using namespace std;
 
+/*
 #include <octave/defun-dld.h>
 #include <octave/error.h>
 
 #include <octave/pager.h>
 #include <octave/symtab.h>
 #include <octave/variables.h>
+*/
 
 #include "jaudio.h"
 
@@ -53,11 +51,11 @@ using namespace std;
 
 volatile int running;
 
-octave_idx_type play_frames;
-octave_idx_type record_frames;
+size_t play_frames;
+size_t record_frames;
 
-octave_idx_type frames_played;
-octave_idx_type frames_recorded;
+size_t frames_played;
+size_t frames_recorded;
 
 jack_client_t *record_client;
 jack_port_t **input_ports;
@@ -65,7 +63,7 @@ int n_input_ports;
 
 jack_client_t *play_client;
 jack_port_t **output_ports;
-octave_idx_type n_output_ports;
+size_t n_output_ports;
 
 volatile int got_data;
 
@@ -104,7 +102,7 @@ int srate(jack_nframes_t nframes, void *arg)
 
 void jerror(const char *desc)
 {
-  error("JACK error: %s\n", desc);
+  printf("JACK error: %s\n", desc);
   clear_running_flag(); // Stop if we get a JACK error.
 
   return;
@@ -121,59 +119,59 @@ void print_jack_status(jack_status_t status)
 {
     
   if (status & JackFailure) {
-    octave_stdout << "JackFailure: Overall operation failed." << endl;
+    std::cout << "JackFailure: Overall operation failed." << std::endl;
   }
   
   if (status & JackNameNotUnique) {
-    octave_stdout << "JackNameNotUnique" << endl;
+    std::cout << "JackNameNotUnique" << std::endl;
   }
   
   if (status & JackServerStarted) {
-    octave_stdout << "JackServerStarted" << endl;
+    std::cout << "JackServerStarted" << std::endl;
   }
   
   if (status & JackServerFailed) {
-    octave_stdout << "JackServerFailed" << endl;
+    std::cout << "JackServerFailed" << std::endl;
   }
   
   if (status & JackServerError) {
-    octave_stdout << "JackServerError" << endl;
+    std::cout << "JackServerError" << std::endl;
   }
   
   if (status & JackNoSuchClient) {
-    octave_stdout << "JackNoSuchClient" << endl;
+    std::cout << "JackNoSuchClient" << std::endl;
   }
   
   if (status & JackLoadFailure) {
-    octave_stdout << "JackLoadFailure" << endl;
+    std::cout << "JackLoadFailure" << std::endl;
   }
   
   if (status & JackInitFailure) {
-    octave_stdout << "JackInitFailure" << endl;
+    std::cout << "JackInitFailure" << std::endl;
   }
   
   if (status & JackShmFailure) {
-    octave_stdout << "JackShmFailure" << endl;
+    std::cout << "JackShmFailure" << std::endl;
   }
   
   if (status & JackVersionError) {
-    octave_stdout << "JackVersionError" << endl;
+    std::cout << "JackVersionError" << std::endl;
   }
   
   if (status & JackBackendError) {
-    octave_stdout << "JackBackendError" << endl;
+    std::cout << "JackBackendError" << std::endl;
   }
   
   if (status & JackClientZombie) {
-    octave_stdout << "JackClientZombie" << endl;
+    std::cout << "JackClientZombie" << std::endl;
   }
 }
 
 /********************************************************************************************
-*
-* Audio Playback
-*
-*********************************************************************************************/
+ *
+ * Audio Playback
+ *
+ *********************************************************************************************/
 
 /***
  *
@@ -200,7 +198,7 @@ int play_finished(void)
 
 int play_process_f(jack_nframes_t nframes, void *arg)
 {
-  octave_idx_type   frames_to_write, n, m;
+  size_t   frames_to_write, n, m;
   float   *output_fbuffer;
   jack_default_audio_sample_t *out;
   
@@ -208,7 +206,7 @@ int play_process_f(jack_nframes_t nframes, void *arg)
   output_fbuffer = (float*) arg;
 
   // The number of available frames.
-  frames_to_write = (octave_idx_type) nframes;
+  frames_to_write = (size_t) nframes;
   
   // Loop over all ports.
   for (n=0; n<n_output_ports; n++) {
@@ -218,7 +216,7 @@ int play_process_f(jack_nframes_t nframes, void *arg)
       jack_port_get_buffer(output_ports[n], nframes);
 
     if (out == nullptr) {
-      error("jack_port_get_buffer failed!");
+      std::cerr << "jack_port_get_buffer failed!" << std::endl;
     }
     
     if((play_frames - frames_played) > 0 && running) { 
@@ -247,15 +245,15 @@ int play_process_f(jack_nframes_t nframes, void *arg)
 
 int play_process_d(jack_nframes_t nframes, void *arg)
 {
-  octave_idx_type   frames_to_write, n, m;
-  double   *output_fbuffer;
+  size_t   frames_to_write, n, m;
+  double   *output_dbuffer;
   jack_default_audio_sample_t *out;
 
   // Get the adress of the output buffer.
-  output_fbuffer = (double*) arg;
+  output_dbuffer = (double*) arg;
 
   // The number of available frames.
-  frames_to_write = (octave_idx_type) nframes;
+  frames_to_write = (size_t) nframes;
   
   // Loop over all ports.
   for (n=0; n<n_output_ports; n++) {
@@ -265,7 +263,7 @@ int play_process_d(jack_nframes_t nframes, void *arg)
       jack_port_get_buffer(output_ports[n], nframes);
 
     if (out == nullptr) {
-      error("jack_port_get_buffer failed!");
+      std::cerr << "jack_port_get_buffer failed!" << std::endl;
     }
     
     if((play_frames - frames_played) > 0 && running) { 
@@ -276,7 +274,7 @@ int play_process_d(jack_nframes_t nframes, void *arg)
 
       for(m=0; m<frames_to_write; m++) {
 	out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
-	  output_fbuffer[m+frames_played + n*play_frames];
+	  output_dbuffer[m+frames_played + n*play_frames];
       }
     } else {
       frames_played = play_frames; 
@@ -298,15 +296,15 @@ int play_process_d(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+int play_init(void* buffer, size_t frames, size_t channels, 
 	      char **port_names, const char *client_name, int format) 
 {
-  octave_idx_type n;
+  size_t n;
   jack_port_t  *port;
   char port_name[255];
 
   // The number of channels (columns) in the buffer matrix.
-  n_output_ports = (octave_idx_type) channels;
+  n_output_ports = (size_t) channels;
 
   // The total number of frames to play.
   play_frames = frames;
@@ -327,7 +325,7 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   if ((play_client = jack_client_open(client_name,
 				      JackNullOption,&status)) == 0) {
     print_jack_status(status);
-    error("Failed to open JACK client: '%s'\n",client_name);
+    std::cerr << "Failed to open JACK client: '" << client_name << "'!" << std::endl;
     return -1;
   }
 
@@ -360,14 +358,14 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
 
   // Tell the JACK server that we are ready to roll.
   if (jack_activate(play_client)) {
-    error("Cannot activate jack client");
+    std::cerr << "Cannot activate jack client!" << std::endl;
     return -1;
   }
 
   // Connect to the input ports.  
   for (n=0; n<n_output_ports; n++) {
     if (jack_connect(play_client, jack_port_name(output_ports[n]), port_names[n])) {
-      error("Cannot connect to the client input port '%s'\n",port_names[n]);
+      std::cerr << "Cannot connect to the client input port: '" <<  port_names[n] << "'" << std::endl;
       play_close();
       return -1;
     }
@@ -387,21 +385,21 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
 
 int play_close(void)
 {
-  octave_idx_type n;
+  size_t n;
   int err;
-   // Unregister all ports for the play client.
+  // Unregister all ports for the play client.
   for (n=0; n<n_output_ports; n++) {
     err = jack_port_unregister(play_client, output_ports[n]);
     if (err) {
-      error("Failed to unregister an output port");
+      std::cerr << "Failed to unregister an output port!" << std::endl;
     }
   }
  
   // Close the client.
   err = jack_client_close(play_client);
   if (err) {
-    error("jack_client_close failed");
-  }
+    std::cerr << "jack_client_close failed!" << std::endl;
+      }
 
   free(output_ports);
 
@@ -409,10 +407,10 @@ int play_close(void)
 }
 
 /********************************************************************************************
-*
-* Audio Capturing
-*
-*********************************************************************************************/
+ *
+ * Audio Capturing
+ *
+ *********************************************************************************************/
 
 /***
  *
@@ -438,7 +436,7 @@ int record_finished(void)
 
 int record_process(jack_nframes_t nframes, void *arg)
 {
-  octave_idx_type   frames_to_read, n, m;
+  size_t   frames_to_read, n, m;
   float   *input_fbuffer;
   jack_default_audio_sample_t *in;
 
@@ -446,7 +444,7 @@ int record_process(jack_nframes_t nframes, void *arg)
   input_fbuffer = (float*) arg;
 
   // The number of available frames.
-  frames_to_read = (octave_idx_type) nframes;
+  frames_to_read = (size_t) nframes;
   
   // Loop over all ports.
   for (n=0; n<n_input_ports; n++) {
@@ -456,7 +454,7 @@ int record_process(jack_nframes_t nframes, void *arg)
       jack_port_get_buffer(input_ports[n], nframes);
     
     if (in == nullptr) {
-      error("jack_port_get_buffer failed!");
+      std::cerr << "jack_port_get_buffer failed!" << std::endl;
     }
     
     if((record_frames - frames_recorded) > 0 && running) { 
@@ -489,15 +487,15 @@ int record_process(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+int record_init(void* buffer, size_t frames, size_t channels, 
 		char **port_names, const char *client_name) 
 {
-  octave_idx_type n;
+  size_t n;
   jack_port_t *port;
   char port_name[255];
 
   // The number of channels (columns) in the buffer matrix.
-  n_input_ports = (octave_idx_type) channels;
+  n_input_ports = (size_t) channels;
 
   // The total number of frames to record.
   record_frames = frames;
@@ -518,7 +516,7 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   if ((record_client = jack_client_open(client_name,
 					JackNullOption,&status)) == 0) {
     print_jack_status(status);
-    error("Failed to open JACK client: '%s'\n",client_name);
+    std::cerr << "Failed to open JACK client: '" << client_name << "'" << std::endl;
     return -1;
   }
 
@@ -540,19 +538,19 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   for (n=0; n<n_input_ports; n++) { 
     sprintf(port_name,"input_%d",(int) n+1); // Port numbers start at 1.
     input_ports[n] = jack_port_register(record_client, port_name, 
-					 JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+					JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
   }
 
   // Tell the JACK server that we are ready to roll.
   if (jack_activate(record_client)) {
-    error("Cannot activate jack client");
+    std::cerr << "Cannot activate jack client!" << std::endl;
     return -1;
   }
 
   // Connect to the input ports.  
   for (n=0; n<n_input_ports; n++) {
     if (jack_connect(record_client, port_names[n], jack_port_name(input_ports[n]))) {
-      error("Cannot connect to the client output port '%s'\n",port_names[n]);
+      std::cerr << "Cannot connect to the client output port: '" <<  port_names[n] << "'" << std::endl;
       record_close();
       return -1;
     }
@@ -572,27 +570,27 @@ int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
 
 int record_close(void)
 {
-  octave_idx_type n;
+  size_t n;
   int err;
 
   // Unregister all ports for the record client.
   for (n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);
     if (err) {
-      error("Failed to unregister an input port");
+      std::cerr << "Failed to unregister an input port!" << std::endl;
     }
   }
  
   // Close the client.
   err = jack_client_close(record_client);
   if (err) {
-    error("jack_client_close failed");
+    std::cerr << "jack_client_close failed!" << std::endl;
   }
 
   if (input_ports) {
     free(input_ports);
   } else {
-    error("Failed free input_ports memory");
+    std::cerr << "Failed free input_ports memory!" << std::endl;
   }
   
   return 0;
@@ -600,24 +598,24 @@ int record_close(void)
 
 
 /********************************************************************************************
-*
-* Triggered Audio Capturing
-*
-*********************************************************************************************/
+ *
+ * Triggered Audio Capturing
+ *
+ *********************************************************************************************/
 
 // Globals for the triggered audio caputring.
 
 float *triggerbuffer = NULL;
-octave_idx_type triggerport;
+size_t triggerport;
 float t_level = 1.0, trigger = 0.0;
 int    trigger_active;
-octave_idx_type trigger_position;
-octave_idx_type t_frames;
+size_t trigger_position;
+size_t t_frames;
 
 int ringbuffer_read_running;
-octave_idx_type ringbuffer_position;
-octave_idx_type post_t_frames_counter;
-octave_idx_type post_t_frames;
+size_t ringbuffer_position;
+size_t post_t_frames_counter;
+size_t post_t_frames;
 int has_wrapped;
 
 /***
@@ -643,8 +641,8 @@ int t_record_finished(void)
 
 int t_record_process(jack_nframes_t nframes, void *arg)
 {
-  octave_idx_type frames_to_read, n, m, m2;
-  octave_idx_type local_rbuf_pos;
+  size_t frames_to_read, n, m, m2;
+  size_t local_rbuf_pos;
   float   *input_fbuffer;
   jack_default_audio_sample_t *in;
 
@@ -652,7 +650,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
   input_fbuffer = (float*) arg;
 
   // The number of available frames.
-  frames_to_read = (octave_idx_type) nframes;
+  frames_to_read = (size_t) nframes;
 
   if ( running && ringbuffer_read_running ) { 
 
@@ -667,7 +665,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	jack_port_get_buffer(input_ports[n], nframes);
       
       if (in == nullptr) {
-	error("jack_port_get_buffer failed!");
+	std::cerr << "jack_port_get_buffer failed!" << std::endl;
       }
 
       //
@@ -741,7 +739,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    the_time = localtime(&curtime);
 	    
 	    // This should work with Octave's diary command.
-	    octave_stdout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
+	    std::cout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
 	    got_data = true;	    
 	  }
 	  
@@ -805,14 +803,14 @@ int got_a_trigger(void)
  *
  ***/
 
-int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+int t_record_init(void* buffer, size_t frames, size_t channels, 
 		  char **port_names, const char *client_name,
 		  double trigger_level,
-		  octave_idx_type trigger_channel,
-		  octave_idx_type trigger_frames,
-		  octave_idx_type post_trigger_frames)
+		  size_t trigger_channel,
+		  size_t trigger_frames,
+		  size_t post_trigger_frames)
 {
-  octave_idx_type n;
+  size_t n;
   jack_port_t  *port;
   char port_name[255];
 
@@ -820,7 +818,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   got_data = false;
 
   // The number of channels (columns) in the buffer matrix.
-  n_input_ports = (octave_idx_type) channels;
+  n_input_ports = (size_t) channels;
 
   // Set the trigger level for the callback function.
   t_level = (float) trigger_level;
@@ -844,7 +842,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   // Allocate space and clear the trigger buffer.
   triggerbuffer = (float*) malloc(trigger_frames*sizeof(float));
   if (!triggerbuffer) {
-    error("Trigger buffer memory allocation failed!\n");
+    std::cerr << "Trigger buffer memory allocation failed!" << std::endl;
     return -1;
   }
   bzero(triggerbuffer, trigger_frames*sizeof(float));
@@ -861,7 +859,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   triggerport = trigger_channel; // The (global) trigger port for the JACK callback function.
 
   if (triggerport < 0 || triggerport >= n_input_ports) {
-    error("Trigger channel out-of-bounds!\n");
+    std::cerr << "Trigger channel out-of-bounds!" << std::endl;
     return -1;
   }
 
@@ -878,7 +876,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   if ((record_client = jack_client_open(client_name,
 					JackNullOption,&status)) == 0) {
     print_jack_status(status);
-    error("Failed to open JACK client: '%s'\n",client_name);
+    std::cerr << "Failed to open JACK client: '" << client_name << "'!" << std::endl;
     return -1;
   }
 
@@ -905,21 +903,21 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   
   // Tell the JACK server that we are ready to roll.
   if (jack_activate(record_client)) {
-    error("Cannot activate jack client");
+    std::cerr << "Cannot activate jack client!" << std::endl;
     return -1;
   }
   
   // Connect to the input ports.  
   for (n=0; n<n_input_ports; n++) {
     if (jack_connect(record_client, port_names[n], jack_port_name(input_ports[n]))) {
-      error("Cannot connect to the client output port '%s'\n",port_names[n]);
+      std::cerr << "Cannot connect to the client output port '" << port_names[n] << "'!" << std::endl;
       t_record_close();
       return -1;
     }
   }
   
   // This should work with Octave's diary command.
-  octave_stdout << "\n Audio capturing started. Listening to JACK port '" << 
+  std::cout << "\n Audio capturing started. Listening to JACK port '" << 
     port_names[trigger_channel]  << "' for a trigger signal.\n\n";
 
   return 0;
@@ -936,7 +934,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
  *
  ***/
 
-octave_idx_type get_ringbuffer_position(void)
+size_t get_ringbuffer_position(void)
 {
   
   // Note that the data is not sequential in time in the buffer, that is,
@@ -960,21 +958,21 @@ octave_idx_type get_ringbuffer_position(void)
 
 int t_record_close(void)
 {
-  octave_idx_type n;
+  size_t n;
   int err;
 
    // Unregister all ports for the record client.
   for (n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);
     if (err) {
-      error("Failed to unregister an input port");
+      std::cerr << "Failed to unregister an input port!" << std::endl;
     }
   }
  
   // Close the client.
   err = jack_client_close(record_client);
   if (err) {
-    error("jack_client_close failed");
+    std::cerr << "jack_client_close failed!" << std::endl;
   }
 
   //
@@ -984,13 +982,13 @@ int t_record_close(void)
   if(input_ports) {
     free(input_ports);
   } else {
-    error("Failed free input_ports memory");
+    std::cerr << "Failed free input_ports memory!" << std::endl;
   }
 
   if (triggerbuffer) {
     free(triggerbuffer);
   } else {
-    error("Failed free triggerbuffer memory");
+    std::cerr << "Failed free triggerbuffer memory!" << std::endl;
   }
   
   return 0;

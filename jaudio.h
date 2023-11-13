@@ -35,25 +35,25 @@ void clear_running_flag(void);
 int play_finished(void);
 int play_process_f(jack_nframes_t nframes, void *arg);
 int play_process_d(jack_nframes_t nframes, void *arg);
-int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+int play_init(void* buffer, size_t frames, size_t channels, 
 	      char **port_names, const char *client_name, int format);
 int play_close(void);
 
 int record_finished(void);
-int record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+int record_init(void* buffer, size_t frames, size_t channels, 
 		char **port_names, const char *client_name);
 int record_close(void);
 
 int t_record_finished(void);
 int t_record_process_f(jack_nframes_t nframes, void *arg);
 int t_record_process_d(jack_nframes_t nframes, void *arg);
-int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels, 
+int t_record_init(void* buffer, size_t frames, size_t channels, 
 		  char **port_names, const char *client_name,
 		  double trigger_level,
-		  octave_idx_type trigger_channel,
-		  octave_idx_type trigger_frames,
-		  octave_idx_type post_trigger_frames);
-octave_idx_type get_ringbuffer_position(void);
+		  size_t trigger_channel,
+		  size_t trigger_frames,
+		  size_t post_trigger_frames);
+size_t get_ringbuffer_position(void);
 int t_record_close(void);
 
 #endif
