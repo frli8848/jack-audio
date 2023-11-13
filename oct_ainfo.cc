@@ -36,8 +36,6 @@
 
 #include <octave/oct.h>
 
-#include <octave/oct.h>
-
 #include <iostream>
 using namespace std;
 

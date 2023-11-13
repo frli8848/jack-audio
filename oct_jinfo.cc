@@ -19,8 +19,6 @@
  *
  ***/
 
-// $Revision$ $Date$ $LastChangedBy$
-
 // This code is based on: http://dis-dot-dat.net/index.cgi?item=jacktuts/starting/
 
 #include <string.h>
@@ -34,10 +32,8 @@
 //
 
 #include <octave/oct.h>
-
-#include <octave/oct.h>
-
 #include <iostream>
+
 using namespace std;
 
 #include <octave/defun-dld.h>
@@ -205,16 +201,6 @@ JINFO Prints the input and output ports connected to the\n\
   // List all devices if no input arg is given.
   //
   
-#if 0
-  if (nrhs < 1) {
-    printf("No ALSA device was given. Listing the devices:\n\n");
-    //device_list(1); // Playback.
-    printf("\n");
-    //device_list(0); // Capture.
-    return oct_retval;
-  }
-  
-#endif
 
   // Tell the JACK server to call error() whenever it
   // experiences an error.  Notice that this callback is

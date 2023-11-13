@@ -1,4 +1,3 @@
-
 /***
  *
  * Copyright (C) 2011,2012 Fredrik Lingvall
@@ -20,14 +19,11 @@
  *
  ***/
 
-// $Revision$ $Date$ $LastChangedBy$
-
 #ifndef __JAUDIO_H__
 #define __JAUDIO_H__
 
 #define FLOAT_AUDIO 0
 #define DOUBLE_AUDIO 1
-
 
 #include <jack/jack.h>
 

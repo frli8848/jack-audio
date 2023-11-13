@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011,2012 Fredrik Lingvall
+ * Copyright (C) 2011,2012, 2023 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -47,9 +47,6 @@ using namespace std;
 
 #include "jaudio.h"
 
-#define TRUE 1
-#define FALSE 0
-
 //
 // Globals.
 //
@@ -80,7 +77,6 @@ volatile int got_data;
 
 int is_running(void)
 {
-
   return running;
 }
 
@@ -98,7 +94,6 @@ void clear_running_flag(void)
   
   return;
 }
-
 
 // This is called whenever the sample rate changes.
 int srate(jack_nframes_t nframes, void *arg)
@@ -122,45 +117,56 @@ void jack_shutdown(void *arg)
   return;
 }
 
-
 void print_jack_status(jack_status_t status)
 {
     
-  if (status & JackFailure)
+  if (status & JackFailure) {
     octave_stdout << "JackFailure: Overall operation failed." << endl;
+  }
   
-  if (status & JackNameNotUnique)
+  if (status & JackNameNotUnique) {
     octave_stdout << "JackNameNotUnique" << endl;
-
-  if (status & JackServerStarted)
+  }
+  
+  if (status & JackServerStarted) {
     octave_stdout << "JackServerStarted" << endl;
-
-  if (status & JackServerFailed)
+  }
+  
+  if (status & JackServerFailed) {
     octave_stdout << "JackServerFailed" << endl;
-
-  if (status & JackServerError)
+  }
+  
+  if (status & JackServerError) {
     octave_stdout << "JackServerError" << endl;
-
-  if (status & JackNoSuchClient)
+  }
+  
+  if (status & JackNoSuchClient) {
     octave_stdout << "JackNoSuchClient" << endl;
-
-  if (status & JackLoadFailure)
+  }
+  
+  if (status & JackLoadFailure) {
     octave_stdout << "JackLoadFailure" << endl;
-
-  if (status & JackInitFailure)
+  }
+  
+  if (status & JackInitFailure) {
     octave_stdout << "JackInitFailure" << endl;
-
-  if (status & JackShmFailure)
+  }
+  
+  if (status & JackShmFailure) {
     octave_stdout << "JackShmFailure" << endl;
-
-  if (status & JackVersionError)
+  }
+  
+  if (status & JackVersionError) {
     octave_stdout << "JackVersionError" << endl;
-
-  if (status & JackBackendError)
+  }
+  
+  if (status & JackBackendError) {
     octave_stdout << "JackBackendError" << endl;
-
-  if (status & JackClientZombie)
+  }
+  
+  if (status & JackClientZombie) {
     octave_stdout << "JackClientZombie" << endl;
+  }
 }
 
 /********************************************************************************************
@@ -179,7 +185,6 @@ void print_jack_status(jack_status_t status)
 
 int play_finished(void)
 {
-
   return ((play_frames - frames_played) <= 0);
 }
 
@@ -198,7 +203,7 @@ int play_process_f(jack_nframes_t nframes, void *arg)
   octave_idx_type   frames_to_write, n, m;
   float   *output_fbuffer;
   jack_default_audio_sample_t *out;
-
+  
   // Get the adress of the output buffer.
   output_fbuffer = (float*) arg;
 
@@ -209,21 +214,23 @@ int play_process_f(jack_nframes_t nframes, void *arg)
   for (n=0; n<n_output_ports; n++) {
 
     // Grab the n:th output buffer.
-    out = (jack_default_audio_sample_t *) 
+    out = (jack_default_audio_sample_t *)
       jack_port_get_buffer(output_ports[n], nframes);
 
-    if (out == NULL)
+    if (out == nullptr) {
       error("jack_port_get_buffer failed!");
+    }
     
     if((play_frames - frames_played) > 0 && running) { 
       
-      if (frames_to_write >  (play_frames - frames_played) )
+      if (frames_to_write >  (play_frames - frames_played) ) {
 	frames_to_write = play_frames - frames_played; 
+      }
 
-
-      for(m=0; m<frames_to_write; m++)
+      for(m=0; m<frames_to_write; m++) {
 	out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
 	  output_fbuffer[m+frames_played + n*play_frames];
+      }
     } else {
       frames_played = play_frames; 
       return 0;
@@ -254,21 +261,23 @@ int play_process_d(jack_nframes_t nframes, void *arg)
   for (n=0; n<n_output_ports; n++) {
 
     // Grab the n:th output buffer.
-    out = (jack_default_audio_sample_t *) 
+    out = (jack_default_audio_sample_t *)
       jack_port_get_buffer(output_ports[n], nframes);
 
-    if (out == NULL)
+    if (out == nullptr) {
       error("jack_port_get_buffer failed!");
+    }
     
     if((play_frames - frames_played) > 0 && running) { 
       
-      if (frames_to_write >  (play_frames - frames_played) )
+      if (frames_to_write >  (play_frames - frames_played) ) {
 	frames_to_write = play_frames - frames_played; 
+      }
 
-
-      for(m=0; m<frames_to_write; m++)
+      for(m=0; m<frames_to_write; m++) {
 	out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
 	  output_fbuffer[m+frames_played + n*play_frames];
+      }
     } else {
       frames_played = play_frames; 
       return 0;
@@ -324,11 +333,13 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
 
   // Tell the JACK server to call the `play_process()' whenever
   // there is work to be done.
-  if (format == FLOAT_AUDIO)
+  if (format == FLOAT_AUDIO) {
     jack_set_process_callback(play_client, play_process_f, buffer);
+  }
   
-  if (format == DOUBLE_AUDIO)
+  if (format == DOUBLE_AUDIO) {
     jack_set_process_callback(play_client, play_process_d, buffer);
+  }
   
   // Tell the JACK server to call `srate()' whenever
   // the sample rate of the system changes.
@@ -365,7 +376,6 @@ int play_init(void* buffer, octave_idx_type frames, octave_idx_type channels,
   return 0;
 }
 
-
 /***
  *
  * play_close
@@ -382,14 +392,16 @@ int play_close(void)
    // Unregister all ports for the play client.
   for (n=0; n<n_output_ports; n++) {
     err = jack_port_unregister(play_client, output_ports[n]);
-    if (err)
+    if (err) {
       error("Failed to unregister an output port");
+    }
   }
  
   // Close the client.
   err = jack_client_close(play_client);
-  if (err)
+  if (err) {
     error("jack_client_close failed");
+  }
 
   free(output_ports);
 
@@ -401,7 +413,6 @@ int play_close(void)
 * Audio Capturing
 *
 *********************************************************************************************/
-
 
 /***
  *
@@ -441,19 +452,22 @@ int record_process(jack_nframes_t nframes, void *arg)
   for (n=0; n<n_input_ports; n++) {
 
     // Grab the n:th input buffer.
-    in = (jack_default_audio_sample_t *) 
+    in = (jack_default_audio_sample_t *)
       jack_port_get_buffer(input_ports[n], nframes);
-
-    if (in == NULL)
+    
+    if (in == nullptr) {
       error("jack_port_get_buffer failed!");
+    }
     
     if((record_frames - frames_recorded) > 0 && running) { 
       
-      if (frames_to_read >  (record_frames - frames_recorded) )
-	frames_to_read = record_frames - frames_recorded; 
+      if (frames_to_read >  (record_frames - frames_recorded) ) {
+	frames_to_read = record_frames - frames_recorded;
+      }
 
-      for(m=0; m<frames_to_read; m++)
+      for(m=0; m<frames_to_read; m++) {
 	input_fbuffer[m+frames_recorded + n*record_frames] = (float) in[(jack_nframes_t) m];
+      }
       
     } else {
       frames_recorded = record_frames; 
@@ -564,20 +578,23 @@ int record_close(void)
   // Unregister all ports for the record client.
   for (n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);
-    if (err)
+    if (err) {
       error("Failed to unregister an input port");
+    }
   }
  
   // Close the client.
   err = jack_client_close(record_client);
-  if (err)
+  if (err) {
     error("jack_client_close failed");
+  }
 
-  if (input_ports)
+  if (input_ports) {
     free(input_ports);
-  else
+  } else {
     error("Failed free input_ports memory");
-
+  }
+  
   return 0;
 }
 
@@ -649,8 +666,9 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       in = (jack_default_audio_sample_t *) 
 	jack_port_get_buffer(input_ports[n], nframes);
       
-      if (in == NULL)
+      if (in == nullptr) {
 	error("jack_port_get_buffer failed!");
+      }
 
       //
       // Read data from JACK and save it in the ring buffer.
@@ -660,7 +678,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
 	if (local_rbuf_pos >= record_frames) { // Check if we have exceeded the size of the ring buffer. 
 	  local_rbuf_pos = 0; // We have reached the end of the ringbuffer so start from 0 again.
-	  has_wrapped = TRUE; // Indicate that the ring buffer is full.
+	  has_wrapped = true; // Indicate that the ring buffer is full.
 	}	
 	
 	input_fbuffer[local_rbuf_pos + n*record_frames] = (float) in[(jack_nframes_t) m];
@@ -711,7 +729,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	  
 	  // Check if we are above the threshold.
 	  if ( (trigger / (float) t_frames) > t_level) {
-	    trigger_active = TRUE;
+	    trigger_active = true;
 	    
 	    struct tm *the_time;
 	    time_t curtime;
@@ -724,7 +742,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 	    
 	    // This should work with Octave's diary command.
 	    octave_stdout << "\n Got a trigger signal at: " << asctime (the_time) << "\n";
-	    got_data = TRUE;	    
+	    got_data = true;	    
 	  }
 	  
 	} else { // We have already detected a signal so wait until we have got all the requested data. 
@@ -733,15 +751,17 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
 	// We have got a trigger and the buffer has wrapped. Now wait for post_t_frames more 
 	// data and then we're done acquiring data.
-	if (trigger_active && has_wrapped && (post_t_frames_counter >= post_t_frames))
-	  ringbuffer_read_running = FALSE; // Exit the read loop.
-
+	if (trigger_active && has_wrapped && (post_t_frames_counter >= post_t_frames)) {
+	  ringbuffer_read_running = false; // Exit the read loop.
+	}
+	
 	// We have got a trigger and the buffer has NOT wrapped. Now just wait until the buffer
 	// is full. This is to avoid saving a non-full buffer. If the buffer wraps while we
 	// are waiting for record_frames number of frames (= until the ringbuffer is full)
 	// then the condition above applies and we wait for post_t_frames number of frames instead.
-	if (trigger_active && !has_wrapped && (local_rbuf_pos >= record_frames))
-	  ringbuffer_read_running = FALSE; // Exit the read loop.
+	if (trigger_active && !has_wrapped && (local_rbuf_pos >= record_frames)) {
+	  ringbuffer_read_running = false; // Exit the read loop.
+	}
 	
       } // if (n == triggerport)
       
@@ -797,7 +817,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   char port_name[255];
 
   // Clear trigger indicator.
-  got_data = FALSE;
+  got_data = false;
 
   // The number of channels (columns) in the buffer matrix.
   n_input_ports = (octave_idx_type) channels;
@@ -816,7 +836,7 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   post_t_frames = post_trigger_frames;
 
   // Flag used to stop the data acquisition.
-  ringbuffer_read_running = TRUE;
+  ringbuffer_read_running = true;
   
   // Initialze the ring buffer position.
   ringbuffer_position = 0;
@@ -832,12 +852,12 @@ int t_record_init(void* buffer, octave_idx_type frames, octave_idx_type channels
   t_frames = trigger_frames;
 
   // Reset the wrapped flag.
-  has_wrapped = FALSE;
+  has_wrapped = false;
 
   // Initialize trigger parameters.
   trigger = 0.0;	    // Clear the trigger value.
   trigger_position = 0;	    // Start from the beginning of the buffer.
-  trigger_active = FALSE;   // Clear the trigger status.
+  trigger_active = false;   // Clear the trigger status.
   triggerport = trigger_channel; // The (global) trigger port for the JACK callback function.
 
   if (triggerport < 0 || triggerport >= n_input_ports) {
@@ -946,28 +966,32 @@ int t_record_close(void)
    // Unregister all ports for the record client.
   for (n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);
-    if (err)
+    if (err) {
       error("Failed to unregister an input port");
+    }
   }
  
   // Close the client.
   err = jack_client_close(record_client);
-  if (err)
+  if (err) {
     error("jack_client_close failed");
+  }
 
   //
   // Cleanup memory.
   //
 
-  if(input_ports)
+  if(input_ports) {
     free(input_ports);
-  else
+  } else {
     error("Failed free input_ports memory");
+  }
 
-  if (triggerbuffer)
+  if (triggerbuffer) {
     free(triggerbuffer);
-  else
+  } else {
     error("Failed free triggerbuffer memory");
-
+  }
+  
   return 0;
 }
