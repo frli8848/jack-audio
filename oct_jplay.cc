@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009,2011,2012,2014 Fredrik Lingvall
+ * Copyright (C) 2009,2011,2012,2014,2013 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
  *
  ***/
 
-// $Revision$ $Date$ $LastChangedBy$
-
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -28,28 +26,12 @@
 #include <pthread.h>
 #include <signal.h>
 
-//
-// Octave headers.
-//
-
-#include <octave/oct.h>
-
-#include <octave/oct.h>
-
 #include <iostream>
-using namespace std;
 
-#include <octave/defun-dld.h>
-#include <octave/error.h>
-
-#include <octave/pager.h>
-#include <octave/symtab.h>
-#include <octave/variables.h>
+// Octave headers.
+#include <octave/oct.h>
 
 #include "jaudio.h"
-
-#define TRUE 1
-#define FALSE 0
 
 //
 // Macros.
@@ -120,7 +102,7 @@ A frames x number of playback channels matrix.\n\
 A char matrix with the JACK client input port names, for example, ['system:playback_1'; 'system:playback_2'], etc.\n\
 @end table\n\
 \n\
-@copyright{} 2009,2011,2012 Fredrik Lingvall.\n\
+@copyright{} 2009-2023 Fredrik Lingvall.\n\
 @seealso {jinfo, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
@@ -201,7 +183,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   }
 
   //std::string strin = args(1).string_value();
-  //octave_stdout << strin << endl;
+  //octave_stdout << strin << std::endl;
   //buflen = strin.length();
 
   buflen = ch.cols();
@@ -261,7 +243,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
       sleep(1);
 
     play_close();
-    octave_stdout << "done!" << endl;
+    octave_stdout << "done!" << std::endl;
   }
 
   if (format == DOUBLE_AUDIO) {
@@ -281,7 +263,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 
     play_close();
 
-    octave_stdout << "done!" << endl;
+    octave_stdout << "done!" << std::endl;
   }
 
   //

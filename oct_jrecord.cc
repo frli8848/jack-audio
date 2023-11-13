@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011,2012 Fredrik Lingvall
+ * Copyright (C) 2011,2012,2023 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
  *
  ***/
 
-// $Revision$ $Date$ $LastChangedBy$
-
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -28,28 +26,11 @@
 #include <pthread.h>
 #include <signal.h>
 
-//
-// Octave headers.
-//
-
-#include <octave/oct.h>
-
-#include <octave/oct.h>
-
 #include <iostream>
-using namespace std;
 
-#include <octave/defun-dld.h>
-#include <octave/error.h>
-
-#include <octave/pager.h>
-#include <octave/symtab.h>
-#include <octave/variables.h>
+#include <octave/oct.h>
 
 #include "jaudio.h"
-
-#define TRUE 1
-#define FALSE 0
 
 //
 // Macros.
@@ -63,11 +44,6 @@ using namespace std;
 #define mxGetM(N)   args(N).matrix_value().rows()
 #define mxGetN(N)   args(N).matrix_value().cols()
 #define mxIsChar(N) args(N).is_string()
-
-//
-// Globals.
-//
-
 
 //
 // Function prototypes.
@@ -106,7 +82,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (jrecord, args, nlhs,
            "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {} Y = jrecord(frames,jack_ouputs).\n\
+@deftypefn {Loadable Function} {} Y = jrecord(frames,jack_inputs).\n\
 \n\
 JRECORD Records audio data to the output matrix Y using the (low-latency) audio server JACK.\n\
 \n\
@@ -117,10 +93,10 @@ Input parameters:\n\
 A scalar that specifies the number of frames to record/channel.\n\
 \n\
 @item jack_ouputs\n\
-A char matrix with the JACK client output port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
+A char matrix with the JACK client input port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
 @end table\n\
 \n\
-@copyright{} 2011 Fredrik Lingvall.\n\
+@copyright{} 2011-2023 Fredrik Lingvall.\n\
 @seealso {jinfo, jplay, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
@@ -244,12 +220,14 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   record_close();
 
   for ( n=0; n<channels; n++ ) {
-    if (port_names[n])
+    if (port_names[n]) {
       free(port_names[n]);
+    }
   }
 
-  if (port_names)
+  if (port_names) {
     free(port_names);
+  }
 
   //
   // Restore old signal handlers.
@@ -267,8 +245,9 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     error("Couldn't register signal handler.\n");
   }
 
-  if (!is_running())
+  if (!is_running()) {
     error("CTRL-C pressed - record interrupted!\n"); // Bail out.
+  }
 
   return oct_retval;
 }

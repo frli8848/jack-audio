@@ -19,20 +19,18 @@
  *
  ***/
 
-// $Revision$ $Date$ $LastChangedBy$
-
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
-#include <pthread.h>
 #include <signal.h>
+
+#include <chrono>
+#include <thread>
 
 //
 // Octave headers.
 //
-
-#include <octave/oct.h>
 
 #include <octave/oct.h>
 
@@ -126,11 +124,11 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   float  *fA;
   float  *Y;
   int err,verbose = 0;
-  octave_idx_type n, frames;
+  size_t n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names_in, **port_names_out;
-  octave_idx_type buflen;
-  octave_idx_type play_channels, rec_channels;
+  size_t buflen;
+  size_t play_channels, rec_channels;
   int format = FLOAT_AUDIO;
 
   octave_value_list oct_retval; // Octave return (output) parameters
@@ -159,8 +157,8 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     format = DOUBLE_AUDIO;
 
     const Matrix tmp0 = args(0).matrix_value();
-    frames = tmp0.rows();		// Audio data length for each channel.
-    play_channels = tmp0.cols();	// Number of channels.
+    frames = (size_t) tmp0.rows();		// Audio data length for each channel.
+    play_channels = (size_t) tmp0.cols();	// Number of channels.
 
     dA = (double*) tmp0.data();
   }
@@ -171,8 +169,8 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     format = FLOAT_AUDIO;
 
     const FloatMatrix tmp0 = args(0).float_matrix_value();
-    frames = tmp0.rows();		// Audio data length for each channel.
-    play_channels = tmp0.cols();	// Number of channels.
+    frames = (size_t) tmp0.rows();		// Audio data length for each channel.
+    play_channels = (size_t) tmp0.cols();	// Number of channels.
 
     fA = (float*) tmp0.data();
   }
@@ -203,7 +201,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     return oct_retval;
   }
 
-  buflen = ch_in.cols();
+  buflen = (size_t) ch_in.cols();
   port_names_in = (char**) malloc(play_channels * sizeof(char*));
   for ( n=0; n<play_channels; n++ ) {
 
@@ -271,18 +269,17 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   }
 
   // Allocate memory for the output arg.
-  FloatMatrix Ymat(frames, rec_channels);
+  FloatMatrix Ymat( (octave_idx_type) frames, rec_channels);
   Y = (float*) Ymat.data();
-
 
   // Set status to running (CTRL-C will clear the flag and stop play/capture).
   set_running_flag();
 
-
   // Init recording and connect to the jack output ports.
-  if (record_init(Y, frames, rec_channels, port_names_out, "octave:jplayrec_r") < 0)
+  if (record_init(Y, frames, rec_channels, port_names_out, "octave:jplayrec_r") < 0) {
     return oct_retval;
-
+  }
+  
   if (format == DOUBLE_AUDIO) {
 
     octave_stdout << "Playing double precision data...";
@@ -291,12 +288,14 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     dA = (double*) tmp0.data();
 
     // Init playback and connect to the jack input ports.
-    if (play_init(dA, frames, play_channels, port_names_in, "octave:jplayrec_p",DOUBLE_AUDIO ) < 0)
+    if (play_init(dA, frames, play_channels, port_names_in, "octave:jplayrec_p", DOUBLE_AUDIO ) < 0) {
       return oct_retval;
+    }
 
     // Wait for both playback and record to finish.
-    while( (!record_finished() || !play_finished()) && is_running() )
-      sleep(1);
+    while( (!record_finished() || !play_finished()) && is_running() ) {
+      std::this_thread::sleep_for (std::chrono::milliseconds(100));
+    }
 
     // Close the jack ports.
     play_close();
@@ -313,13 +312,14 @@ A char matrix with the JACK client output port names, for example, ['system:capt
     fA = (float*) tmp0.data();
 
     // Init playback and connect to the jack input ports.
-    if (play_init(fA, frames, play_channels, port_names_in, "octave:jplayrec_p",FLOAT_AUDIO) < 0)
+    if (play_init(fA, frames, play_channels, port_names_in, "octave:jplayrec_p", FLOAT_AUDIO) < 0)
       return oct_retval;
 
     // Wait for both playback and record to finish.
-    while( (!record_finished() || !play_finished()) && is_running() )
-      sleep(1);
-
+    while( (!record_finished() || !play_finished()) && is_running() ) {
+      std::this_thread::sleep_for (std::chrono::milliseconds(100));
+    }
+  
     // Close the jack ports.
     play_close();
     record_close();

@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009,2011 Fredrik Lingvall 
+ * Copyright (C) 2009,2011,2023 Fredrik Lingvall 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -44,9 +44,6 @@ using namespace std;
 #include <octave/variables.h>
 
 #include "jaudio.h"
-
-#define TRUE 1
-#define FALSE 0
 
 //
 // Macros.
@@ -96,7 +93,6 @@ void sig_keyint_handler(int signum) {
   //printf("Caught signal SIGINT.\n");
 }
 
-
 //
 // Jack callback functions.
 //
@@ -127,7 +123,7 @@ int srate (jack_nframes_t nframes, void *arg)
 
 void jerror (const char *desc)
 {
-  error("JACK error: %s\n", desc);
+  printf("JACK error: %s\n", desc);
 }
 
 void jack_shutdown (void *arg)
@@ -136,8 +132,6 @@ void jack_shutdown (void *arg)
   return;
 }
 
-
-  
 /***
  * 
  * Octave (oct) gateway function for JINFO.
@@ -146,19 +140,18 @@ void jack_shutdown (void *arg)
 
 DEFUN_DLD (jinfo, args, nlhs,
 	   "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  jinfo(dev_name).\n\
+@deftypefn {Loadable Function} {}  jinfo() \n\
 \n\
 JINFO Prints the input and output ports connected to the\n\
  (low-latency) JACK audio engine.\n\
 \n\
-@copyright{} 2011 Fredrik Lingvall.\n\
+@copyright{} 2023 Fredrik Lingvall.\n\
 @seealso {jplay, jrecord, jtrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
   jack_client_t *client;
   const char **ports_i, **ports_o;
   jack_port_t  *port;
-  char device[50];
   int  buflen, n, port_flags;
   octave_value_list oct_retval; // Octave return (output) parameters
 
@@ -175,33 +168,11 @@ JINFO Prints the input and output ports connected to the\n\
     error("jinfo don't have output arguments!");
     return oct_retval;
   }
-  
-  //
-  //  The jack audio device.
-  //
-  
-  if (nrhs == 1) {
     
-    if (!mxIsChar(0)) {
-      error("1st arg (the audio device) must be a string !");
-      return oct_retval;
-    }
-    
-    std::string strin = args(0).string_value(); 
-    buflen = strin.length();
-    for (n=0; n<=buflen; n++ ) {
-      device[n] = strin[n];
-    }
-    device[buflen] = '\0';
-    
-  } else
-    strcpy(device,"default"); 
-  
   //
   // List all devices if no input arg is given.
   //
   
-
   // Tell the JACK server to call error() whenever it
   // experiences an error.  Notice that this callback is
   // global to this process, not specific to each client.
@@ -209,13 +180,13 @@ JINFO Prints the input and output ports connected to the\n\
   // This is set here so that it can catch errors in the
   // connection process.
   jack_set_error_function (jerror);
-
+  
   // Try to become a client of the JACK server.
-  if ((client = jack_client_new ("octave:jinfo")) == 0) {
+  if ((client = jack_client_open ("octave:jinfo", JackNullOption, NULL)) == 0) {
     error("jack server not running?\n");
     return oct_retval;
   }
-
+  
   // Tell the JACK server to call `process()' whenever
   // there is work to be done.
   jack_set_process_callback (client, process, 0);
@@ -265,6 +236,7 @@ JINFO Prints the input and output ports connected to the\n\
     error("Cannot find any output ports\n");
     return oct_retval;
   }
+  
   /*
   if ((ports_o = jack_get_ports(client, NULL, NULL, 
 				JackPortIsOutput)) == NULL) {
@@ -289,6 +261,7 @@ JINFO Prints the input and output ports connected to the\n\
     error("Cannot find any input ports\n");
     return oct_retval;
   }
+  
   /*
   if ((ports_i = jack_get_ports(client, NULL, NULL, 
 			      JackPortIsPhysical|JackPortIsInput)) == NULL) {
