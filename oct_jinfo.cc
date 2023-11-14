@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2009,2011,2023 Fredrik Lingvall 
+ * Copyright (C) 2009,2011,2023 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with the program; see the file COPYING.  If not, write to the 
+ *   along with the program; see the file COPYING.  If not, write to the
  *   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  *   02110-1301, USA.
  *
@@ -27,23 +27,12 @@
 #include <pthread.h>
 #include <signal.h>
 
-//
-// Octave headers.
-//
-
-#include <octave/oct.h>
 #include <iostream>
 
-using namespace std;
+#include <octave/oct.h>
 
-#include <octave/defun-dld.h>
-#include <octave/error.h>
-
-#include <octave/pager.h>
-#include <octave/symtab.h>
-#include <octave/variables.h>
-
-#include "jaudio.h"
+//#include "jaudio.h"
+#include <jack/jack.h>
 
 //
 // Macros.
@@ -97,49 +86,60 @@ void sig_keyint_handler(int signum) {
 // Jack callback functions.
 //
 
-int process (jack_nframes_t nframes, void *arg)
+int process_jinfo (jack_nframes_t nframes, void *arg)
 {
-  // Just copy input to output.
 
-  jack_default_audio_sample_t *out = 
-    (jack_default_audio_sample_t *) 
+  std::cout << "HEJ" << std::endl;
+  jack_default_audio_sample_t *out =
+    (jack_default_audio_sample_t *)
     jack_port_get_buffer (output_port, nframes);
 
-  jack_default_audio_sample_t *in = 
-    (jack_default_audio_sample_t *) 
+  jack_default_audio_sample_t *in =
+    (jack_default_audio_sample_t *)
     jack_port_get_buffer (input_port, nframes);
-  
-  memcpy (out, in, sizeof (jack_default_audio_sample_t) * nframes);
-  
-  return 0;      
-}
 
-// This is called whenever the sample rate changes.
-int srate (jack_nframes_t nframes, void *arg)
-{
-  //printf("The sample rate is now %lu/sec.\n", (long unsigned int) nframes);
+  // Just copy input to output.
+  //memcpy (out, in, sizeof (jack_default_audio_sample_t) * nframes);
+
+  // Just fill with silence.
+  bzero(out, sizeof (jack_default_audio_sample_t) * nframes);
+
   return 0;
 }
 
-void jerror (const char *desc)
+// This is called whenever the sample rate changes.
+int srate(jack_nframes_t nframes, void *arg)
 {
-  printf("JACK error: %s\n", desc);
+  printf("The sample rate is now %lu/sec.\n", (long unsigned int) nframes);
+  return 0;
 }
 
-void jack_shutdown (void *arg)
+void jerror(const char *desc)
 {
-  // Do nothing
+  std::cerr << "JACK error: '" << desc << "'" << std::endl;
   return;
 }
 
+
+void jack_shutdown(void *arg)
+{
+  //clear_running_flag(); // Stop if JACK shuts down..
+  return;
+}
+
+void print_jack_status(jack_status_t status)
+{
+  std::cout << "Jack status: " << status << std::endl;
+}
+
 /***
- * 
+ *
  * Octave (oct) gateway function for JINFO.
  *
  ***/
 
 DEFUN_DLD (jinfo, args, nlhs,
-	   "-*- texinfo -*-\n\
+           "-*- texinfo -*-\n\
 @deftypefn {Loadable Function} {}  jinfo() \n\
 \n\
 JINFO Prints the input and output ports connected to the\n\
@@ -158,151 +158,151 @@ JINFO Prints the input and output ports connected to the\n\
   int nrhs = args.length ();
 
   // Check for proper inputs arguments.
-  
+
   if (nrhs > 1) {
     error("jinfo don't have more than one input argument!");
     return oct_retval;
   }
-  
+
   if (nlhs > 0) {
     error("jinfo don't have output arguments!");
     return oct_retval;
   }
-    
+
   //
   // List all devices if no input arg is given.
   //
-  
-  // Tell the JACK server to call error() whenever it
-  // experiences an error.  Notice that this callback is
-  // global to this process, not specific to each client.
-  // 
-  // This is set here so that it can catch errors in the
-  // connection process.
-  jack_set_error_function (jerror);
-  
+
   // Try to become a client of the JACK server.
-  if ((client = jack_client_open ("octave:jinfo", JackNullOption, NULL)) == 0) {
+  const char *client_name = "octave:jinfo";
+  const char *server_name = NULL;
+  jack_options_t options = JackNullOption;
+  jack_status_t status;
+
+  client = jack_client_open (client_name, options, &status, server_name);
+  if (client == NULL) {
+    print_jack_status(status);
     error("jack server not running?\n");
+
     return oct_retval;
   }
-  
+
+  if (status & JackServerStarted) {
+    fprintf (stderr, "JACK server started\n");
+  }
+
+  if (status & JackNameNotUnique) {
+    client_name = jack_get_client_name(client);
+    fprintf (stderr, "unique name `%s' assigned\n", client_name);
+  }
+
+  std::cout << "Client name: '" << jack_get_client_name(client) << "'" << std::endl;
+
   // Tell the JACK server to call `process()' whenever
   // there is work to be done.
-  jack_set_process_callback (client, process, 0);
-  
-  // Tell the JACK server to call `srate()' whenever
-  // the sample rate of the system changes.
-  jack_set_sample_rate_callback (client, srate, 0);
-  
+  jack_set_process_callback (client, process_jinfo, 0);
+
   // Tell the JACK server to call `jack_shutdown()' if
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
   jack_on_shutdown (client, jack_shutdown, 0);
 
+  // Tell the JACK server to call error() whenever it
+  // experiences an error.  Notice that this callback is
+  // global to this process, not specific to each client.
+  //
+  // This is set here so that it can catch errors in the
+  // connection process.
+  //jack_set_error_function (jerror);
+
+  // Tell the JACK server to call `srate()' whenever
+  // the sample rate of the system changes.
+  //jack_set_sample_rate_callback (client, srate, 0);
+
   octave_stdout << "|------------------------------------------------------\n";
-  
-  // Display the current sample rate. Once the client is activated 
+
+  // Display the current sample rate. Once the client is activated
   // (see below), you should rely on your own sample rate
   // callback (see above) for this value.
-  octave_stdout << "|\n| JACK engine sample rate: " << 
+  octave_stdout << "|\n| JACK engine sample rate: " <<
     (long unsigned int) jack_get_sample_rate(client) << " [Hz]\n";
-  
+
   // Display the current JACK load.
-  octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n\n" << endl;
-  
+  octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]" << std::endl;
+
   //
-  // Create two ports.
+  // Create input and output ports.
   //
 
-  input_port = jack_port_register(client, "input", 
-				  JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
-  
-  output_port = jack_port_register(client, "output", 
-				   JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-  
+  input_port = jack_port_register(client, "input",
+                                  JACK_DEFAULT_AUDIO_TYPE,
+                                  JackPortIsInput, 0);
+
+  output_port = jack_port_register(client, "output",
+                                   JACK_DEFAULT_AUDIO_TYPE,
+                                   JackPortIsOutput, 0);
+
+  if ((input_port == NULL) || (output_port == NULL)) {
+    std::cerr << "No more JACK ports available!" << std::endl;
+    return oct_retval;
+  }
+
+  /*
   // Tell the JACK server that we are ready to roll.
-  if (jack_activate (client)) {
+  // This segfaults of some reason?
+  if (jack_activate(client)) {
+    std::cerr << "Cannot activate jack client!" << std::endl;
     error("Cannot activate jack client");
     return oct_retval;
   }
-  
+  */
+
   // Connect the ports. Note: you can't do this before
   // the client is activated, because we can't allow
   // connections to be made to clients that aren't
   // running.
-  if ((ports_o = jack_get_ports(client, NULL, NULL, 
-				JackPortIsOutput)) == NULL) {
-    error("Cannot find any output ports\n");
-    return oct_retval;
-  }
-  
-  /*
-  if ((ports_o = jack_get_ports(client, NULL, NULL, 
-				JackPortIsOutput)) == NULL) {
-    error("Cannot find any physical capture ports\n");
-    return oct_retval;
-  }
-  */
-  /*
-  if ((ports_o = jack_get_ports(client, NULL, NULL, 
-			      JackPortIsPhysical|JackPortIsOutput)) == NULL) {
-    error("Cannot find any physical capture ports\n");
-    return oct_retval;
-  }
-  */
-  //if (jack_connect(client, ports_o[0], jack_port_name (input_port))) 
-  //  error("Cannot connect input ports\n");
-  
-  //free (ports_o);
-  
-  if ((ports_i = jack_get_ports(client, NULL, NULL, 
-				JackPortIsInput)) == NULL) {
-    error("Cannot find any input ports\n");
-    return oct_retval;
-  }
-  
-  /*
-  if ((ports_i = jack_get_ports(client, NULL, NULL, 
-			      JackPortIsPhysical|JackPortIsInput)) == NULL) {
-    error("Cannot find any physical playback ports\n");
-    return oct_retval;
-  }
-  */
-  //if ((ports_o = jack_get_ports(client, NULL, NULL, 
-  //			      JackPortIsPhysical|JackPortIsOutput)) == NULL) {
-  //  error("Cannot find any physical capture ports\n");
-  //  return oct_retval;
-  //}
 
-  //if (jack_connect(client, ports[0], jack_port_name (input_port))) 
-  //  error("Cannot connect input ports\n");
-  
-  //if ((ports_i = jack_get_ports (client, NULL, NULL, 
-  //                             JackPortIsPhysical|JackPortIsInput)) == NULL) {
-  //  error("Cannot find any physical playback ports\n");
-  //  return oct_retval;
-  //}
+  if ((ports_o = jack_get_ports(client, NULL, NULL,
+                                JackPortIsPhysical|JackPortIsOutput)) == NULL) {
+    error("Cannot find any physical output ports\n");
+    return oct_retval;
+  }
 
+  /*
+  if (jack_connect(client, ports_o[0], jack_port_name (input_port))) {
+    error("Cannot connect input ports\n");
+    return oct_retval;
+  }
+  */
+  if ((ports_i = jack_get_ports(client, NULL, NULL,
+                                JackPortIsPhysical|JackPortIsInput)) == NULL) {
+    error("Cannot find any physical input ports\n");
+    return oct_retval;
+  }
+  /*
+  if (jack_connect(client, ports_i[0], jack_port_name (input_port))) {
+    error("Cannot connect input ports\n");
+    return oct_retval;
+  }
+  */
   octave_stdout << "|------------------------------------------------------\n";
   octave_stdout << "|         Input ports                                  \n";
   octave_stdout << "|------------------------------------------------------\n";
   n = 0;
   while(ports_i[n] != NULL) {
-    
+
     port = jack_port_by_name(client, ports_i[n]);
     port_flags = jack_port_flags(port);
 
-    if (strcmp("octave:jinfo:input",ports_i[n]) != 0) { // Don't print the jinfo input.
-      if (port_flags & JackPortIsPhysical) 
-	octave_stdout << "|        " << ports_i[n] << " [physical]\n";
+    if (strcmp("octave:jinfo:input", ports_i[n]) != 0) { // Don't print the jinfo input.
+      if (port_flags & JackPortIsPhysical)
+        octave_stdout << "|        " << ports_i[n] << " [physical]\n";
       else
-	octave_stdout << "|        " << ports_i[n] << endl;
+        octave_stdout << "|        " << ports_i[n] << std::endl;
     }
     n++;
   }
-  octave_stdout << "|------------------------------------------------------\n\n\n";
-  
+
   octave_stdout << "|------------------------------------------------------\n";
   octave_stdout << "|         Output ports                                 \n";
   octave_stdout << "|------------------------------------------------------\n";
@@ -313,20 +313,25 @@ JINFO Prints the input and output ports connected to the\n\
     port_flags = jack_port_flags(port);
 
     if (strcmp("octave:jinfo:output",ports_o[n]) != 0) { // Don't print the jinfo output.
-      if (port_flags & JackPortIsPhysical) 
-	octave_stdout << "|        " << ports_o[n] << " [physical]\n"; 
+      if (port_flags & JackPortIsPhysical)
+        octave_stdout << "|        " << ports_o[n] << " [physical]\n";
       else
-	octave_stdout << "|        " << ports_o[n] << endl; 
+        octave_stdout << "|        " << ports_o[n] << std::endl;
     }
     n++;
   }
   octave_stdout << "|------------------------------------------------------\n";
 
-  free (ports_i);
-  free (ports_o);
+  // Clenaup
+  if (ports_i) {
+    free (ports_i);
+  }
+  if (ports_o) {
+    free (ports_o);
+  }
 
   // Close the client.
   jack_client_close (client);
-  
+
   return oct_retval;
 }
