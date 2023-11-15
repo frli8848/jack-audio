@@ -13,7 +13,7 @@
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with the program; see the file COPYING.  If not, write to the 
+ *   along with the program; see the file COPYING.  If not, write to the
  *   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  *   02110-1301, USA.
  *
@@ -35,25 +35,30 @@ void clear_running_flag(void);
 int play_finished(void);
 int play_process_f(jack_nframes_t nframes, void *arg);
 int play_process_d(jack_nframes_t nframes, void *arg);
-int play_init(void* buffer, size_t frames, size_t channels, 
-	      char **port_names, const char *client_name, int format);
+int play_init(void* buffer, size_t frames, size_t channels,
+              char **port_names, const char *client_name, int format);
 int play_close(void);
 
 int record_finished(void);
-int record_init(void* buffer, size_t frames, size_t channels, 
-		char **port_names, const char *client_name);
+int record_init(void* buffer, size_t frames, size_t channels,
+                char **port_names, const char *client_name);
 int record_close(void);
 
 int t_record_finished(void);
 int t_record_process_f(jack_nframes_t nframes, void *arg);
 int t_record_process_d(jack_nframes_t nframes, void *arg);
-int t_record_init(void* buffer, size_t frames, size_t channels, 
-		  char **port_names, const char *client_name,
-		  double trigger_level,
-		  size_t trigger_channel,
-		  size_t trigger_frames,
-		  size_t post_trigger_frames);
+int t_record_init(void* buffer, size_t frames, size_t channels,
+                  char **port_names, const char *client_name,
+                  double trigger_level,
+                  size_t trigger_channel,
+                  size_t trigger_frames,
+                  size_t post_trigger_frames);
 size_t get_ringbuffer_position(void);
 int t_record_close(void);
+
+void print_jack_status(jack_status_t status);
+void jerror(const char *desc);
+void jack_shutdown(void *arg);
+int srate(jack_nframes_t nframes, void *arg);
 
 #endif
