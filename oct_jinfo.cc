@@ -88,18 +88,18 @@ void sig_keyint_handler(int signum) {
 
 int process_jinfo (jack_nframes_t nframes, void *arg)
 {
-
-  std::cout << "HEJ" << std::endl;
   jack_default_audio_sample_t *out =
     (jack_default_audio_sample_t *)
     jack_port_get_buffer (output_port, nframes);
 
+  /*
   jack_default_audio_sample_t *in =
     (jack_default_audio_sample_t *)
     jack_port_get_buffer (input_port, nframes);
 
   // Just copy input to output.
-  //memcpy (out, in, sizeof (jack_default_audio_sample_t) * nframes);
+  memcpy (out, in, sizeof (jack_default_audio_sample_t) * nframes);
+  */
 
   // Just fill with silence.
   bzero(out, sizeof (jack_default_audio_sample_t) * nframes);
@@ -129,8 +129,10 @@ void jack_shutdown(void *arg)
 
 void print_jack_status(jack_status_t status)
 {
-  std::cout << "Jack status: " << status << std::endl;
+
+  std::cerr << "JACK status: " << status << std::endl;
 }
+
 
 /***
  *
@@ -196,8 +198,6 @@ JINFO Prints the input and output ports connected to the\n\
     fprintf (stderr, "unique name `%s' assigned\n", client_name);
   }
 
-  std::cout << "Client name: '" << jack_get_client_name(client) << "'" << std::endl;
-
   // Tell the JACK server to call `process()' whenever
   // there is work to be done.
   jack_set_process_callback (client, process_jinfo, 0);
@@ -228,7 +228,7 @@ JINFO Prints the input and output ports connected to the\n\
     (long unsigned int) jack_get_sample_rate(client) << " [Hz]\n";
 
   // Display the current JACK load.
-  octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]" << std::endl;
+  octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n|" << std::endl;
 
   //
   // Create input and output ports.
@@ -247,46 +247,71 @@ JINFO Prints the input and output ports connected to the\n\
     return oct_retval;
   }
 
-  /*
   // Tell the JACK server that we are ready to roll.
   // This segfaults of some reason?
-  if (jack_activate(client)) {
-    std::cerr << "Cannot activate jack client!" << std::endl;
+  if (int err = jack_activate(client)) {
+
+    std::cerr << "Activate err: " << err << std::endl;
+
+    jack_client_close(client);
+
+    // Bail out
     error("Cannot activate jack client");
-    return oct_retval;
   }
-  */
 
   // Connect the ports. Note: you can't do this before
   // the client is activated, because we can't allow
   // connections to be made to clients that aren't
   // running.
 
+  // Connect output port -> input (playback) port
+
   if ((ports_o = jack_get_ports(client, NULL, NULL,
                                 JackPortIsPhysical|JackPortIsOutput)) == NULL) {
+
+    // Close connection and bail out.
+    jack_client_close (client);
     error("Cannot find any physical output ports\n");
+  }
+
+  // Connect to first output (capture) port.
+  if (jack_connect(client, ports_o[0], jack_port_name (input_port))) {
+
+    // Close connection and bail out.
+    jack_client_close (client);
+    error("Cannot connect output ports\n");
+  }
+
+  //
+  // Connect output (capture) port -> input port
+  //
+
+  if ((ports_i = jack_get_ports(client, NULL, NULL,
+                                JackPortIsPhysical|JackPortIsInput)) == NULL) {
+
+    // Disconnect outputs, close, and bail out
+    jack_disconnect(client, ports_o[0], jack_port_name (input_port));
+    jack_client_close (client);
+
+    error("Cannot find any physical input ports\n");
+  }
+
+  // Connect to first input (playback) port.
+  if (int err = jack_connect(client, jack_port_name(output_port), ports_i[0])) {
+
+    std::cout << err << std::endl;
+
+    // Disconnect outputs, close, and bail out
+    jack_disconnect(client, ports_o[0], jack_port_name (input_port));
+    jack_client_close (client);
+
+    error("Cannot connect input ports\n");
+
     return oct_retval;
   }
 
-  /*
-  if (jack_connect(client, ports_o[0], jack_port_name (input_port))) {
-    error("Cannot connect input ports\n");
-    return oct_retval;
-  }
-  */
-  if ((ports_i = jack_get_ports(client, NULL, NULL,
-                                JackPortIsPhysical|JackPortIsInput)) == NULL) {
-    error("Cannot find any physical input ports\n");
-    return oct_retval;
-  }
-  /*
-  if (jack_connect(client, ports_i[0], jack_port_name (input_port))) {
-    error("Cannot connect input ports\n");
-    return oct_retval;
-  }
-  */
   octave_stdout << "|------------------------------------------------------\n";
-  octave_stdout << "|         Input ports                                  \n";
+  octave_stdout << "|         Input ports:                                 \n";
   octave_stdout << "|------------------------------------------------------\n";
   n = 0;
   while(ports_i[n] != NULL) {
@@ -304,7 +329,7 @@ JINFO Prints the input and output ports connected to the\n\
   }
 
   octave_stdout << "|------------------------------------------------------\n";
-  octave_stdout << "|         Output ports                                 \n";
+  octave_stdout << "|         Output ports:                                \n";
   octave_stdout << "|------------------------------------------------------\n";
   n = 0;
   while(ports_o[n] != NULL) {
@@ -322,6 +347,19 @@ JINFO Prints the input and output ports connected to the\n\
   }
   octave_stdout << "|------------------------------------------------------\n";
 
+  // Disconnect ports
+
+  if (jack_disconnect(client, jack_port_name (output_port), ports_i[0])) {
+    error("Cannot disconnect output port!\n");
+  }
+
+  if (jack_disconnect(client, ports_o[0], jack_port_name (input_port))) {
+    error("Cannot connect input port!\n");
+  }
+
+  // Close the client.
+  jack_client_close (client);
+
   // Clenaup
   if (ports_i) {
     free (ports_i);
@@ -329,9 +367,6 @@ JINFO Prints the input and output ports connected to the\n\
   if (ports_o) {
     free (ports_o);
   }
-
-  // Close the client.
-  jack_client_close (client);
 
   return oct_retval;
 }
