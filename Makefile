@@ -18,6 +18,7 @@
 # 02110-1301, USA.
 
 CXX = mkoctfile
+CXXFLAGS = -Wall
 DLDCC = mkoctfile
 
 ALIBDIRS = -lasound
@@ -37,7 +38,7 @@ all: \
 	jplayrec.oct
 
 .cc.o:
-	$(CXX) -c $<
+	$(CXX) $(CXXFLAGS) -c $<
 #
 # ALSA
 #

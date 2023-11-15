@@ -1,56 +1,58 @@
 #!/usr/bin/make
 
-# Copyright (C) 2011 Fredrik Lingvall
+# Copyright (C) 2011,2023 Fredrik Lingvall
 #
-# This program is free software; you can redistribute it and/or modify 
+# This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
 # Free Software Foundation; either version 2, or (at your option) any
 # later version.
 #
-# The program is distributed in the hope that it will be useful, but 
+# The program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
 # for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this software; see the file COPYING. If not, write to the 
+# along with this software; see the file COPYING. If not, write to the
 # Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# $Revision$ $Date$ $LastChangedBy$
-
 CXX = mkoctfile
+CXXFLAGS = -Wall
 DLDCC = mkoctfile
 JLIBDIRS = -ljack -lpthread -lrt
-
 
 all: \
 	jinfo.oct \
 	jplay.oct \
 	jrecord.oct \
 	jtrecord.oct \
-	jplayrec.oct 
+	jplayrec.oct
 
-.cc.o:	
-	$(CXX) -c $<
+.cc.o:
+	$(CXX) $(CXXFLAGS) -c $<
 
-jinfo.oct : oct_jinfo.o 
+#
+# JACK
+#
+
+jinfo.oct : oct_jinfo.o # jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jplay.oct : oct_jplay.o jaudio.o
+jplay.oct : oct_jplay.o jaudio_play.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jrecord.oct : oct_jrecord.o jaudio.o
+jrecord.oct : oct_jrecord.o jaudio_record.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jtrecord.oct : oct_jtrecord.o jaudio.o
+jtrecord.oct : oct_jtrecord.o jaudio_record.o jaudio_play.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jplayrec.oct : oct_jplayrec.o jaudio.o
+jplayrec.oct : oct_jplayrec.o jaudio_playrec.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:
-	rm -f *.o *~ 
+	rm -f *.o *~
 
 distclean:
 	rm -f *.o *~ *.oct
