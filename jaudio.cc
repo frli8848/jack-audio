@@ -26,6 +26,7 @@
 #include <signal.h>
 
 #include <iostream>
+#include <cstring>
 
 #include "jaudio.h"
 
@@ -191,6 +192,13 @@ int play_process_f(jack_nframes_t nframes, void *arg)
   // The number of available frames.
   frames_to_write = (size_t) nframes;
 
+  if((play_frames - frames_played) > 0) {
+
+    if (frames_to_write >  (play_frames - frames_played) ) {
+      frames_to_write = play_frames - frames_played;
+    }
+  }
+
   // Loop over all ports.
   for (n=0; n<n_output_ports; n++) {
 
@@ -200,26 +208,37 @@ int play_process_f(jack_nframes_t nframes, void *arg)
 
     if (out == nullptr) {
       std::cerr << "jack_port_get_buffer failed!" << std::endl;
+      return -1;
     }
 
-    if((play_frames - frames_played) > 0 && running) {
-
-      if (frames_to_write >  (play_frames - frames_played) ) {
-        frames_to_write = play_frames - frames_played;
-      }
-
-      for(m=0; m<frames_to_write; m++) {
-        out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
-          output_fbuffer[m+frames_played + n*play_frames];
-      }
+    // If the port was not closed fast enough after we were done playing
+    // all frames then just fill jack's output buffers with silence.
+    if (frames_played >= play_frames) {
+      std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
-      frames_played = play_frames;
-      return 0;
+
+      if(running) {
+
+        for(m=0; m<frames_to_write; m++) {
+          out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
+            output_fbuffer[m+frames_played + n*play_frames];
+        }
+
+        // Fill the end with silence to avoid playing random buffer data.
+        if ( frames_to_write < nframes ) {
+          for(m=frames_to_write; m<nframes; m++) {
+            out[(jack_nframes_t) m] = (jack_default_audio_sample_t) 0.0; // Silence.
+          }
+        }
+
+      } // running
     }
 
-  }
+  } // < n_output_ports
 
-  frames_played += frames_to_write;
+  if (frames_played < play_frames) {
+    frames_played += frames_to_write;
+  }
 
   return 0;
 }
@@ -238,6 +257,13 @@ int play_process_d(jack_nframes_t nframes, void *arg)
   // The number of available frames.
   frames_to_write = (size_t) nframes;
 
+  if((play_frames - frames_played) > 0) {
+
+    if (frames_to_write >  (play_frames - frames_played) ) {
+      frames_to_write = play_frames - frames_played;
+    }
+  }
+
   // Loop over all ports.
   for (n=0; n<n_output_ports; n++) {
 
@@ -247,26 +273,37 @@ int play_process_d(jack_nframes_t nframes, void *arg)
 
     if (out == nullptr) {
       std::cerr << "jack_port_get_buffer failed!" << std::endl;
+      return -1;
     }
 
-    if((play_frames - frames_played) > 0 && running) {
-
-      if (frames_to_write >  (play_frames - frames_played) ) {
-        frames_to_write = play_frames - frames_played;
-      }
-
-      for(m=0; m<frames_to_write; m++) {
-        out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
-          output_dbuffer[m+frames_played + n*play_frames];
-      }
+    // If the port was not closed fast enough after we were done playing
+    // all frames then just fill jack's output buffers with silence.
+    if (frames_played >= play_frames) {
+      std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
-      frames_played = play_frames;
-      return 0;
+
+      if(running) {
+
+        for(m=0; m<frames_to_write; m++) {
+          out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
+            output_dbuffer[m+frames_played + n*play_frames];
+        }
+
+        // Fill the end with silence to avoid playing random buffer data.
+        if ( frames_to_write < nframes ) {
+          for(m=frames_to_write; m<nframes; m++) {
+            out[(jack_nframes_t) m] = (jack_default_audio_sample_t) 0.0; // Silence.
+          }
+        }
+
+      } // running
     }
 
-  }
+  } // < n_output_ports
 
-  frames_played += frames_to_write;
+  if (frames_played < play_frames) {
+    frames_played += frames_to_write;
+  }
 
   return 0;
 }
@@ -312,8 +349,6 @@ int play_init(void* buffer, size_t frames, size_t channels,
     return -1;
   }
 
-    std::cout << "Play client ptr: " << play_client << std::endl;
-
   // Tell the JACK server to call the `play_process()' whenever
   // there is work to be done.
   if (format == FLOAT_AUDIO) {
@@ -337,20 +372,15 @@ int play_init(void* buffer, size_t frames, size_t channels,
 
   for (n=0; n<n_output_ports; n++) {
     sprintf(port_name,"output_%d", (int) n+1); // Port numbers start at 1.
-    std::cout << port_name << std::endl;
     output_ports[n] = jack_port_register(play_client, port_name,
                                          JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
   }
-
-  std::cout << "Play client ptr: " << play_client << std::endl;
 
   // Tell the JACK server that we are ready to roll.
   if (jack_activate(play_client)) {
     std::cerr << "Cannot activate jack client!" << std::endl;
     return -1;
   }
-
-  std::cout << "HEj 2" << std::endl;
 
   // Connect to the output ports.
   for (n=0; n<n_output_ports; n++) {
