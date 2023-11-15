@@ -86,7 +86,7 @@ void sig_keyint_handler(int signum);
 
 void sighandler(int signum) {
   //printf("Caught signal SIGTERM.\n");
-  clear_running_flag();
+  record_clear_running_flag();
 }
 
 void sig_abrt_handler(int signum) {
@@ -332,7 +332,7 @@ An optional file name (text string) which, when specified, jtrecord writes a 1 t
   Y = (float*) Ymat.data();
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
-  set_running_flag();
+  record_set_running_flag();
 
   // Init and connect to the output ports.
   if (t_record_init(Y, frames, channels, port_names, "octave:jtrecord",
@@ -343,7 +343,7 @@ An optional file name (text string) which, when specified, jtrecord writes a 1 t
     return oct_retval;
 
   // Wait until we have recorded all data.
-  while(!t_record_finished() && is_running() ) {
+  while(!t_record_finished() && record_is_running() ) {
     sleep(1); // Note: This will give delay of 1 sec but it takes some time
               // to save data so we will always loose some data if we, for
               // example, call jtrecord in a loop. To fix this we probably need a
@@ -362,7 +362,7 @@ An optional file name (text string) which, when specified, jtrecord writes a 1 t
   }
 
 
-  if (is_running()) { // Only do this if we have not pressed CTRL-C.
+  if (record_is_running()) { // Only do this if we have not pressed CTRL-C.
 
     // Get the position in the ring buffer so we know if we need to unwrap the
     // data.
@@ -424,7 +424,7 @@ An optional file name (text string) which, when specified, jtrecord writes a 1 t
     error("Couldn't register signal handler.\n");
   }
 
-  if (!is_running())
+  if (!record_is_running())
     error("CTRL-C pressed - record interrupted!\n"); // Bail out.
 
   return oct_retval;
