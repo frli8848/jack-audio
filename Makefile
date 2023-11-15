@@ -67,16 +67,16 @@ aplayrec.oct : oct_aplayrec.o aaudio.o
 jinfo.oct : oct_jinfo.o # jaudio.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jplay.oct : oct_jplay.o jaudio.o
+jplay.oct : oct_jplay.o jaudio_play.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jrecord.oct : oct_jrecord.o jaudio.o
+jrecord.oct : oct_jrecord.o jaudio_record.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jtrecord.oct : oct_jtrecord.o jaudio.o
+jtrecord.oct : oct_jtrecord.o jaudio_record.o jaudio_play.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
-jplayrec.oct : oct_jplayrec.o jaudio.o
+jplayrec.oct : oct_jplayrec.o jaudio_record.o
 	$(DLDCC) $(JLIBDIRS) $^ -o $@
 
 clean:

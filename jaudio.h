@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011,2012 Fredrik Lingvall
+ * Copyright (C) 2011,2012,2023 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,7 +27,8 @@
 
 #include <jack/jack.h>
 
-int got_a_trigger(void);
+// Play
+
 int is_running(void);
 void set_running_flag(void);
 void clear_running_flag(void);
@@ -38,6 +39,13 @@ int play_process_d(jack_nframes_t nframes, void *arg);
 int play_init(void* buffer, size_t frames, size_t channels,
               char **port_names, const char *client_name, int format);
 int play_close(void);
+
+// Record
+
+int got_a_trigger(void);
+int record_is_running(void);
+void record_set_running_flag(void);
+void record_clear_running_flag(void);
 
 int record_finished(void);
 int record_init(void* buffer, size_t frames, size_t channels,
@@ -56,7 +64,58 @@ int t_record_init(void* buffer, size_t frames, size_t channels,
 size_t get_ringbuffer_position(void);
 int t_record_close(void);
 
-void print_jack_status(jack_status_t status);
+static void print_jack_status(jack_status_t status)
+{
+
+  if (status & JackFailure) {
+    std::cout << "JackFailure: Overall operation failed." << std::endl;
+  }
+
+  if (status & JackNameNotUnique) {
+    std::cout << "JackNameNotUnique" << std::endl;
+  }
+
+  if (status & JackServerStarted) {
+    std::cout << "JackServerStarted" << std::endl;
+  }
+
+  if (status & JackServerFailed) {
+    std::cout << "JackServerFailed" << std::endl;
+  }
+
+  if (status & JackServerError) {
+    std::cout << "JackServerError" << std::endl;
+  }
+
+  if (status & JackNoSuchClient) {
+    std::cout << "JackNoSuchClient" << std::endl;
+  }
+
+  if (status & JackLoadFailure) {
+    std::cout << "JackLoadFailure" << std::endl;
+  }
+
+  if (status & JackInitFailure) {
+    std::cout << "JackInitFailure" << std::endl;
+  }
+
+  if (status & JackShmFailure) {
+    std::cout << "JackShmFailure" << std::endl;
+  }
+
+  if (status & JackVersionError) {
+    std::cout << "JackVersionError" << std::endl;
+  }
+
+  if (status & JackBackendError) {
+    std::cout << "JackBackendError" << std::endl;
+  }
+
+  if (status & JackClientZombie) {
+    std::cout << "JackClientZombie" << std::endl;
+  }
+};
+
 void jerror(const char *desc);
 void jack_shutdown(void *arg);
 int srate(jack_nframes_t nframes, void *arg);
