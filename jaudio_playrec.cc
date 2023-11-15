@@ -317,7 +317,6 @@ int playrec_init(void* play_buffer,  size_t play_channels, char **play_port_name
   for (n=0; n<n_input_ports; n++) {
     if (jack_connect(playrec_client, record_port_names[n], jack_port_name(input_ports[n]))) {
       std::cerr << "Cannot connect to the client output port: '" <<  record_port_names[n] << "'" << std::endl;
-      record_close();
       return -1;
     }
   }
@@ -326,7 +325,6 @@ int playrec_init(void* play_buffer,  size_t play_channels, char **play_port_name
   for (n=0; n<n_output_ports; n++) {
     if (jack_connect(playrec_client, jack_port_name(output_ports[n]), play_port_names[n])) {
       std::cerr << "Cannot connect to the client output port: '" <<  play_port_names[n] << "'" << std::endl;
-      record_close();
       return -1;
     }
   }
@@ -358,7 +356,6 @@ int playrec_close(size_t play_channels,
   for (n=0; n<n_input_ports; n++) {
     if (jack_disconnect(playrec_client, record_port_names[n], jack_port_name(input_ports[n]))) {
       std::cerr << "Cannot connect to the client output port: '" <<  record_port_names[n] << "'" << std::endl;
-      record_close();
       return -1;
     }
   }
@@ -379,7 +376,6 @@ int playrec_close(size_t play_channels,
   for (n=0; n<n_output_ports; n++) {
     if (jack_disconnect(playrec_client, jack_port_name(output_ports[n]), play_port_names[n])) {
       std::cerr << "Cannot connect to the client output port: '" <<  play_port_names[n] << "'" << std::endl;
-      play_close();
       return -1;
     }
   }

@@ -116,17 +116,17 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 A char matrix with the JACK client output port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
 @end table\n\
 \n\
-@copyright{} 2011 Fredrik Lingvall.\n\
+@copyright{} 2011,2023 Fredrik Lingvall.\n\
 @seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *dA;
-  float  *fA;
-  float  *Y;
+  double *dA = nullptr;
+  float  *fA = nullptr;
+  float  *Y = nullptr;
   int err,verbose = 0;
-  size_t n, frames;
+  size_t n = 0, frames = 0;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
-  char **port_names_in, **port_names_out;
+  char **port_names_in = nullptr, **port_names_out = nullptr;
   size_t buflen;
   size_t play_channels, rec_channels;
   int format = FLOAT_AUDIO;
@@ -275,11 +275,6 @@ A char matrix with the JACK client output port names, for example, ['system:capt
   // Set status to running (CTRL-C will clear the flag and stop play/capture).
   playrec_set_running_flag();
 
-  // Init recording and connect to the jack output ports.
-  if (record_init(Y, frames, rec_channels, port_names_out, "octave:jplayrec_r") < 0) {
-    return oct_retval;
-  }
-
   /*
   if (format == DOUBLE_AUDIO) {
 
@@ -308,7 +303,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   if (format == FLOAT_AUDIO) {
 
-    octave_stdout << "Playing single precision data...";
+    octave_stdout << "Playing and recording single precision data...";
 
     const FloatMatrix tmp0 = args(0).float_matrix_value();
     fA = (float*) tmp0.data();
@@ -326,7 +321,7 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   // Wait for both playback and record to finish.
   while(playrec_is_running() ) {
-    std::this_thread::sleep_for (std::chrono::milliseconds(100));
+    std::this_thread::sleep_for (std::chrono::milliseconds(50));
   }
 
   // Close all jack ports and the client.
@@ -336,10 +331,8 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   octave_stdout << "done!" << endl;
 
-  if (playrec_is_running()) {
-    // Append the output data.
-    oct_retval.append(Ymat);
-  }
+  // Append the output data.
+  oct_retval.append(Ymat);
 
   //
   // Restore old signal handlers.
