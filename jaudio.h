@@ -29,9 +29,9 @@
 
 // Play
 
-int is_running(void);
-void set_running_flag(void);
-void clear_running_flag(void);
+int play_is_running(void);
+void play_set_running_flag(void);
+void play_clear_running_flag(void);
 
 int play_finished(void);
 int play_process_f(jack_nframes_t nframes, void *arg);

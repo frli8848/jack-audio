@@ -68,7 +68,7 @@ void sig_keyint_handler(int signum);
 
 void sighandler(int signum) {
   //printf("Caught signal SIGTERM.\n");
-  clear_running_flag();
+  play_clear_running_flag();
 }
 
 void sig_abrt_handler(int signum) {
@@ -222,7 +222,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   }
 
   // Set status to running (CTRL-C will clear the flag and stop playback).
-  set_running_flag();
+  play_set_running_flag();
 
   //
   // Init and connect to the output ports.
@@ -239,7 +239,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
       return oct_retval;
 
     // Wait until we have played all data.
-    while(!play_finished() && is_running() )
+    while(!play_finished() && play_is_running() )
       sleep(1);
 
     play_close();
@@ -257,7 +257,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
       return oct_retval;
 
     // Wait until we have played all data.
-    while(!play_finished() && is_running() ) {
+    while(!play_finished() && play_is_running() ) {
       sleep(1);
     }
 
@@ -294,7 +294,7 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     error("Couldn't register signal handler.\n");
   }
 
-  if (!is_running())
+  if (!play_is_running())
     error("CTRL-C pressed - playback interrupted!\n"); // Bail out.
 
   return oct_retval;

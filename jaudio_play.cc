@@ -34,7 +34,7 @@
 // Globals.
 //
 
-volatile int running;
+volatile int play_running;
 
 size_t play_frames;
 size_t frames_played;
@@ -49,43 +49,43 @@ size_t n_output_ports;
  *
  */
 
-int is_running(void)
+int play_is_running(void)
 {
-  return running;
+  return play_running;
 }
 
-void set_running_flag(void)
+void play_set_running_flag(void)
 {
-  running = 1;
+  play_running = 1;
 
   return;
 }
 
-void clear_running_flag(void)
+void play_clear_running_flag(void)
 {
-  running = 0;
+  play_running = 0;
 
   return;
 }
 
 // This is called whenever the sample rate changes.
-int srate(jack_nframes_t nframes, void *arg)
+int play_srate(jack_nframes_t nframes, void *arg)
 {
   //printf("The sample rate is now %lu/sec.\n", (long unsigned int) nframes);
   return 0;
 }
 
-void jerror(const char *desc)
+void play_jerror(const char *desc)
 {
   std::cerr << "JACK error: '" << desc << "'" << std::endl;
-  clear_running_flag(); // Stop if we get a JACK error.
+  play_clear_running_flag(); // Stop if we get a JACK error.
 
   return;
 }
 
-void jack_shutdown(void *arg)
+void play_jack_shutdown(void *arg)
 {
-  clear_running_flag(); // Stop if JACK shuts down..
+  play_clear_running_flag(); // Stop if JACK shuts down..
 
   return;
 }
@@ -157,7 +157,7 @@ int play_process_f(jack_nframes_t nframes, void *arg)
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
-      if(running) {
+      if(play_running) {
 
         for(m=0; m<frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
@@ -222,7 +222,7 @@ int play_process_d(jack_nframes_t nframes, void *arg)
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
-      if(running) {
+      if(play_running) {
 
         for(m=0; m<frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
@@ -278,7 +278,7 @@ int play_init(void* buffer, size_t frames, size_t channels,
   //
   // This is set here so that it can catch errors in the
   // connection process.
-  jack_set_error_function(jerror);
+  jack_set_error_function(play_jerror);
 
   // Try to become a client of the JACK server.
   jack_status_t status;
@@ -301,12 +301,12 @@ int play_init(void* buffer, size_t frames, size_t channels,
 
   // Tell the JACK server to call `srate()' whenever
   // the sample rate of the system changes.
-  jack_set_sample_rate_callback(play_client, srate, 0);
+  jack_set_sample_rate_callback(play_client, play_srate, 0);
 
   // Tell the JACK server to call `jack_shutdown()' if
   // it ever shuts down, either entirely, or if it
   // just decides to stop calling us.
-  jack_on_shutdown(play_client, jack_shutdown, 0);
+  jack_on_shutdown(play_client, play_jack_shutdown, 0);
 
   output_ports = (jack_port_t**) malloc(n_output_ports * sizeof(jack_port_t*));
 
