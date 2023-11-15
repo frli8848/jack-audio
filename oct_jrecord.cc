@@ -63,7 +63,7 @@ void sig_keyint_handler(int signum);
 
 void sighandler(int signum) {
   //printf("Caught signal SIGTERM.\n");
-  clear_running_flag();
+  record_clear_running_flag();
 }
 
 void sig_abrt_handler(int signum) {
@@ -205,19 +205,19 @@ A frames x channels single precision matrix containing the recorded audio data.\
   Y = (float*) Ymat.data();
 
   // Set status to running (CTRL-C will clear the flag and stop capture).
-  set_running_flag();
+  record_set_running_flag();
 
   // Init and connect to the output ports.
   if (record_init(Y, frames, channels, port_names, "octave:jrecord") < 0) {
     return oct_retval;
   }
-  
+
   // Wait until we have recorded all data.
-  while(!record_finished() && is_running() ) {
+  while(!record_finished() && record_is_running() ) {
     std::this_thread::sleep_for (std::chrono::milliseconds(100));
   }
 
-  if (is_running()) {
+  if (record_is_running()) {
     // Append the output matrix.
     oct_retval.append(Ymat);
   }
@@ -254,7 +254,7 @@ A frames x channels single precision matrix containing the recorded audio data.\
     error("Couldn't register signal handler.\n");
   }
 
-  if (!is_running()) {
+  if (!record_is_running()) {
     error("CTRL-C pressed - record interrupted!\n"); // Bail out.
   }
 
