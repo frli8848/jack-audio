@@ -64,6 +64,29 @@ int t_record_init(void* buffer, size_t frames, size_t channels,
 size_t get_ringbuffer_position(void);
 int t_record_close(void);
 
+//
+// Play and record (duplex)
+//
+
+int playrec_is_running(void);
+void playrec_set_running_flag(void);
+void playrec_clear_running_flag(void);
+int playrec_srate(jack_nframes_t nframes, void *arg);
+void playrec_jerror(const char *desc);
+void playrec_jack_shutdown(void *arg);
+
+int playrec_process_f(jack_nframes_t nframes, void *arg);
+
+int playrec_init(void* play_buffer,  size_t play_channels, char **play_port_names,
+                 void* record_buffer, size_t record_channels, char **record_port_names,
+                 size_t frames,
+                 const char *client_name);
+
+int playrec_close(size_t play_channels,
+                  char **play_port_names,
+                  size_t record_channels,
+                  char **record_port_names);
+
 static void print_jack_status(jack_status_t status)
 {
 
