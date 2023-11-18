@@ -155,20 +155,19 @@ JINFO Prints the input and output ports connected to the\n\
   const char **ports_i = nullptr, **ports_o = nullptr;
   jack_port_t  *port = nullptr;
   int  n = 0, port_flags = 0;
+  long unsigned int sample_rate = 0;
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
 
   // Check for proper inputs arguments.
 
-  if (nrhs > 1) {
-    error("jinfo don't have more than one input argument!");
-    return oct_retval;
+  if (nrhs > 0) {
+    error("jinfo don't have any input argument!");
   }
 
-  if (nlhs > 0) {
-    error("jinfo don't have output arguments!");
-    return oct_retval;
+  if (nlhs > 1) {
+    error("Too many output args for jinfo!");
   }
 
   //
@@ -224,8 +223,8 @@ JINFO Prints the input and output ports connected to the\n\
   // Display the current sample rate. Once the client is activated
   // (see below), you should rely on your own sample rate
   // callback (see above) for this value.
-  octave_stdout << "|\n| JACK engine sample rate: " <<
-    (long unsigned int) jack_get_sample_rate(client) << " [Hz]\n";
+  sample_rate = jack_get_sample_rate(client);
+  octave_stdout << "|\n| JACK engine sample rate: " << sample_rate;
 
   // Display the current JACK load.
   octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n|" << std::endl;
@@ -346,6 +345,14 @@ JINFO Prints the input and output ports connected to the\n\
     n++;
   }
   octave_stdout << "|------------------------------------------------------\n";
+
+  // Return sample rate if we have one  output arg.
+  if (nlhs == 1) {
+    Matrix fs_mat(1,1);
+    double* fs_ptr = (double*) fs_mat.data();
+    fs_ptr[0] = (double) sample_rate;
+    oct_retval.append(fs_mat);
+  }
 
   // Disconnect ports
 
