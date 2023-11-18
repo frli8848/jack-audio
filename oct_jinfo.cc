@@ -152,9 +152,9 @@ JINFO Prints the input and output ports connected to the\n\
 @end deftypefn")
 {
   jack_client_t *client;
-  const char **ports_i, **ports_o;
-  jack_port_t  *port;
-  int  buflen, n, port_flags;
+  const char **ports_i = nullptr, **ports_o = nullptr;
+  jack_port_t  *port = nullptr;
+  int  n = 0, port_flags = 0;
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();

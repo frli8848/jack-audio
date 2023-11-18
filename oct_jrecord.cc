@@ -214,7 +214,7 @@ A frames x channels single precision matrix containing the recorded audio data.\
 
   // Wait until we have recorded all data.
   while(!record_finished() && record_is_running() ) {
-    std::this_thread::sleep_for (std::chrono::milliseconds(100));
+    std::this_thread::sleep_for (std::chrono::milliseconds(50));
   }
 
   if (record_is_running()) {

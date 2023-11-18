@@ -198,7 +198,6 @@ A char matrix with the JACK client output port names, for example, ['system:capt
 
   if ( ch_in.rows() != play_channels ) {
     error("The number of channels to play don't match the specified number of jack client input ports!");
-    return oct_retval;
   }
 
   buflen = (size_t) ch_in.cols();

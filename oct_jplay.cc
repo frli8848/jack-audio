@@ -27,6 +27,7 @@
 #include <signal.h>
 
 #include <iostream>
+#include <thread>
 
 // Octave headers.
 #include <octave/oct.h>
@@ -106,14 +107,12 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 @seealso {jinfo, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
 {
-  double *dA;
-  float  *fA;
-  int err,verbose = 0;
-  octave_idx_type n, frames;
+  double *dA = nullptr;
+  float  *fA = nullptr;
+  octave_idx_type n = 0, frames = 0;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
-  char **port_names;
-  octave_idx_type buflen;
-  octave_idx_type channels;
+  char **port_names = nullptr;
+  octave_idx_type channels = 0;
   int format = FLOAT_AUDIO;
 
   octave_value_list oct_retval; // Octave return (output) parameters
@@ -185,10 +184,9 @@ A char matrix with the JACK client input port names, for example, ['system:playb
   //std::string strin = args(1).string_value();
   //octave_stdout << strin << std::endl;
   //buflen = strin.length();
-
-  buflen = ch.cols();
+  octave_idx_type buflen = ch.cols();
   port_names = (char**) malloc(channels * sizeof(char*));
-  for ( n=0; n<channels; n++ ) {
+  for (n=0; n<channels; n++) {
 
     port_names[n] = (char*) malloc(buflen*sizeof(char)+1);
 
@@ -235,12 +233,14 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     const FloatMatrix tmp0 = args(0).float_matrix_value();
     fA = (float*) tmp0.data();
 
-    if (play_init(fA, frames, channels, port_names, "octave:jplay", FLOAT_AUDIO) < 0)
+    if (play_init(fA, frames, channels, port_names, "octave:jplay", FLOAT_AUDIO) < 0) {
       return oct_retval;
+    }
 
     // Wait until we have played all data.
-    while(!play_finished() && play_is_running() )
-      sleep(1);
+    while(!play_finished() && play_is_running() ) {
+      std::this_thread::sleep_for (std::chrono::milliseconds(50));
+    }
 
     play_close();
     octave_stdout << "done!" << std::endl;
@@ -253,12 +253,13 @@ A char matrix with the JACK client input port names, for example, ['system:playb
     const Matrix tmp0 = args(0).matrix_value();
     dA = (double*) tmp0.data();
 
-    if (play_init(dA, frames, channels, port_names, "octave:jplay", DOUBLE_AUDIO) < 0)
+    if (play_init(dA, frames, channels, port_names, "octave:jplay", DOUBLE_AUDIO) < 0) {
       return oct_retval;
+    }
 
     // Wait until we have played all data.
     while(!play_finished() && play_is_running() ) {
-      sleep(1);
+      std::this_thread::sleep_for (std::chrono::milliseconds(50));
     }
 
     play_close();
