@@ -142,10 +142,17 @@ void print_jack_status(jack_status_t status)
 
 DEFUN_DLD (jinfo, args, nlhs,
            "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  jinfo() \n\
+@deftypefn {Loadable Function} {}  [Fs_hz] = jinfo()\n\
 \n\
 JINFO Prints the input and output ports connected to the\n\
  (low-latency) JACK audio engine.\n\
+\n\
+Output argument:\n\
+\n\
+@table @samp\n\
+@item Fs_hz\n\
+The sampling frequency in Hz (optional).\n\
+@end table\n\
 \n\
 @copyright{} 2023 Fredrik Lingvall.\n\
 @seealso {jplay, jrecord, jtrecord, @indicateurl{http://jackaudio.org}}\n\

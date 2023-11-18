@@ -97,7 +97,7 @@ A scalar that specifies the number of frames to record/channel.\n\
 A char matrix with the JACK client input port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
 @end table\n\
 \n\
-Output arguments:\n\
+Output argument:\n\
 \n\
 @table @samp\n\
 @item Y\n\

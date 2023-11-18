@@ -116,6 +116,13 @@ A char matrix with the JACK client input port names, for example, ['system:playb
 A char matrix with the JACK client output port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
 @end table\n\
 \n\
+Output argument:\n\
+\n\
+@table @samp\n\
+@item Y\n\
+A frames x channels single precision matrix containing the recorded audio data.\n\
+@end table\n\
+\n\
 @copyright{} 2011,2023 Fredrik Lingvall.\n\
 @seealso {jinfo, jplay, jrecord, @indicateurl{http://jackaudio.org}}\n\
 @end deftypefn")
