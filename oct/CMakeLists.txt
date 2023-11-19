@@ -1,6 +1,7 @@
 #
 # Copyright (C) 2023 Fredrik Lingvall
-#
+
+project(octave-jack-audio)
 
 find_package (JACK)
 
@@ -27,7 +28,7 @@ if (OCTAVE_FOUND)
 
   set (JACK_OCT_INCLUDE_DIRS
     "${PROJECT_BINARY_DIR};"
-    "${PROJECT_SOURCE_DIR}/include;"
+    "${PROJECT_SOURCE_DIR}/../include;"
     "${JACK_INCLUDE_DIR};"
     "${OCTAVE_INCLUDE_DIRS}"
     )
@@ -38,7 +39,7 @@ if (OCTAVE_FOUND)
   #
 
   set (oct_jinfo_SOURCE_FILES
-    oct/oct_jinfo.cc
+    oct_jinfo.cc
     )
 
   add_library (oct_jinfo MODULE
@@ -62,8 +63,8 @@ if (OCTAVE_FOUND)
   #
 
   set (oct_jplay_SOURCE_FILES
-    oct/oct_jplay.cc
-    src/jaudio_play.cc
+    oct_jplay.cc
+    ../src/jaudio_play.cc
     )
 
   add_library (oct_jplay MODULE
@@ -87,8 +88,8 @@ if (OCTAVE_FOUND)
   #
 
   set (oct_jrecord_SOURCE_FILES
-    oct/oct_jrecord.cc
-    src/jaudio_record.cc
+    oct_jrecord.cc
+    ../src/jaudio_record.cc
     )
 
   add_library (oct_jrecord MODULE
@@ -112,8 +113,8 @@ if (OCTAVE_FOUND)
   #
 
   set (oct_jplayrec_SOURCE_FILES
-    oct/oct_jplayrec.cc
-    src/jaudio_playrec.cc
+    oct_jplayrec.cc
+    ../src/jaudio_playrec.cc
     )
 
   add_library (oct_jplayrec MODULE

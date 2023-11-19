@@ -29,10 +29,10 @@ message(STATUS "JAUDIO_VERSION: ${JAUDIO_VERSION}")
 message (STATUS "CMake system name: ${CMAKE_SYSTEM_NAME}")
 
 option(BUILD_OCT "Enable building of the oct-files." ON)
-option(BUILD_MEX "Enable building of the mex-files." OFF)
-option(BUILD_PYTHON "Enable building of the Python bindings." OFF) # Work in progess
-option(BUILD_JULIA "Enable building of the Julia bindings." OFF) # Work in progess
-option(BUILD_USERMAN "Enable building of the user manual." OFF)
+option(BUILD_MEX "Enable building of the mex-files." OFF) # TODO
+option(BUILD_PYTHON "Enable building of the Python bindings." OFF) # TODO
+option(BUILD_JULIA "Enable building of the Julia bindings." OFF) # TODO
+option(BUILD_USERMAN "Enable building of the user manual." OFF) # TODO
 
 #
 # Testing (TODO)
@@ -79,7 +79,7 @@ endif (UNIX AND NOT MACOSX)
 #
 
 if (BUILD_OCT)
-  include(octave.cmake)
+  add_subdirectory(oct)
 endif (BUILD_OCT)
 
 #
