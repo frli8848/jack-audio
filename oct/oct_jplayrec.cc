@@ -280,48 +280,36 @@ A frames x channels single precision matrix containing the recorded audio data.\
   // Set status to running (CTRL-C will clear the flag and stop play/capture).
   playrec_set_running_flag();
 
-  /*
   if (format == DOUBLE_AUDIO) {
-
-    octave_stdout << "Playing double precision data...";
 
     const Matrix tmp0 = args(0).matrix_value();
     dA = (double*) tmp0.data();
 
     // Init playback and connect to the jack input ports.
-    if (playrec_init(dA, frames, play_channels, port_names_in, "octave:jplayrec_p", DOUBLE_AUDIO ) < 0) {
-      return oct_retval;
+    if (playrec_init(dA, DOUBLE_AUDIO,
+                     play_channels, port_names_out,
+                     Y, rec_channels, port_names_in,
+                     frames,
+                     "octave:jplayrec") < 0) {
+      error("jplayrec init failed!");
     }
-
-    // Wait for both playback and record to finish.
-    while( playrec_is_running() ) {
-      std::this_thread::sleep_for (std::chrono::milliseconds(50));
-    }
-
-    // Close the jack ports.
-    play_close();
-    record_close();
-
-    octave_stdout << "done!" << endl;
   }
-  */
 
   if (format == FLOAT_AUDIO) {
-
-    octave_stdout << "Playing and recording single precision data...";
 
     const FloatMatrix tmp0 = args(0).float_matrix_value();
     fA = (float*) tmp0.data();
 
     // Init playback and record and connect to the jack input ports.
 
-    if (playrec_init(fA,
+    if (playrec_init(fA, FLOAT_AUDIO,
                      play_channels, port_names_out,
                      Y, rec_channels, port_names_in,
                      frames,
-                     "octave:jplayrec") < 0)
+                     "octave:jplayrec") < 0) {
 
       error("jplayrec init failed!");
+    }
   }
 
   // Wait for both playback and record to finish.

@@ -76,8 +76,10 @@ void playrec_jerror(const char *desc);
 void playrec_jack_shutdown(void *arg);
 
 int playrec_process_f(jack_nframes_t nframes, void *arg);
+int playrec_process_d(jack_nframes_t nframes, void *arg);
 
-int playrec_init(void* play_buffer,  size_t play_channels, char **play_port_names,
+int playrec_init(void* play_buffer, int play_format,
+                 size_t play_channels, char **play_port_names,
                  void* record_buffer, size_t record_channels, char **record_port_names,
                  size_t frames,
                  const char *client_name);
