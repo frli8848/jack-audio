@@ -231,7 +231,7 @@ The sampling frequency in Hz (optional).\n\
   // (see below), you should rely on your own sample rate
   // callback (see above) for this value.
   sample_rate = jack_get_sample_rate(client);
-  octave_stdout << "|\n| JACK engine sample rate: " << sample_rate;
+  octave_stdout << "|\n| JACK engine sample rate: " << sample_rate << " [Hz]" << std::endl;
 
   // Display the current JACK load.
   octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n|" << std::endl;
