@@ -260,7 +260,6 @@ int play_init(void* buffer, size_t frames, size_t channels,
               char **port_names, const char *client_name, int format)
 {
   size_t n;
-  jack_port_t  *port;
   char port_name[255];
 
   // The number of channels (columns) in the buffer matrix.

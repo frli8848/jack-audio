@@ -130,12 +130,11 @@ A frames x channels single precision matrix containing the recorded audio data.\
   double *dA = nullptr;
   float  *fA = nullptr;
   float  *Y = nullptr;
-  int err,verbose = 0;
-  size_t n = 0, frames = 0;
+  size_t frames = 0;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names_in = nullptr, **port_names_out = nullptr;
   size_t buflen;
-  size_t play_channels, rec_channels;
+  size_t play_channels = 0, rec_channels = 0;
   int format = FLOAT_AUDIO;
 
   octave_value_list oct_retval; // Octave return (output) parameters
@@ -203,19 +202,19 @@ A frames x channels single precision matrix containing the recorded audio data.\
 
   charMatrix ch_in = args(1).char_matrix_value();
 
-  if ( ch_in.rows() != play_channels ) {
+  if ( size_t(ch_in.rows()) != play_channels ) {
     error("The number of channels to play don't match the specified number of jack client input ports!");
   }
 
   buflen = (size_t) ch_in.cols();
   port_names_in = (char**) malloc(play_channels * sizeof(char*));
-  for ( n=0; n<play_channels; n++ ) {
+  for ( size_t n=0; n<play_channels; n++ ) {
 
     port_names_in[n] = (char*) malloc(buflen*sizeof(char)+1);
 
     std::string strin = ch_in.row_as_string(n);
 
-    for (int k=0; k<=buflen; k++ )
+    for (size_t k=0; k<=buflen; k++ )
       if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
         port_names_in[n][k] = strin[k];
       else {
@@ -241,13 +240,13 @@ A frames x channels single precision matrix containing the recorded audio data.\
 
   buflen = ch_out.cols();
   port_names_out = (char**) malloc(rec_channels * sizeof(char*));
-  for ( n=0; n<rec_channels; n++ ) {
+  for ( size_t n=0; n<rec_channels; n++ ) {
 
     port_names_out[n] = (char*) malloc(buflen*sizeof(char)+1);
 
     std::string strin = ch_out.row_as_string(n);
 
-    for (int k=0; k<=buflen; k++ )
+    for (size_t k=0; k<=buflen; k++ )
       if (strin[k] != ' ')  // Cut off the string if its a whitespace char.
         port_names_out[n][k] = strin[k];
       else {
@@ -296,7 +295,7 @@ A frames x channels single precision matrix containing the recorded audio data.\
 
     // Wait for both playback and record to finish.
     while( playrec_is_running() ) {
-      std::this_thread::sleep_for (std::chrono::milliseconds(100));
+      std::this_thread::sleep_for (std::chrono::milliseconds(50));
     }
 
     // Close the jack ports.

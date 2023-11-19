@@ -230,7 +230,6 @@ int playrec_init(void* play_buffer,  size_t play_channels, char **play_port_name
                  const char *client_name)
 {
   size_t n;
-  jack_port_t *port;
   char port_name[255];
 
   n_output_ports = (size_t) play_channels;

@@ -41,7 +41,7 @@ size_t frames_recorded;
 
 jack_client_t *record_client;
 jack_port_t **input_ports;
-int n_input_ports;
+size_t n_input_ports;
 
 volatile int got_data;
 
@@ -123,7 +123,7 @@ int record_finished(void)
 
 int record_process(jack_nframes_t nframes, void *arg)
 {
-  size_t   frames_to_read, n, m;
+  size_t   frames_to_read = 0;
   float   *input_fbuffer;
   jack_default_audio_sample_t *in;
 
@@ -134,7 +134,7 @@ int record_process(jack_nframes_t nframes, void *arg)
   frames_to_read = (size_t) nframes;
 
   // Loop over all ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
 
     // Grab the n:th input buffer.
     in = (jack_default_audio_sample_t *)
@@ -144,13 +144,13 @@ int record_process(jack_nframes_t nframes, void *arg)
       std::cerr << "jack_port_get_buffer failed!" << std::endl;
     }
 
-    if((record_frames - frames_recorded) > 0 && record_running) {
+    if ((record_frames - frames_recorded) > 0 && record_running) {
 
       if (frames_to_read >  (record_frames - frames_recorded) ) {
         frames_to_read = record_frames - frames_recorded;
       }
 
-      for(m=0; m<frames_to_read; m++) {
+      for (size_t m=0; m<frames_to_read; m++) {
         input_fbuffer[m+frames_recorded + n*record_frames] = (float) in[(jack_nframes_t) m];
       }
 
@@ -177,8 +177,6 @@ int record_process(jack_nframes_t nframes, void *arg)
 int record_init(void* buffer, size_t frames, size_t channels,
                 char **port_names, const char *client_name)
 {
-  size_t n;
-  jack_port_t *port;
   char port_name[255];
 
   // The number of channels (columns) in the buffer matrix.
@@ -222,7 +220,7 @@ int record_init(void* buffer, size_t frames, size_t channels,
 
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
 
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     sprintf(port_name,"input_%d",(int) n+1); // Port numbers start at 1.
     input_ports[n] = jack_port_register(record_client, port_name,
                                         JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
@@ -235,7 +233,7 @@ int record_init(void* buffer, size_t frames, size_t channels,
   }
 
   // Connect to the input ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     if (jack_connect(record_client, port_names[n], jack_port_name(input_ports[n]))) {
       std::cerr << "Cannot connect to the client output port: '" <<  port_names[n] << "'" << std::endl;
       record_close();
@@ -257,11 +255,10 @@ int record_init(void* buffer, size_t frames, size_t channels,
 
 int record_close(void)
 {
-  size_t n;
-  int err;
+  int err = 0;
 
   // Unregister all ports for the record client.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);
     if (err) {
       std::cerr << "Failed to unregister an input port!" << std::endl;
@@ -328,9 +325,9 @@ int t_record_finished(void)
 
 int t_record_process(jack_nframes_t nframes, void *arg)
 {
-  size_t frames_to_read, n, m, m2;
-  size_t local_rbuf_pos;
-  float   *input_fbuffer;
+  size_t frames_to_read = 0;
+  size_t local_rbuf_pos = 0;
+  float   *input_fbuffer = nullptr;
   jack_default_audio_sample_t *in;
 
   // Get the adress of the input buffer.
@@ -342,7 +339,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
   if ( record_running && ringbuffer_read_running ) {
 
     // Loop over all JACK ports.
-    for (n=0; n<n_input_ports; n++) {
+    for (size_t n=0; n<n_input_ports; n++) {
 
       // We need to keep a local (per channel) ringbuffer index.
       local_rbuf_pos = ringbuffer_position;
@@ -359,7 +356,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       // Read data from JACK and save it in the ring buffer.
       //
 
-      for(m=0; m<frames_to_read; m++) {
+      for (size_t m=0; m<frames_to_read; m++) {
 
         if (local_rbuf_pos >= record_frames) { // Check if we have exceeded the size of the ring buffer.
           local_rbuf_pos = 0; // We have reached the end of the ringbuffer so start from 0 again.
@@ -383,25 +380,26 @@ int t_record_process(jack_nframes_t nframes, void *arg)
           // 1) "Forget" the old data which is now shifted out of the trigger buffer.
           // We have got 'frames_to_read' new frames so forget the 'frames_to_read' oldest ones.
 
-          for (m=0; m<frames_to_read; m++) {
+          for (size_t m=0; m<frames_to_read; m++) {
 
-            m2 = (trigger_position + m) % t_frames;
+            size_t m2 = (trigger_position + m) % t_frames;
 
             trigger -= fabsf(triggerbuffer[m2]);
           }
 
           // 2) Add the new data to the trigger ring buffer.
 
-          for (m=0; m<frames_to_read; m++) {
+          for (size_t m=0; m<frames_to_read; m++) {
 
-            m2 = (trigger_position + m) % t_frames;
+            size_t m2 = (trigger_position + m) % t_frames;
 
             triggerbuffer[m2] = (float) in[(jack_nframes_t) m];
           }
 
           // 3) Update the trigger value.
 
-          for (m=0; m<frames_to_read; m++) {
+          size_t m2 = 0;
+          for (size_t m=0; m<frames_to_read; m++) {
 
             m2 = (trigger_position + m) % t_frames;
 
@@ -497,8 +495,6 @@ int t_record_init(void* buffer, size_t frames, size_t channels,
                   size_t trigger_frames,
                   size_t post_trigger_frames)
 {
-  size_t n;
-  jack_port_t  *port;
   char port_name[255];
 
   // Clear trigger indicator.
@@ -582,7 +578,7 @@ int t_record_init(void* buffer, size_t frames, size_t channels,
 
   // Register the input ports.
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
-  for (n=0; n<n_input_ports; n++) {
+  for ( size_t n=0; n<n_input_ports; n++) {
     sprintf(port_name,"input_%d",(int) n+1); // Port numbers start at 1.
     input_ports[n] = jack_port_register(record_client, port_name,
                                         JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
@@ -595,7 +591,7 @@ int t_record_init(void* buffer, size_t frames, size_t channels,
   }
 
   // Connect to the input ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     if (jack_connect(record_client, port_names[n], jack_port_name(input_ports[n]))) {
       std::cerr << "Cannot connect to the client output port '" << port_names[n] << "'!" << std::endl;
       t_record_close();

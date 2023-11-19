@@ -109,7 +109,6 @@ A frames x channels single precision matrix containing the recorded audio data.\
 @end deftypefn")
 {
   float *Y;
-  int err,verbose = 0;
   octave_idx_type n, frames;
   sighandler_t old_handler, old_handler_abrt, old_handler_keyint;
   char **port_names;
