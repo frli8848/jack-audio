@@ -8,7 +8,68 @@ https://jackaudio.org
 The code has been tested on the **Jackdmp JACK implementation for multi-processor machine**
 version, also known as JACK2, on Linux.
 
+# Prerequisites
+
+Install JACK2, a building toolchain, and cmake.
+
+Ubuntu:
+
+```
+$ sudo apt install build-essentials
+$ sudo apt install cmake
+$ sudo apt install libkack-jackd2-dev
+```
+
+Gentoo Linux:
+
+```
+$ sudo emerge dev-util/cmake
+$ sudo emerge media-sound/jack2
+```
+
+## Real-time Settings
+
+Edit your `/etc/security/limits.conf` file to give audio a high real-time priority. Typically add something
+like:
+
+```
+-snip-
+
+@audio          -       rtprio          99
+@audio          -       memlock         unlimited
+
+# End of file
+```
+
+and make sure your user is a part of the `audio` group (a reboot may be needed). If this is not set you can
+get an error similar to:
+```
+Cannot use real-time scheduling (RR/5) (1: Operation not permitted)
+JackClient::AcquireSelfRealTime error
+```
+
+## Recommended JACK Tools
+
+* QjackCtl: https://qjackctl.sourceforge.io/
+* jaaa: http://kokkinizita.linuxaudio.org/linuxaudio/
+* meterbridge: http://plugin.org.uk/meterbridge/
+
+Ubuntu:
+```
+$ sudo apt install qjackctl
+$ sudo apt install jaaa
+$ sudo apt install meterbridge
+```
+
+Gentoo:
+```
+$ sudo emerge media-sound/qjackctl
+$ sudo emerge media-sound/jaaa
+$ sudo emerge media-sound/meterbridge
+```
+
 # Usage
+
 
 Get information from the JACK audio server:
 
