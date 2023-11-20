@@ -10,22 +10,28 @@ version, also known as JACK2, on Linux.
 
 # Prerequisites
 
-Install JACK2, a building toolchain, and cmake.
+Install a compiler toolchain, Octave development tools/libs, JACK2, and cmake.
 
 Ubuntu:
 
 ```
+$ sudo apt install liboctave-dev
 $ sudo apt install build-essentials
-$ sudo apt install cmake
 $ sudo apt install libkack-jackd2-dev
+$ sudo apt install cmake
 ```
 
 Gentoo Linux:
 
+Add `sci-mathematics/octave` to a file in `/etc/portage/package.accept_keywords/`
+(recommended to get a more resent Octave version):
+
 ```
-$ sudo emerge dev-util/cmake
+$ sudo emerge sci-mathematics/octave
 $ sudo emerge media-sound/jack2
 ```
+
+Build tools is installed by default on Gentoo Linux.
 
 ## Real-time Settings
 
@@ -94,7 +100,7 @@ Get information from the JACK audio server:
 |------------------------------------------------------
 ```
 
-Gererate a 5 seconds of (white noise) stereo input signal and play it:
+Gererate 5 seconds of (white noise) stereo input signal and play it:
 
 ```
 > U = single(0.5*rand(5*Fs_hz, 2)-0.25);
