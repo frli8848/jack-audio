@@ -170,7 +170,7 @@ with both `num_skip_buffers = 0` and `num_skip_buffers = 3` (the red bars in the
 shows the JACK period (buffer) lengths.
 
 <p align="center">
-<img src="skip_periods.p">
+<img src="skip_periods.png">
 </p>
 
 _Figure 1. Output data, y, with `num_skip_buffers = 0` and `num_skip_buffers = 3`, respectively._
