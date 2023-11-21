@@ -71,6 +71,7 @@ int t_record_close(void);
 int playrec_is_running(void);
 void playrec_set_running_flag(void);
 void playrec_clear_running_flag(void);
+
 int playrec_srate(jack_nframes_t nframes, void *arg);
 void playrec_jerror(const char *desc);
 void playrec_jack_shutdown(void *arg);
@@ -78,6 +79,7 @@ void playrec_jack_shutdown(void *arg);
 int playrec_process_f(jack_nframes_t nframes, void *arg);
 int playrec_process_d(jack_nframes_t nframes, void *arg);
 
+int playrec_finished(void);
 int playrec_init(void* play_buffer, int play_format,
                  size_t play_channels, char **play_port_names,
                  void* record_buffer, size_t record_channels, char **record_port_names,

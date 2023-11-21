@@ -36,8 +36,8 @@
 
 volatile int record_running;
 
-size_t record_frames;
-size_t frames_recorded;
+int total_record_frames;
+int frames_recorded;
 
 jack_client_t *record_client;
 jack_port_t **input_ports;
@@ -92,7 +92,6 @@ void record_jack_shutdown(void *arg)
   return;
 }
 
-
 /********************************************************************************************
  *
  * Audio Capturing
@@ -109,8 +108,7 @@ void record_jack_shutdown(void *arg)
 
 int record_finished(void)
 {
-
-  return ((record_frames - frames_recorded) <= 0);
+  return ((total_record_frames - frames_recorded) <= 0);
 }
 
 /***
@@ -123,15 +121,28 @@ int record_finished(void)
 
 int record_process(jack_nframes_t nframes, void *arg)
 {
-  size_t   frames_to_read = 0;
+  int   frames_to_read = 0;
   float   *input_fbuffer;
   jack_default_audio_sample_t *in;
 
   // Get the adress of the input buffer.
   input_fbuffer = (float*) arg;
 
-  // The number of available frames.
-  frames_to_read = (size_t) nframes;
+  // The number of available frames in the JACK buffer.
+  frames_to_read = (int) nframes;
+
+  if ((total_record_frames - frames_recorded) > 0 && record_running) {
+
+    // Check if the number of frames in JACK buffer is larger than what
+    // we have left to read.
+    if (frames_to_read >  (total_record_frames - frames_recorded) ) {
+      frames_to_read = total_record_frames - frames_recorded;
+    }
+
+  } else {
+    frames_recorded = total_record_frames;
+    return 0;
+  }
 
   // Loop over all ports.
   for (size_t n=0; n<n_input_ports; n++) {
@@ -142,24 +153,14 @@ int record_process(jack_nframes_t nframes, void *arg)
 
     if (in == nullptr) {
       std::cerr << "jack_port_get_buffer failed!" << std::endl;
+      return -1;
     }
 
-    if ((record_frames - frames_recorded) > 0 && record_running) {
-
-      if (frames_to_read >  (record_frames - frames_recorded) ) {
-        frames_to_read = record_frames - frames_recorded;
-      }
-
-      for (size_t m=0; m<frames_to_read; m++) {
-        input_fbuffer[m+frames_recorded + n*record_frames] = (float) in[(jack_nframes_t) m];
-      }
-
-    } else {
-      frames_recorded = record_frames;
-      return 0;
+    for (size_t m=0; m< (size_t) frames_to_read; m++) {
+      input_fbuffer[m+frames_recorded + n*total_record_frames] = (float) in[(jack_nframes_t) m];
     }
 
-  }
+  } //  n<n_input_ports;
 
   frames_recorded += frames_to_read;
 
@@ -180,10 +181,10 @@ int record_init(void* buffer, size_t frames, size_t channels,
   char port_name[255];
 
   // The number of channels (columns) in the buffer matrix.
-  n_input_ports = (size_t) channels;
+  n_input_ports = channels;
 
   // The total number of frames to record.
-  record_frames = frames;
+  total_record_frames = frames;
 
   // Reset record counter.
   frames_recorded = 0;
@@ -325,8 +326,8 @@ int t_record_finished(void)
 
 int t_record_process(jack_nframes_t nframes, void *arg)
 {
-  size_t frames_to_read = 0;
-  size_t local_rbuf_pos = 0;
+  int frames_to_read = 0;
+  int local_rbuf_pos = 0;
   float   *input_fbuffer = nullptr;
   jack_default_audio_sample_t *in;
 
@@ -334,7 +335,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
   input_fbuffer = (float*) arg;
 
   // The number of available frames.
-  frames_to_read = (size_t) nframes;
+  frames_to_read = (int) nframes;
 
   if ( record_running && ringbuffer_read_running ) {
 
@@ -356,14 +357,14 @@ int t_record_process(jack_nframes_t nframes, void *arg)
       // Read data from JACK and save it in the ring buffer.
       //
 
-      for (size_t m=0; m<frames_to_read; m++) {
+      for (size_t m=0; m< (size_t) frames_to_read; m++) {
 
-        if (local_rbuf_pos >= record_frames) { // Check if we have exceeded the size of the ring buffer.
+        if (local_rbuf_pos >= total_record_frames) { // Check if we have exceeded the size of the ring buffer.
           local_rbuf_pos = 0; // We have reached the end of the ringbuffer so start from 0 again.
           has_wrapped = true; // Indicate that the ring buffer is full.
         }
 
-        input_fbuffer[local_rbuf_pos + n*record_frames] = (float) in[(jack_nframes_t) m];
+        input_fbuffer[local_rbuf_pos + n*total_record_frames] = (float) in[(jack_nframes_t) m];
 
         local_rbuf_pos++; // Inrease the ring buffer position for the next audio sample.
 
@@ -380,7 +381,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
           // 1) "Forget" the old data which is now shifted out of the trigger buffer.
           // We have got 'frames_to_read' new frames so forget the 'frames_to_read' oldest ones.
 
-          for (size_t m=0; m<frames_to_read; m++) {
+          for (size_t m=0; m< (size_t) frames_to_read; m++) {
 
             size_t m2 = (trigger_position + m) % t_frames;
 
@@ -389,7 +390,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
           // 2) Add the new data to the trigger ring buffer.
 
-          for (size_t m=0; m<frames_to_read; m++) {
+          for (size_t m=0; m< (size_t) frames_to_read; m++) {
 
             size_t m2 = (trigger_position + m) % t_frames;
 
@@ -399,7 +400,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
           // 3) Update the trigger value.
 
           size_t m2 = 0;
-          for (size_t m=0; m<frames_to_read; m++) {
+          for (size_t m=0; m< (size_t) frames_to_read; m++) {
 
             m2 = (trigger_position + m) % t_frames;
 
@@ -440,9 +441,9 @@ int t_record_process(jack_nframes_t nframes, void *arg)
 
         // We have got a trigger and the buffer has NOT wrapped. Now just wait until the buffer
         // is full. This is to avoid saving a non-full buffer. If the buffer wraps while we
-        // are waiting for record_frames number of frames (= until the ringbuffer is full)
+        // are waiting for total_record_frames number of frames (= until the ringbuffer is full)
         // then the condition above applies and we wait for post_t_frames number of frames instead.
-        if (trigger_active && !has_wrapped && (local_rbuf_pos >= record_frames)) {
+        if (trigger_active && !has_wrapped && (local_rbuf_pos >= total_record_frames)) {
           ringbuffer_read_running = false; // Exit the read loop.
         }
 
@@ -501,13 +502,13 @@ int t_record_init(void* buffer, size_t frames, size_t channels,
   got_data = false;
 
   // The number of channels (columns) in the buffer matrix.
-  n_input_ports = (size_t) channels;
+  n_input_ports = channels;
 
   // Set the trigger level for the callback function.
   t_level = (float) trigger_level;
 
   // The total number of frames to record.
-  record_frames = frames;
+  total_record_frames = frames;
 
   // Reset record counter.
   frames_recorded = 0;
@@ -641,11 +642,10 @@ size_t get_ringbuffer_position(void)
 
 int t_record_close(void)
 {
-  size_t n;
   int err;
 
    // Unregister all ports for the record client.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(record_client, input_ports[n]);
     if (err) {
       std::cerr << "Failed to unregister an input port!" << std::endl;

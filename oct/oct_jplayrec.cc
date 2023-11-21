@@ -1,6 +1,6 @@
 /***
  *
- * Copyright (C) 2011,2012 Fredrik Lingvall
+ * Copyright (C) 2011,2012,2023 Fredrik Lingvall
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -313,16 +313,13 @@ A frames x channels single precision matrix containing the recorded audio data.\
   }
 
   // Wait for both playback and record to finish.
-  while(playrec_is_running() ) {
+  while( !playrec_finished() && playrec_is_running() ) {
     std::this_thread::sleep_for (std::chrono::milliseconds(50));
   }
 
   // Close all jack ports and the client.
   playrec_close(play_channels, port_names_out,
                 rec_channels, port_names_in);
-
-
-  octave_stdout << "done!" << endl;
 
   // Append the output data.
   oct_retval.append(Ymat);

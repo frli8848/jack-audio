@@ -36,9 +36,9 @@
 
 volatile int playrec_running;
 
-size_t playrec_frames;
-size_t frames_played;
-size_t frames_recorded;
+int total_playrec_frames;
+int frames_played;
+int frames_recorded;
 
 jack_client_t *playrec_client;
 
@@ -95,11 +95,17 @@ void playrec_jack_shutdown(void *arg)
   return;
 }
 
+
+int playrec_finished(void)
+{
+  return ((total_playrec_frames - frames_recorded) <= 0);
+}
+
+
 // Single precision play data.
 
 int playrec_process_f(jack_nframes_t nframes, void *arg)
 {
-  size_t n=0, m=0;
   float  **iobuffers = nullptr;
   float  *output_fbuffer = nullptr;
   float  *input_fbuffer = nullptr;
@@ -116,17 +122,17 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
   //
 
   // The number of available frames write.
-  size_t frames_to_write = (size_t) nframes;
+  int frames_to_write = (int) nframes;
 
-  if((playrec_frames - frames_played) > 0) {
+  if((total_playrec_frames - frames_played) > 0) {
 
-    if (frames_to_write >  (playrec_frames - frames_played) ) {
-      frames_to_write = playrec_frames - frames_played;
+    if (frames_to_write >  (total_playrec_frames - frames_played) ) {
+      frames_to_write = total_playrec_frames - frames_played;
     }
   }
 
   // Loop over all ouput ports.
-  for (n=0; n<n_output_ports; n++) {
+  for (size_t n=0; n<n_output_ports; n++) {
 
     // Grab the n:th output buffer.
     out = (jack_default_audio_sample_t *)
@@ -139,20 +145,20 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
 
     // If the port was not closed fast enough after we were done playing
     // all frames then just fill jack's output buffers with silence.
-    if (frames_played >= playrec_frames) {
+    if (frames_played >= total_playrec_frames) {
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
       if(playrec_running) {
 
-        for(m=0; m<frames_to_write; m++) {
+        for (size_t m=0; m< (size_t) frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
-            output_fbuffer[m+frames_played + n*playrec_frames];
+            output_fbuffer[m+frames_played + n*total_playrec_frames];
         }
 
         // Fill the end with silence to avoid playing random buffer data.
-        if ( frames_to_write < nframes ) {
-          for(m=frames_to_write; m<nframes; m++) {
+        if ( frames_to_write < (int) nframes ) {
+          for (size_t m=frames_to_write; m<nframes; m++) {
             out[(jack_nframes_t) m] = (jack_default_audio_sample_t) 0.0; // Silence.
           }
         }
@@ -162,7 +168,7 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
 
   } // < n_output_ports
 
-  if (frames_played < playrec_frames) {
+  if (frames_played < total_playrec_frames) {
     frames_played += frames_to_write;
   }
 
@@ -170,15 +176,24 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
   // Record (single precision)
   //
 
-  // The number of available frames.
-  size_t frames_to_read = (size_t) nframes;
+  // The number of available frames in the JACK buffer.
+  int frames_to_read = (int) nframes;
 
-  if (frames_to_read >  (playrec_frames - frames_recorded) ) {
-    frames_to_read = playrec_frames - frames_recorded;
+  if ((total_playrec_frames - frames_recorded) > 0 && playrec_running) {
+
+    // Check if the number of frames in JACK buffer is larger than what
+    // we have left to read.
+    if (frames_to_read >  (total_playrec_frames - frames_recorded) ) {
+      frames_to_read = total_playrec_frames - frames_recorded;
+    }
+
+  } else {
+    frames_recorded = total_playrec_frames;
+    return 0;
   }
 
   // Loop over all input ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n< (size_t) n_input_ports; n++) {
 
     // Grab the n:th input buffer.
     in = (jack_default_audio_sample_t *)
@@ -191,12 +206,12 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
 
     // If the port was not closed fast enough after we were done recording
     // then skip extra new frames.
-    if (frames_recorded < playrec_frames) {
+    if (frames_recorded < total_playrec_frames) {
 
-      if(playrec_running) {
+      if (playrec_running) {
 
-        for(m=0; m<frames_to_read; m++) {
-          input_fbuffer[m+frames_recorded + n*playrec_frames] = (float) in[(jack_nframes_t) m];
+        for (size_t m=0; m< (size_t) frames_to_read; m++) {
+          input_fbuffer[m+frames_recorded + n*total_playrec_frames] = (float) in[(jack_nframes_t) m];
         }
 
       } // running
@@ -204,14 +219,7 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
     }
   } // < n_input_ports
 
-  if (frames_recorded < playrec_frames) {
-    frames_recorded += frames_to_read;
-  }
-
-  // We are done.
-  if (frames_recorded >= playrec_frames) {
-    playrec_clear_running_flag();
-  }
+  frames_recorded += frames_to_read;
 
   return 0;
 }
@@ -220,7 +228,6 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
 
 int playrec_process_d(jack_nframes_t nframes, void *arg)
 {
-  size_t n=0, m=0;
   void  **iobuffers = nullptr;
   double  *output_dbuffer = nullptr;
   float  *input_fbuffer = nullptr; // JACK uses floats internally.
@@ -237,17 +244,17 @@ int playrec_process_d(jack_nframes_t nframes, void *arg)
   //
 
   // The number of available frames write.
-  size_t frames_to_write = (size_t) nframes;
+  int frames_to_write = (int) nframes;
 
-  if((playrec_frames - frames_played) > 0) {
+  if((total_playrec_frames - frames_played) > 0) {
 
-    if (frames_to_write >  (playrec_frames - frames_played) ) {
-      frames_to_write = playrec_frames - frames_played;
+    if (frames_to_write >  (total_playrec_frames - frames_played) ) {
+      frames_to_write = total_playrec_frames - frames_played;
     }
   }
 
   // Loop over all ouput ports.
-  for (n=0; n<n_output_ports; n++) {
+  for (size_t n=0; n< (size_t) n_output_ports; n++) {
 
     // Grab the n:th output buffer.
     out = (jack_default_audio_sample_t *)
@@ -260,20 +267,20 @@ int playrec_process_d(jack_nframes_t nframes, void *arg)
 
     // If the port was not closed fast enough after we were done playing
     // all frames then just fill jack's output buffers with silence.
-    if (frames_played >= playrec_frames) {
+    if (frames_played >= total_playrec_frames) {
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
       if(playrec_running) {
 
-        for(m=0; m<frames_to_write; m++) {
+        for (size_t m=0; m< (size_t)frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t) // double -> float conversion
-            output_dbuffer[m+frames_played + n*playrec_frames];
+            output_dbuffer[m+frames_played + n*total_playrec_frames];
         }
 
         // Fill the end with silence to avoid playing random buffer data.
-        if ( frames_to_write < nframes ) {
-          for(m=frames_to_write; m<nframes; m++) {
+        if ( frames_to_write < (int) nframes ) {
+          for (size_t m=frames_to_write; m < (size_t) nframes; m++) {
             out[(jack_nframes_t) m] = (jack_default_audio_sample_t) 0.0; // Silence.
           }
         }
@@ -283,23 +290,23 @@ int playrec_process_d(jack_nframes_t nframes, void *arg)
 
   } // < n_output_ports
 
-  if (frames_played < playrec_frames) {
+  if (frames_played < total_playrec_frames) {
     frames_played += frames_to_write;
   }
 
-    //
+  //
   // Record (single precision)
   //
 
   // The number of available frames.
-  size_t frames_to_read = (size_t) nframes;
+  int frames_to_read = (int) nframes;
 
-  if (frames_to_read >  (playrec_frames - frames_recorded) ) {
-    frames_to_read = playrec_frames - frames_recorded;
+  if (frames_to_read >  (total_playrec_frames - frames_recorded) ) {
+    frames_to_read = total_playrec_frames - frames_recorded;
   }
 
   // Loop over all input ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
 
     // Grab the n:th input buffer.
     in = (jack_default_audio_sample_t *)
@@ -312,12 +319,12 @@ int playrec_process_d(jack_nframes_t nframes, void *arg)
 
     // If the port was not closed fast enough after we were done recording
     // then skip extra new frames.
-    if (frames_recorded < playrec_frames) {
+    if (frames_recorded < total_playrec_frames) {
 
-      if(playrec_running) {
+      if (playrec_running) {
 
-        for(m=0; m<frames_to_read; m++) {
-          input_fbuffer[m+frames_recorded + n*playrec_frames] = (float) in[(jack_nframes_t) m];
+        for (size_t m=0; m< (size_t) frames_to_read; m++) {
+          input_fbuffer[m+frames_recorded + n*total_playrec_frames] = (float) in[(jack_nframes_t) m];
         }
 
       } // running
@@ -325,14 +332,7 @@ int playrec_process_d(jack_nframes_t nframes, void *arg)
     }
   } // < n_input_ports
 
-  if (frames_recorded < playrec_frames) {
-    frames_recorded += frames_to_read;
-  }
-
-  // We are done.
-  if (frames_recorded >= playrec_frames) {
-    playrec_clear_running_flag();
-  }
+  frames_recorded += frames_to_read;
 
   return 0;
 }
@@ -351,14 +351,13 @@ int playrec_init(void* play_buffer, int play_format,
                  size_t frames,
                  const char *client_name)
 {
-  size_t n;
   char port_name[255];
 
-  n_output_ports = (size_t) play_channels;
-  n_input_ports = (size_t) record_channels;
+  n_output_ports = play_channels;
+  n_input_ports = record_channels;
 
   // The total number of frames to play and record.
-  playrec_frames = frames;
+  total_playrec_frames = frames;
 
   // Reset record counter.
   frames_played = 0;
@@ -411,7 +410,7 @@ int playrec_init(void* play_buffer, int play_format,
 
   input_ports = (jack_port_t**) malloc(n_input_ports * sizeof(jack_port_t*));
 
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     sprintf(port_name,"input_%d",(int) n+1); // Port numbers start at 1.
     input_ports[n] = jack_port_register(playrec_client, port_name,
                                         JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
@@ -421,8 +420,8 @@ int playrec_init(void* play_buffer, int play_format,
 
   output_ports = (jack_port_t**) malloc(n_output_ports * sizeof(jack_port_t*));
 
-  for (n=0; n<n_output_ports; n++) {
-    sprintf(port_name,"output_%d",(int) n+1); // Port numbers start at 1.
+  for (size_t n=0; n<n_output_ports; n++) {
+    sprintf(port_name,"output_%d", (int) n+1); // Port numbers start at 1.
     output_ports[n] = jack_port_register(playrec_client, port_name,
                                         JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
   }
@@ -441,7 +440,7 @@ int playrec_init(void* play_buffer, int play_format,
   //
 
   // Connect to the input ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     if (jack_connect(playrec_client, record_port_names[n], jack_port_name(input_ports[n]))) {
       std::cerr << "Cannot connect to the client output port: '" <<  record_port_names[n] << "'" << std::endl;
       return -1;
@@ -449,7 +448,7 @@ int playrec_init(void* play_buffer, int play_format,
   }
 
   // Connect to the output ports.
-  for (n=0; n<n_output_ports; n++) {
+  for (size_t n=0; n<n_output_ports; n++) {
     if (jack_connect(playrec_client, jack_port_name(output_ports[n]), play_port_names[n])) {
       std::cerr << "Cannot connect to the client output port: '" <<  play_port_names[n] << "'" << std::endl;
       return -1;
@@ -472,7 +471,6 @@ int playrec_close(size_t play_channels,
                   size_t record_channels,
                   char **record_port_names)
 {
-  size_t n;
   int err;
 
   //
@@ -480,7 +478,7 @@ int playrec_close(size_t play_channels,
   //
 
   // Disconnect to the input ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     if (jack_disconnect(playrec_client, record_port_names[n], jack_port_name(input_ports[n]))) {
       std::cerr << "Cannot connect to the client output port: '" <<  record_port_names[n] << "'" << std::endl;
       return -1;
@@ -488,7 +486,7 @@ int playrec_close(size_t play_channels,
   }
 
   // Unregister all input ports.
-  for (n=0; n<n_input_ports; n++) {
+  for (size_t n=0; n<n_input_ports; n++) {
     err = jack_port_unregister(playrec_client, input_ports[n]);
     if (err) {
       std::cerr << "Failed to unregister an input port!" << std::endl;
@@ -500,7 +498,7 @@ int playrec_close(size_t play_channels,
   //
 
   // Disconnect to the output ports.
-  for (n=0; n<n_output_ports; n++) {
+  for (size_t n=0; n<n_output_ports; n++) {
     if (jack_disconnect(playrec_client, jack_port_name(output_ports[n]), play_port_names[n])) {
       std::cerr << "Cannot connect to the client output port: '" <<  play_port_names[n] << "'" << std::endl;
       return -1;
@@ -508,7 +506,7 @@ int playrec_close(size_t play_channels,
   }
 
   // Unregister all output ports.
-  for (n=0; n<n_output_ports; n++) {
+  for (size_t n=0; n<n_output_ports; n++) {
     err = jack_port_unregister(playrec_client, output_ports[n]);
     if (err) {
       std::cerr << "Failed to unregister an output port!" << std::endl;
