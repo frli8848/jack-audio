@@ -34,10 +34,11 @@
 // Globals.
 //
 
-volatile int record_running;
+volatile bool record_running;
 
 int total_record_frames;
 int frames_recorded;
+bool is_first_jack_period;
 
 jack_client_t *record_client;
 jack_port_t **input_ports;
@@ -131,6 +132,12 @@ int record_process(jack_nframes_t nframes, void *arg)
   // The number of available frames in the JACK buffer.
   frames_to_read = (int) nframes;
 
+  // First JACK period is just silence so skip it.
+  if (is_first_jack_period) {
+    is_first_jack_period = false;
+    return 0;
+  }
+
   if ((total_record_frames - frames_recorded) > 0 && record_running) {
 
     // Check if the number of frames in JACK buffer is larger than what
@@ -188,6 +195,11 @@ int record_init(void* buffer, size_t frames, size_t channels,
 
   // Reset record counter.
   frames_recorded = 0;
+
+  // Mark that we have not called our process callback before
+  // so than we can disregard the frames in the first JACK period
+  // which always seems to be silence (zero valued samples).
+  is_first_jack_period = true;
 
   // Tell the JACK server to call jerror() whenever it
   // experiences an error.  Notice that this callback is
@@ -297,7 +309,7 @@ int    trigger_active;
 size_t trigger_position;
 size_t t_frames;
 
-int ringbuffer_read_running;
+bool ringbuffer_read_running;
 size_t ringbuffer_position;
 size_t post_t_frames_counter;
 size_t post_t_frames;
@@ -337,7 +349,13 @@ int t_record_process(jack_nframes_t nframes, void *arg)
   // The number of available frames.
   frames_to_read = (int) nframes;
 
-  if ( record_running && ringbuffer_read_running ) {
+  // First JACK period is just silence so skip it.
+  if (is_first_jack_period) {
+    is_first_jack_period = false;
+    return 0;
+  }
+
+  if ( record_running && ringbuffer_read_running) {
 
     // Loop over all JACK ports.
     for (size_t n=0; n<n_input_ports; n++) {
