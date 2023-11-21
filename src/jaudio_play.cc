@@ -34,7 +34,7 @@
 // Globals.
 //
 
-volatile int play_running;
+volatile bool play_running;
 
 size_t play_frames;
 size_t frames_played;
@@ -49,21 +49,21 @@ size_t n_output_ports;
  *
  */
 
-int play_is_running(void)
+bool play_is_running(void)
 {
   return play_running;
 }
 
 void play_set_running_flag(void)
 {
-  play_running = 1;
+  play_running = true;
 
   return;
 }
 
 void play_clear_running_flag(void)
 {
-  play_running = 0;
+  play_running = false;
 
   return;
 }
@@ -157,7 +157,7 @@ int play_process_f(jack_nframes_t nframes, void *arg)
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
-      if(play_running) {
+      if (play_running) {
 
         for(m=0; m<frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
@@ -222,7 +222,7 @@ int play_process_d(jack_nframes_t nframes, void *arg)
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
-      if(play_running) {
+      if (play_running) {
 
         for(m=0; m<frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t)

@@ -29,7 +29,7 @@
 
 // Play
 
-int play_is_running(void);
+bool play_is_running(void);
 void play_set_running_flag(void);
 void play_clear_running_flag(void);
 
@@ -42,17 +42,17 @@ int play_close(void);
 
 // Record
 
-int got_a_trigger(void);
-int record_is_running(void);
+bool got_a_trigger(void);
+bool record_is_running(void);
 void record_set_running_flag(void);
 void record_clear_running_flag(void);
 
-int record_finished(void);
+bool record_finished(void);
 int record_init(void* buffer, size_t frames, size_t channels,
                 char **port_names, const char *client_name);
 int record_close(void);
 
-int t_record_finished(void);
+bool t_record_finished(void);
 int t_record_process_f(jack_nframes_t nframes, void *arg);
 int t_record_process_d(jack_nframes_t nframes, void *arg);
 int t_record_init(void* buffer, size_t frames, size_t channels,
@@ -68,7 +68,7 @@ int t_record_close(void);
 // Play and record (duplex)
 //
 
-int playrec_is_running(void);
+bool playrec_is_running(void);
 void playrec_set_running_flag(void);
 void playrec_clear_running_flag(void);
 
@@ -79,7 +79,7 @@ void playrec_jack_shutdown(void *arg);
 int playrec_process_f(jack_nframes_t nframes, void *arg);
 int playrec_process_d(jack_nframes_t nframes, void *arg);
 
-int playrec_finished(void);
+bool playrec_finished(void);
 int playrec_init(void* play_buffer, int play_format,
                  size_t play_channels, char **play_port_names,
                  void* record_buffer, size_t record_channels, char **record_port_names,

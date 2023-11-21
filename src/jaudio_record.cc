@@ -44,7 +44,7 @@ jack_client_t *record_client;
 jack_port_t **input_ports;
 size_t n_input_ports;
 
-volatile int got_data;
+volatile bool got_data;
 
 /***
  *
@@ -52,21 +52,21 @@ volatile int got_data;
  *
  */
 
-int record_is_running(void)
+bool record_is_running(void)
 {
   return record_running;
 }
 
 void record_set_running_flag(void)
 {
-  record_running = 1;
+  record_running = true;
 
   return;
 }
 
 void record_clear_running_flag(void)
 {
-  record_running = 0;
+  record_running = false;
 
   return;
 }
@@ -107,7 +107,7 @@ void record_jack_shutdown(void *arg)
  *
  ***/
 
-int record_finished(void)
+bool record_finished(void)
 {
   return ((total_record_frames - frames_recorded) <= 0);
 }
@@ -323,7 +323,7 @@ int has_wrapped;
  *
  ***/
 
-int t_record_finished(void)
+bool t_record_finished(void)
 {
   return !ringbuffer_read_running;
 }
@@ -485,7 +485,7 @@ int t_record_process(jack_nframes_t nframes, void *arg)
  *
  ***/
 
-int got_a_trigger(void)
+bool got_a_trigger(void)
 {
   return got_data;
 }

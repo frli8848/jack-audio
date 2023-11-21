@@ -34,11 +34,12 @@
 // Globals.
 //
 
-volatile int playrec_running;
+volatile bool playrec_running;
 
 int total_playrec_frames;
 int frames_played;
 int frames_recorded;
+bool is_first_jack_period;
 
 jack_client_t *playrec_client;
 
@@ -54,21 +55,21 @@ size_t n_output_ports;
  *
  */
 
-int playrec_is_running(void)
+bool playrec_is_running(void)
 {
   return playrec_running;
 }
 
 void playrec_set_running_flag(void)
 {
-  playrec_running = 1;
+  playrec_running = true;
 
   return;
 }
 
 void playrec_clear_running_flag(void)
 {
-  playrec_running = 0;
+  playrec_running = false;
 
   return;
 }
@@ -96,11 +97,10 @@ void playrec_jack_shutdown(void *arg)
 }
 
 
-int playrec_finished(void)
+bool playrec_finished(void)
 {
   return ((total_playrec_frames - frames_recorded) <= 0);
 }
-
 
 // Single precision play data.
 
@@ -149,7 +149,7 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
-      if(playrec_running) {
+      if (playrec_running) {
 
         for (size_t m=0; m< (size_t) frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t)
@@ -271,7 +271,7 @@ int playrec_process_d(jack_nframes_t nframes, void *arg)
       std::memset(out, 0x0, sizeof (jack_default_audio_sample_t) * nframes); // Just fill with silence.
     } else {
 
-      if(playrec_running) {
+      if (playrec_running) {
 
         for (size_t m=0; m< (size_t)frames_to_write; m++) {
           out[(jack_nframes_t) m] = (jack_default_audio_sample_t) // double -> float conversion
