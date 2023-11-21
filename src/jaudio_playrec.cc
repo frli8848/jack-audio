@@ -117,6 +117,12 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
   output_fbuffer = iobuffers[0];
   input_fbuffer = iobuffers[1];
 
+  // First JACK period is just silence so skip it.
+  if (is_first_jack_period) {
+    is_first_jack_period = false;
+    return 0;
+  }
+
   //
   // Play
   //
@@ -359,9 +365,14 @@ int playrec_init(void* play_buffer, int play_format,
   // The total number of frames to play and record.
   total_playrec_frames = frames;
 
-  // Reset record counter.
+  // Reset play/record counters.
   frames_played = 0;
   frames_recorded = 0;
+
+  // Mark that we have not called our process callback before
+  // so than we can disregard the frames in the first JACK period
+  // which always seems to be silence (zero valued samples).
+  is_first_jack_period = true;
 
   // Tell the JACK server to call jerror() whenever it
   // experiences an error.  Notice that this callback is
