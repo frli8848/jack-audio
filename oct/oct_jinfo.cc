@@ -142,7 +142,7 @@ void print_jack_status(jack_status_t status)
 
 DEFUN_DLD (jinfo, args, nlhs,
            "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {}  [Fs_hz] = jinfo()\n\
+@deftypefn {Loadable Function} {}  [Fs_hz, buffer_size] = jinfo()\n\
 \n\
 JINFO Prints the input and output ports connected to the\n\
  (low-latency) JACK audio engine.\n\
@@ -151,7 +151,9 @@ Output argument:\n\
 \n\
 @table @samp\n\
 @item Fs_hz\n\
-The sampling frequency in Hz (optional).\n\
+The JACK server sampling frequency in Hz (optional).\n\
+@item buffer_size\n\
+The JACK server buffer size in frames (optional).\n\
 @end table\n\
 \n\
 @copyright{} 2023 Fredrik Lingvall.\n\
@@ -162,7 +164,8 @@ The sampling frequency in Hz (optional).\n\
   const char **ports_i = nullptr, **ports_o = nullptr;
   jack_port_t  *port = nullptr;
   int  n = 0, port_flags = 0;
-  long unsigned int sample_rate = 0;
+  jack_nframes_t sample_rate = 0;
+  jack_nframes_t buffer_size = 0;
   octave_value_list oct_retval; // Octave return (output) parameters
 
   int nrhs = args.length ();
@@ -173,7 +176,7 @@ The sampling frequency in Hz (optional).\n\
     error("jinfo don't have any input argument!");
   }
 
-  if (nlhs > 1) {
+  if (nlhs > 2) {
     error("Too many output args for jinfo!");
   }
 
@@ -233,6 +236,9 @@ The sampling frequency in Hz (optional).\n\
   sample_rate = jack_get_sample_rate(client);
   octave_stdout << "|\n| JACK engine sample rate: " << sample_rate << " [Hz]" << std::endl;
 
+  buffer_size = jack_get_buffer_size (client);
+  octave_stdout << "|\n| JACK engine buffer size: " << buffer_size << " [frames]" << std::endl;
+
   // Display the current JACK load.
   octave_stdout << "|\n| Current JACK engine CPU load: " << jack_cpu_load(client) << " [%]\n|" << std::endl;
 
@@ -273,11 +279,11 @@ The sampling frequency in Hz (optional).\n\
   // Connect output port -> input (playback) port
 
   if ((ports_o = jack_get_ports(client, NULL, NULL,
-                                JackPortIsPhysical|JackPortIsOutput)) == NULL) {
+                                JackPortIsOutput)) == NULL) {
 
     // Close connection and bail out.
     jack_client_close (client);
-    error("Cannot find any physical output ports\n");
+    error("Cannot find any output ports\n");
   }
 
   // Connect to first output (capture) port.
@@ -293,13 +299,13 @@ The sampling frequency in Hz (optional).\n\
   //
 
   if ((ports_i = jack_get_ports(client, NULL, NULL,
-                                JackPortIsPhysical|JackPortIsInput)) == NULL) {
+                                JackPortIsInput)) == NULL) {
 
     // Disconnect outputs, close, and bail out
     jack_disconnect(client, ports_o[0], jack_port_name (input_port));
     jack_client_close (client);
 
-    error("Cannot find any physical input ports\n");
+    error("Cannot find any input ports\n");
   }
 
   // Connect to first input (playback) port.
@@ -353,13 +359,22 @@ The sampling frequency in Hz (optional).\n\
   }
   octave_stdout << "|------------------------------------------------------\n";
 
-  // Return sample rate if we have one  output arg.
-  if (nlhs == 1) {
+  // Return sample rate if we have at least one output arg.
+  if (nlhs >= 1) {
     Matrix fs_mat(1,1);
     double* fs_ptr = (double*) fs_mat.data();
     fs_ptr[0] = (double) sample_rate;
     oct_retval.append(fs_mat);
   }
+
+  // Return buffer size if we have two output args.
+  if (nlhs == 2) {
+    Matrix bs_mat(1,1);
+    double* bs_ptr = (double*) bs_mat.data();
+    bs_ptr[0] = (double) buffer_size;
+    oct_retval.append(bs_mat);
+  }
+
 
   // Disconnect ports
 
