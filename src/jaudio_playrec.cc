@@ -40,6 +40,8 @@ int total_playrec_frames;
 int frames_played;
 int frames_recorded;
 bool is_first_jack_period;
+size_t num_skip_periods;
+size_t skip_periods_counter;
 
 jack_client_t *playrec_client;
 
@@ -196,6 +198,13 @@ int playrec_process_f(jack_nframes_t nframes, void *arg)
   } else {
     frames_recorded = total_playrec_frames;
     return 0;
+  }
+
+  if (num_skip_periods > 0) {
+    if (skip_periods_counter < num_skip_periods) {
+      skip_periods_counter++;
+      return 0;
+    }
   }
 
   // Loop over all input ports.
@@ -355,7 +364,7 @@ int playrec_init(void* play_buffer, int play_format,
                  size_t play_channels, char **play_port_names,
                  void* record_buffer, size_t record_channels, char **record_port_names,
                  size_t frames,
-                 const char *client_name)
+                 const char *client_name, size_t num_skip_buffers)
 {
   char port_name[255];
 
@@ -364,6 +373,9 @@ int playrec_init(void* play_buffer, int play_format,
 
   // The total number of frames to play and record.
   total_playrec_frames = frames;
+
+  num_skip_periods = num_skip_buffers;
+  skip_periods_counter = 0; // Reset period counter.
 
   // Reset play/record counters.
   frames_played = 0;

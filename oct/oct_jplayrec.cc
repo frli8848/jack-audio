@@ -25,29 +25,13 @@
 #include <math.h>
 #include <signal.h>
 
+#include <iostream>
 #include <chrono>
 #include <thread>
 
-//
-// Octave headers.
-//
-
 #include <octave/oct.h>
 
-#include <iostream>
-using namespace std;
-
-#include <octave/defun-dld.h>
-#include <octave/error.h>
-
-#include <octave/pager.h>
-#include <octave/symtab.h>
-#include <octave/variables.h>
-
 #include "jaudio.h"
-
-#define TRUE 1
-#define FALSE 0
 
 //
 // Macros.
@@ -99,7 +83,7 @@ void sig_keyint_handler(int signum) {
 
 DEFUN_DLD (jplayrec, args, nlhs,
            "-*- texinfo -*-\n\
-@deftypefn {Loadable Function} {} Y = jplayrec(A,jack_inputs,jack_ouputs);\n\
+@deftypefn {Loadable Function} {} Y = jplayrec(A,jack_inputs,jack_ouputs,num_skip_buffers);\n\
 \n\
 JPLAYREC Plays audio data from the input matrix A, on the jack ports given by jack_inputs and \n\
 records audio data, from the jack ports given by jack_ouputs, to the output matrix Y using the \n\
@@ -114,6 +98,8 @@ A frames x number of playback channels (jack ports) matrix.\n\
 A char matrix with the JACK client input port names, for example, ['system:playback_1'; 'system:playback_2'], etc.\n\
 @item jack_ouputs\n\
 A char matrix with the JACK client output port names, for example, ['system:capture_1'; 'system:capture_2'], etc.\n\
+@item num_skip_buffers\n\
+The number of JACK periods (buffers) to skip before saving audio data (optional).\n\
 @end table\n\
 \n\
 Output argument:\n\
@@ -143,14 +129,12 @@ A frames x channels single precision matrix containing the recorded audio data.\
 
   // Check for proper inputs arguments.
 
-  if (nrhs != 3) {
-    error("jplayrec requires 3 input arguments!");
-    return oct_retval;
+  if ( (nrhs < 3) || (nrhs > 4) ) {
+    error("jplayrec requires 3 or 4 input arguments!");
   }
 
   if (nlhs > 1) {
     error("Too many output args for jplayrec!");
-    return oct_retval;
   }
 
   //
@@ -258,6 +242,23 @@ A frames x channels single precision matrix containing the recorded audio data.\
   }
 
   //
+  // Input arg 4 : Number of JACK periods to skip on record
+  //
+
+  size_t num_skip_buffers = 0;
+  if ( nrhs ==  4) {
+    // Must ba a scalar
+    const Matrix tmp3 = args(3).matrix_value();
+    if (tmp3.rows() * tmp3.cols() != 1 ) {
+      error("4:th arg must be a scalar !");
+    }
+
+    num_skip_buffers = (size_t) tmp3.data()[0];
+  } else {
+    num_skip_buffers = 0;
+  }
+
+  //
   // Register signal handlers.
   //
 
@@ -290,7 +291,8 @@ A frames x channels single precision matrix containing the recorded audio data.\
                      play_channels, port_names_out,
                      Y, rec_channels, port_names_in,
                      frames,
-                     "octave:jplayrec") < 0) {
+                     "octave:jplayrec",
+                     num_skip_buffers) < 0) {
       error("jplayrec init failed!");
     }
   }
@@ -306,7 +308,8 @@ A frames x channels single precision matrix containing the recorded audio data.\
                      play_channels, port_names_out,
                      Y, rec_channels, port_names_in,
                      frames,
-                     "octave:jplayrec") < 0) {
+                     "octave:jplayrec",
+                     num_skip_buffers) < 0) {
 
       error("jplayrec init failed!");
     }

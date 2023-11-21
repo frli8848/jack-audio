@@ -10,7 +10,7 @@ version, also known as JACK2, on Linux.
 
 # Prerequisites
 
-Install a compiler toolchain, Octave development tools/libs, JACK2, and cmake.
+Install a compiler tool chain, Octave development tools/libs, JACK2, and cmake.
 
 Ubuntu:
 
@@ -80,23 +80,57 @@ $ sudo emerge media-sound/meterbridge
 Get information from the JACK audio server:
 
 ```
-> Fs_hz = jinfo;
+> [Fs_hz, jack_bufsize] = jinfo();
 |------------------------------------------------------
 |
 | JACK engine sample rate: 48000 [Hz]
 |
-| Current JACK engine CPU load: 0.170818 [%]
+| JACK engine buffer size: 512 [frames]
+|
+| Current JACK engine CPU load: 2.111 [%]
 |
 |------------------------------------------------------
 |         Input ports:
 |------------------------------------------------------
 |        system:playback_1 [physical]
 |        system:playback_2 [physical]
+|        system:playback_3 [physical]
+|        system:playback_4 [physical]
+|        system:playback_5 [physical]
+|        system:playback_6 [physical]
+|        system:playback_7 [physical]
+|        system:playback_8 [physical]
+|        system:playback_9 [physical]
+|        system:playback_10 [physical]
+|        system:playback_11 [physical]
+|        system:playback_12 [physical]
+|        system:playback_13 [physical]
+|        system:playback_14 [physical]
+|        system:playback_15 [physical]
+|        system:playback_16 [physical]
+|        system:playback_17 [physical]
+|        system:playback_18 [physical]
 |------------------------------------------------------
 |         Output ports:
 |------------------------------------------------------
 |        system:capture_1 [physical]
 |        system:capture_2 [physical]
+|        system:capture_3 [physical]
+|        system:capture_4 [physical]
+|        system:capture_5 [physical]
+|        system:capture_6 [physical]
+|        system:capture_7 [physical]
+|        system:capture_8 [physical]
+|        system:capture_9 [physical]
+|        system:capture_10 [physical]
+|        system:capture_11 [physical]
+|        system:capture_12 [physical]
+|        system:capture_13 [physical]
+|        system:capture_14 [physical]
+|        system:capture_15 [physical]
+|        system:capture_16 [physical]
+|        system:capture_17 [physical]
+|        system:capture_18 [physical]
 |------------------------------------------------------
 ```
 
@@ -120,6 +154,26 @@ Play and record 5 secons of audio data:
 > U = single(0.5*rand(5*Fs_hz, 2)-0.25);
 > Y = jplayrec(U, ['system:capture_1'; 'system:capture_2'], ['system:playback_1'; 'system:playback_2']);
 ```
+
+There output `Y` is normally delayed a few JACK buffer lengths relative to the input `U`.  `jplayrec`
+has a 4:th optional argument where one can choose to skip recording a given number of buffer periods,
+like, for example:
+
+```
+num_skip_buffers = 3;
+> Y = jplayrec(U, ['system:capture_1'], ['system:playback_1'],num_skip_buffers);
+```
+
+This is illustrated in the Figure 1. below where we have used a sine-burst as input signal
+and connected the output directly to the input on the soundcard and plotted output data
+with both `num_skip_buffers = 0` and `num_skip_buffers = 3` (the red bars in the plots
+shows the JACK period (buffer) lengths.
+
+<p align="center">
+<img src="skip_periods.p">
+</p>
+
+_Figure 1. Output data, y, with `num_skip_buffers = 0` and `num_skip_buffers = 3`, respectively._
 
 # Building
 

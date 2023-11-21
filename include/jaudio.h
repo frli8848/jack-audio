@@ -84,7 +84,8 @@ int playrec_init(void* play_buffer, int play_format,
                  size_t play_channels, char **play_port_names,
                  void* record_buffer, size_t record_channels, char **record_port_names,
                  size_t frames,
-                 const char *client_name);
+                 const char *client_name,
+                 size_t num_skip_buffers = 0);
 
 int playrec_close(size_t play_channels,
                   char **play_port_names,
