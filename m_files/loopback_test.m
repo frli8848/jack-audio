@@ -59,15 +59,19 @@ num_periods = 10;
 
 u2 = zeros(size(u,1),1);
 
-n=1; u2((n-1)*bufsize+(1:bufsize*1.2),1) = u(1:bufsize*1.2,1);
+n=1;
+u2_len = round(u_len*0.015); % Reduce pulse len in the input signal from 1 s to 15 ms
+u2(1:u2_len,1) = u(1:u2_len,1);
 
 num_skip_buffers = 0;
 Y = jplayrec(single(u2(:)), ['system:capture_' num2str(capture_channel)],...
              ['system:playback_' num2str(play_channel)], ...
              num_skip_buffers);
 
+plot_len = round(u_len*0.100); % Plot 100 ms
+
 subplot(311)
-plot(t(1:bufsize*num_periods)*s_to_ms, u2(1:bufsize*num_periods,1))
+plot(t(1:plot_len)*s_to_ms, u2(1:plot_len,1))
 hold on;
 stem(linspace(0, (num_periods-1)*bufsize, num_periods)/Fs_hz*s_to_ms, 0.5*ones(num_periods,1), 'r');
 title('Input signal u')
@@ -75,7 +79,7 @@ axis([0.0 100 -1.0 1.0]);
 grid on;
 
 subplot(312)
-plot(t(1:bufsize*num_periods)*s_to_ms, Y(1:bufsize*num_periods,1))
+plot(t(1:plot_len)*s_to_ms, Y(1:plot_len,1))
 hold on;
 stem(linspace(0, (num_periods-1)*bufsize, num_periods)/Fs_hz*s_to_ms, 0.5*ones(num_periods,1), 'r');
 title('Output signal y with num\_skip\_buffers=0');
@@ -88,7 +92,7 @@ Y = jplayrec(single(u2(:)), ['system:capture_' num2str(capture_channel)],...
              num_skip_buffers);
 
 subplot(313)
-plot(t(1:bufsize*num_periods)*s_to_ms, Y(1:bufsize*num_periods,1))
+plot(t(1:plot_len)*s_to_ms, Y(1:plot_len,1))
 hold on;
 stem(linspace(0, (num_periods-1)*bufsize, num_periods)/Fs_hz*s_to_ms, 0.5*ones(num_periods,1), 'r');
 title('Output signal y with num\_skip\_buffers=3')
