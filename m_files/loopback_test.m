@@ -62,7 +62,8 @@ u2 = zeros(size(u,1),1);
 n=1; u2((n-1)*bufsize+(1:bufsize*1.2),1) = u(1:bufsize*1.2,1);
 
 num_skip_buffers = 0;
-Y = jplayrec(single(u2(:)), ['system:capture_2'], ['system:playback_3'], num_skip_buffers);
+Y = jplayrec(single(u2(:)), ['system:capture_' num2str(capture_channel)],...
+             ['system:playback_' num2str(play_channel)]);
 
 subplot(311)
 plot(t(1:bufsize*num_periods)*s_to_ms, u2(1:bufsize*num_periods,1))
