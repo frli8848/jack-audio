@@ -155,25 +155,26 @@ Play and record 5 secons of audio data:
 > Y = jplayrec(U, ['system:capture_1'; 'system:capture_2'], ['system:playback_1'; 'system:playback_2']);
 ```
 
-There output `Y` is normally delayed a few JACK buffer lengths relative to the input `U`.  `jplayrec`
+The output `Y` is normally delayed a few JACK buffer lengths relative to the input `U`.  `jplayrec`
 has a 4:th optional argument where one can choose to skip recording a given number of buffer periods,
 like, for example:
 
 ```
-num_skip_buffers = 3;
+> num_skip_buffers = 3;
 > Y = jplayrec(U, ['system:capture_1'], ['system:playback_1'],num_skip_buffers);
 ```
 
 This is illustrated in the Figure 1. below where we have used a sine-burst as input signal
 and connected the output directly to the input on the soundcard and plotted output data
-with both `num_skip_buffers = 0` and `num_skip_buffers = 3` (the red bars in the plots
-shows the JACK period (buffer) lengths.
+with both `num_skip_buffers = 0` and `num_skip_buffers = 3` [the red bars in the plots
+shows the JACK period (buffer) lengths].
 
 <p align="center">
 <img src="skip_periods.png">
 </p>
 
-_Figure 1. Output data, y, with `num_skip_buffers = 0` and `num_skip_buffers = 3`, respectively._
+_Figure 1. Plots of input data, u, (upper plot) and output data, y, with `num_skip_buffers = 0`
+(middle plot) and `num_skip_buffers = 3`(lower plot), respectively._
 
 # Building
 
