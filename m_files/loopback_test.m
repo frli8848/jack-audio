@@ -63,7 +63,8 @@ n=1; u2((n-1)*bufsize+(1:bufsize*1.2),1) = u(1:bufsize*1.2,1);
 
 num_skip_buffers = 0;
 Y = jplayrec(single(u2(:)), ['system:capture_' num2str(capture_channel)],...
-             ['system:playback_' num2str(play_channel)]);
+             ['system:playback_' num2str(play_channel)], ...
+             num_skip_buffers);
 
 subplot(311)
 plot(t(1:bufsize*num_periods)*s_to_ms, u2(1:bufsize*num_periods,1))
@@ -82,7 +83,9 @@ axis([0.0 100 -1.0 1.0]);
 grid on;
 
 num_skip_buffers = 3;
-Y = jplayrec(single(u2(:)), ['system:capture_2'], ['system:playback_3'], num_skip_buffers);
+Y = jplayrec(single(u2(:)), ['system:capture_' num2str(capture_channel)],...
+             ['system:playback_' num2str(play_channel)], ...
+             num_skip_buffers);
 
 subplot(313)
 plot(t(1:bufsize*num_periods)*s_to_ms, Y(1:bufsize*num_periods,1))
